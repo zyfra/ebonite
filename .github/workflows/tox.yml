@@ -29,6 +29,9 @@ jobs:
         run: |
           tox
 
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@v1.0.1
+
   build_windows:
 
     runs-on: windows-latest
@@ -54,3 +57,4 @@ jobs:
       - name: Test with tox
         run: |
           cmd /V /C "set SKIP_DOCKER_TESTS=true&& tox"
+
