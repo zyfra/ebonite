@@ -23,7 +23,7 @@ def img_name():
 
 @pytest.fixture
 def container_name():
-    container_name = "mike0sv/ebaklya"
+    container_name = "ebaklya"
     yield container_name
     rm_container(container_name)
 
