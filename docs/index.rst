@@ -7,7 +7,6 @@ Contents
 
    about
    installation
-   readme
    usage/index
    core
    build

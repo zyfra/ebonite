@@ -7,7 +7,7 @@
     * - docs
       - |docs|
     * - tests
-      - | |build|
+      - | |build| |coveralls|
     * - package
       - | |version| |wheel| |supported-versions| |supported-implementations|
         | |commits-since|
