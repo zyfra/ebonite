@@ -5,8 +5,8 @@ Contents
 .. toctree::
    :maxdepth: 1
 
-   about
    installation
+   readme
    usage/index
    core
    build
