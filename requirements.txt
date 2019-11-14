@@ -1,0 +1,10 @@
+docker==4.1.0
+pyyaml==5.1.2
+requests==2.22.0
+dill==0.3.1.1
+GitPython==3.0.3
+isort==4.3.21
+pyjackson==0.0.15
+everett==1.0.2
+# click
+# eg: aspectlib==1.1.1 six>=1.7

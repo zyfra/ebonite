@@ -1,0 +1,1 @@
+{"meta_repo": {"db_uri": "postgresql://postgres:postgres@localhost:5435/ebonite", "type": "sqlalchemy"}, "artifact_repo": {"bucket_name": "ebonite", "endpoint": "http://localhost:8008", "type": "s3"}}

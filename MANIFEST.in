@@ -1,0 +1,28 @@
+graft docs
+graft src
+graft ci
+graft tests
+graft examples
+graft requirements_tests
+
+include .bumpversion.cfg
+include .coveragerc
+include .cookiecutterrc
+include .editorconfig
+
+include .gitlab-ci.yml
+include push_to_pypi.sh
+
+include AUTHORS.rst
+include CHANGELOG.rst
+include CONTRIBUTING.rst
+include LICENSE
+include README.rst
+include ebonite.jpg
+
+include requirements.txt
+include test.requirements.txt
+
+include tox.ini
+
+global-exclude *.py[cod] __pycache__/* *.so *.dylib .ebonite/** UNUSED_CODE/** docs/reference*
