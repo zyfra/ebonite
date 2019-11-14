@@ -95,7 +95,7 @@ Check out examples and documentation to learn more.
 
 Documentation
 =============
-... is available here
+... is available `here <https://ebonite.readthedocs.io/en/latest/>`_
 
 Supported libraries and repositories
 ====================================
@@ -129,5 +129,4 @@ Supported libraries and repositories
 Contributing
 ============
 
-Read `this
-<https://github.com/zyfra/ebonite/blob/master/CONTRIBUTING.rst>`_
+Read `this <https://github.com/zyfra/ebonite/blob/master/CONTRIBUTING.rst>`_
