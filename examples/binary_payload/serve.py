@@ -3,7 +3,7 @@ This is useful for DL models."""
 
 import numpy as np
 import scipy.stats
-from scipy.misc import imread
+from imageio import imread
 
 import ebonite
 from ebonite.ext.imageio import filelike_image_input, filelike_image_output

@@ -24,7 +24,7 @@
     :alt: Requirements Status
     :target: https://requires.io/github/zyfra/ebonite/requirements/?branch=master
 
-.. |coveralls| image:: https://coveralls.io/repos/zyfra/ebonite/badge.svg?branch=HEAD
+.. |coveralls| image:: https://coveralls.io/repos/zyfra/ebonite/badge.svg?branch=HEAD&service=github
     :alt: Coverage Status
     :target: https://coveralls.io/r/zyfra/ebonite
 
