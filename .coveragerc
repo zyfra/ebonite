@@ -10,6 +10,9 @@ source =
     tests
 omit =
    tests/*
+; some tests generate and run distributions in tmpdirs and duplicated code distracts coverage
+   *pytest-*
+
 parallel = true
 
 [report]
