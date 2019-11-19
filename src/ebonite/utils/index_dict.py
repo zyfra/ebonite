@@ -12,7 +12,7 @@ class IndexDict(dict, Generic[T]):
 
     def __setitem__(self, key, value):
         if key != getattr(value, self.key_field):
-            raise KeyError('Key {} is not equal to {} field of {}'.format(key, self.key_field, value))
+            raise KeyError(f'Key {key} is not equal to {self.key_field} field of {value}')
         old_value = self.get(key, None)
         if old_value is not None:
             del self.index[getattr(old_value, self.index_field)]
@@ -32,7 +32,7 @@ class IndexDict(dict, Generic[T]):
             return self[key]
 
     def reindex(self):
-        self.index = {getattr(v, self.index_field) for v in self.values()}
+        self.index = {getattr(v, self.index_field): k for k, v in self.items()}
 
     def clear(self) -> None:
         super(IndexDict, self).clear()
@@ -42,6 +42,12 @@ class IndexDict(dict, Generic[T]):
         value = self[key]
         del self.index[getattr(value, self.index_field)]
         super(IndexDict, self).__delitem__(key)
+
+    def __repr__(self):
+        return f'<IndexDict>{{{", ".join(f"({getattr(v, self.index_field)})[{k}]={v}" for k, v in self.items())}}}'
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class IndexDictAccessor(Generic[T]):
@@ -77,3 +83,9 @@ class IndexDictAccessor(Generic[T]):
 
     def get(self, key, default=...) -> T:
         return self.data.get(key, default)
+
+    def __repr__(self):
+        return f'<Accessor>{self.data}'
+
+    def __str__(self):
+        return self.__repr__()

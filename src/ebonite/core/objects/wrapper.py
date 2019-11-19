@@ -30,8 +30,7 @@ class ModelWrapper(EboniteParams):
     """
     type = None
 
-    def __init__(self):
-        self.model = None
+    model = None
 
     @abstractmethod
     def dump(self) -> FilesContextManager:

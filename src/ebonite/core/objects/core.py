@@ -287,6 +287,7 @@ class Model(EboniteObject):
     :param author: user that created that model
     :param creation_date: date when this model was created
     """
+
     def __init__(self, name: str, wrapper: ModelWrapper,
                  artifact: 'ArtifactCollection' = None, input_meta: DatasetType = None,
                  output_meta: DatasetType = None, requirements: Requirements = None, id: str = None,
@@ -310,6 +311,13 @@ class Model(EboniteObject):
         with tempfile.TemporaryDirectory(prefix='ebonite_run_') as tmpdir:
             self.artifact.materialize(tmpdir)
             self.wrapper.load(tmpdir)
+
+    def ensure_loaded(self):
+        """
+        Ensure that wrapper has loaded model object
+        """
+        if self.wrapper.model is None:
+            self.load()
 
     # this property is needed for pyjackson to serialize model, it is coupled with __init__
     @property

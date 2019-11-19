@@ -2,22 +2,26 @@ import os
 import tempfile
 
 import pytest
+from ebonite.ext.flask.server import create_interface_routes, _setup_app
 
-from ebonite.ext.flask import server
 from ebonite.runtime import Interface
 from ebonite.runtime.interface import expose
+from flask import Flask
 
 
 @pytest.fixture
 def client():
-    db_fd, server.app.config['DATABASE'] = tempfile.mkstemp()
-    server.app.config['TESTING'] = True
+    app = Flask(__name__)
+    _setup_app(app)
 
-    with server.app.test_client() as client:
+    db_fd, app.config['DATABASE'] = tempfile.mkstemp()
+    app.config['TESTING'] = True
+
+    with app.test_client() as client:
         yield client
 
     os.close(db_fd)
-    os.unlink(server.app.config['DATABASE'])
+    os.unlink(app.config['DATABASE'])
 
 
 def test_health(client):
@@ -30,7 +34,7 @@ def test_create_interface_routes(client):
         def method(self, argument: str) -> int:
             return len(argument)
 
-    server.create_interface_routes(MyInterface())
+    create_interface_routes(client.application, MyInterface())
 
     resp = client.post('/method', data={'argument': 'a' * 5}).get_json()
     assert resp == {'ok': True, 'data': 5}
