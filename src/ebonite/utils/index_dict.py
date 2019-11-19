@@ -44,7 +44,7 @@ class IndexDict(dict, Generic[T]):
         super(IndexDict, self).__delitem__(key)
 
     def __repr__(self):
-        return f'<IndexDict>{{{", ".join(f"({getattr(v, self.index_field)})[{k}]={v}" for k, v in self.items())}}}'
+        return f'<IndexDict>{{{", ".join(f"{getattr(v, self.index_field)}[{k}]={v}" for k, v in self.items())}}}'
 
     def __str__(self):
         return self.__repr__()

@@ -116,6 +116,7 @@ class InterfaceMethodDescriptor(Comparable):
     Descriptor of interface method: contains metadata only and couldn't execute method calls
     """
 
+    # TODO support for types other then DatasetType, for example builtins
     def __init__(self, name: str, args: Dict[str, 'objects.DatasetType'], out_type: 'objects.DatasetType'):
         self.name = name
         self.args = args

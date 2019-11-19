@@ -14,7 +14,10 @@ from ebonite.runtime.server import Server
 from ebonite.utils.log import rlogger
 
 VALIDATE = False
-_current_app = None
+
+
+class current:
+    app = None
 
 
 class FlaskServerError(Exception):
@@ -113,22 +116,6 @@ class FlaskConfig(Config):
     port = Param('port', default='9000', parser=int)
 
 
-def _setup_app(app):
-    @app.errorhandler(FlaskServerError)
-    def handle_bad_request(e: FlaskServerError):
-        return e.to_response()
-
-    @app.route('/health')
-    def health():
-        return 'OK'
-
-    @app.before_request
-    def log_request_info():
-        flask.g.ebonite_id = str(uuid.uuid4())
-        app.logger.debug('Headers: %s', request.headers)
-        app.logger.debug('Body: %s', request.get_data())
-
-
 class FlaskServer(Server):
     """
     HTTP-based Ebonite runtime server.
@@ -148,18 +135,36 @@ class FlaskServer(Server):
         self.__requires = Swagger
         super().__init__()
 
+    def _create_app(self):
+        app = flask.Flask(__name__)
+        Swagger(app)
+
+        @app.errorhandler(FlaskServerError)
+        def handle_bad_request(e: FlaskServerError):
+            return e.to_response()
+
+        @app.route('/health')
+        def health():
+            return 'OK'
+
+        @app.before_request
+        def log_request_info():
+            flask.g.ebonite_id = str(uuid.uuid4())
+            app.logger.debug('Headers: %s', request.headers)
+            app.logger.debug('Body: %s', request.get_data())
+
+        return app
+
+    def _prepare_app(self, app, interface):
+        create_interface_routes(app, interface)
+        create_schema_route(app, interface)
+
     def run(self, interface: Interface):
         """
         Starts flask service
 
         :param interface: runtime interface to expose via HTTP
         """
-        global _current_app
-        app = flask.Flask(__name__)
-        _current_app = app
-        Swagger(app)
-        _setup_app(app)
-
-        create_interface_routes(app, interface)
-        create_schema_route(app, interface)
+        app = self._create_app()
+        self._prepare_app(app, interface)
         app.run(FlaskConfig.host, FlaskConfig.port)

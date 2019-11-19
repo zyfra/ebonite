@@ -34,6 +34,7 @@ def test_add(index_dict: IndexDict[Entry], entry: Entry):
     assert index_dict.get(entry.id) == entry
     assert index_dict[entry.id] == entry
     assert index_dict.get_index(entry.name) == entry
+    assert index_dict.get_index(entry.name, None) == entry
 
 
 def test_add_no_index(index_dict: IndexDict[Entry], entry: Entry):
@@ -79,11 +80,17 @@ def test_delete(index_dict: IndexDict[Entry], entry: Entry):
     assert index_dict.get_index(entry.name, None) is None
 
 
+def test__str__(index_dict: IndexDict, entry: Entry):
+    index_dict.add(entry)
+    assert str(index_dict) == '<IndexDict>{b[a]=%s}' % str(entry)
+
+
 def test_accessor_get(accessor: IndexDictAccessor, entry: Entry):
     accessor.data.add(entry)
     assert accessor[entry.id] == entry
     assert accessor(entry.name) == entry
     assert entry.id in accessor
+    assert accessor.contains(entry.name)
     assert len(accessor) == 1
     assert next(iter(accessor)) == entry.id
     assert list(accessor.items()) == [('a', entry)]
@@ -96,3 +103,8 @@ def test_accessor_set(accessor: IndexDictAccessor, entry: Entry):
 
 def test_accessor_in(accessor: IndexDictAccessor, entry: Entry):
     accessor.data.add(entry)
+
+
+def test_accessor__str__(accessor, entry):
+    accessor.data.add(entry)
+    assert str(accessor) == '<Accessor>' + str(accessor.data)
