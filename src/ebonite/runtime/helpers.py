@@ -24,6 +24,7 @@ def run_model_server(model: 'core.Model', server: Server = None):
 
     class MockLoader(ModelLoader):
         def load(self) -> Interface:
+            model.ensure_loaded()
             return model_interface(model)
 
     start_runtime(MockLoader(), server)

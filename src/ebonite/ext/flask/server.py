@@ -13,10 +13,6 @@ from ebonite.runtime.openapi.spec import create_spec
 from ebonite.runtime.server import Server
 from ebonite.utils.log import rlogger
 
-app = flask.Flask(__name__)
-
-swagger = Swagger(app)
-
 VALIDATE = False
 
 
@@ -40,24 +36,12 @@ class WrongArgumentsError(FlaskServerError):
         return 'Invalid request: arguments are [{}], got [{}]'.format(', '.join(self.actual), ', '.join(self.expected))
 
 
-@app.errorhandler(FlaskServerError)
-def handle_bad_request(e: FlaskServerError):
-    return e.to_response()
-
-
-@app.route('/health')
-def health():
-    return 'OK'
-
-
-@app.before_request
-def log_request_info():
-    flask.g.ebonite_id = str(uuid.uuid4())
-    app.logger.debug('Headers: %s', request.headers)
-    app.logger.debug('Body: %s', request.get_data())
-
-
 def _extract_request_data(method_args):
+    """
+
+    :param method_args:
+    :return:
+    """
     args = {a.name: a for a in method_args}
     if request.content_type == 'application/json':
         request_data = request.json
@@ -71,7 +55,16 @@ def _extract_request_data(method_args):
     return request_data
 
 
-def create_executor_function(interface, method, spec):
+def create_executor_function(interface: Interface, method: str, spec: dict):
+    """
+    Creates a view function for specific interface method
+
+    :param interface: :class:`.Interface` instance
+    :param method: method name
+    :param spec: openapi spec for this instance
+    :return: callable view function
+    """
+
     def ef():
         data = _extract_request_data(interface.exposed_method_args(method))
         try:
@@ -91,7 +84,7 @@ def create_executor_function(interface, method, spec):
     return ef
 
 
-def _register_method(interface, method_name, signature):
+def _register_method(app, interface, method_name, signature):
     spec = create_spec(method_name, signature)
 
     executor_function = create_executor_function(interface, method_name, spec)
@@ -101,14 +94,14 @@ def _register_method(interface, method_name, signature):
     app.add_url_rule('/' + method_name, method_name, executor_function, methods=['POST'])
 
 
-def create_interface_routes(interface: Interface):
+def create_interface_routes(app, interface: Interface):
     for method in interface.exposed_methods():
         sig = interface.exposed_method_signature(method)
         rlogger.debug('registering %s with input type %s and output type %s', method, sig.args, sig.output)
-        _register_method(interface, method, sig)
+        _register_method(app, interface, method, sig)
 
 
-def create_schema_route(interface: Interface):
+def create_schema_route(app, interface: Interface):
     schema = InterfaceDescriptor.from_interface(interface).to_dict()
     rlogger.debug('Creating /interface.json route with schema: %s', schema)
     app.add_url_rule('/interface.json', 'schema', lambda: jsonify(schema))
@@ -131,8 +124,6 @@ class FlaskServer(Server):
     default is `0.0.0.0` which means any local or remote, for rejecting remote connections use `localhost` instead.
 
     Port to which server binds to is configured via `EBONITE_PORT` environment variable: default is 9000.
-
-    :param interface: runtime interface to expose via HTTP
     """
 
     def __init__(self):
@@ -140,7 +131,36 @@ class FlaskServer(Server):
         self.__requires = Swagger
         super().__init__()
 
+    def _create_app(self):
+        app = flask.Flask(__name__)
+        Swagger(app)
+
+        @app.errorhandler(FlaskServerError)
+        def handle_bad_request(e: FlaskServerError):
+            return e.to_response()
+
+        @app.route('/health')
+        def health():
+            return 'OK'
+
+        @app.before_request
+        def log_request_info():
+            flask.g.ebonite_id = str(uuid.uuid4())
+            app.logger.debug('Headers: %s', request.headers)
+            app.logger.debug('Body: %s', request.get_data())
+
+        return app
+
+    def _prepare_app(self, app, interface):
+        create_interface_routes(app, interface)
+        create_schema_route(app, interface)
+
     def run(self, interface: Interface):
-        create_interface_routes(interface)
-        create_schema_route(interface)
+        """
+        Starts flask service
+
+        :param interface: runtime interface to expose via HTTP
+        """
+        app = self._create_app()
+        self._prepare_app(app, interface)
         app.run(FlaskConfig.host, FlaskConfig.port)

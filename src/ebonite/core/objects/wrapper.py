@@ -98,6 +98,7 @@ class ModelWrapper(EboniteParams):
     def __deepcopy__(self, memo):
         cls = type(self)
         obj = object.__new__(cls)
+        obj.model = self.model
         for field in get_class_fields(cls):
             setattr(obj, field.name, getattr(self, field.name))
         return obj
