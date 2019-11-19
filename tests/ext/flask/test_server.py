@@ -2,11 +2,11 @@ import os
 import tempfile
 
 import pytest
-from ebonite.ext.flask.server import create_interface_routes, _setup_app
+from flask import Flask
 
+from ebonite.ext.flask.server import _setup_app, create_interface_routes
 from ebonite.runtime import Interface
 from ebonite.runtime.interface import expose
-from flask import Flask
 
 
 @pytest.fixture
