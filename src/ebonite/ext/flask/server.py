@@ -16,10 +16,6 @@ from ebonite.utils.log import rlogger
 VALIDATE = False
 
 
-class current:
-    app = None
-
-
 class FlaskServerError(Exception):
     def code(self):
         return 400
