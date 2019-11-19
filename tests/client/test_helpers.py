@@ -1,8 +1,7 @@
 import numpy as np
 
-from ebonite.ext.sklearn import SklearnModelWrapper
-
 from ebonite.client.helpers import create_model
+from ebonite.ext.sklearn import SklearnModelWrapper
 
 
 def test_create_model(sklearn_model_obj, pandas_data):
