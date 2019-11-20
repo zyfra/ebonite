@@ -11,6 +11,7 @@ class SklearnModelWrapper(PickleModelWrapper):
     """
     type = 'sklearn'
 
+    @ModelWrapper.with_model
     def predict(self, data):
         return self.model.predict(data)
 
@@ -24,6 +25,5 @@ class SklearnHook(ModelHook, LibHookMixin):
 
     base_module_name = 'sklearn'
 
-    @ModelWrapper.with_model
     def process(self, obj) -> ModelWrapper:
         return SklearnModelWrapper().bind_model(obj)
