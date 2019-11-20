@@ -36,6 +36,7 @@ def test_torch__custom_net(first_tensor, second_tensor, tmpdir):
 
 
 def _check_model_wrapper(net, tmpdir):
+    # this import ensures that this model wrapper is registered in `ModelAnalyzer`
     from ebonite.ext.torch.model import TorchModelWrapper
 
     tmw = ModelAnalyzer.analyze(net)
