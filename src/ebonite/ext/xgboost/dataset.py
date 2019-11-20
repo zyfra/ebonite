@@ -1,9 +1,10 @@
 import xgboost
+from pyjackson.core import ArgList
+from pyjackson.decorators import as_list
+
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects import DatasetType
-from pyjackson.core import ArgList
-from pyjackson.decorators import as_list
 
 
 @as_list

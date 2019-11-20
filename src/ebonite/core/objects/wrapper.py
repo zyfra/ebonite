@@ -7,7 +7,6 @@ from functools import wraps
 from importlib import import_module
 from io import BytesIO
 from pickle import _Unpickler
-from typing import Iterable
 from uuid import uuid4
 
 from pyjackson.core import Unserializable

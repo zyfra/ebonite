@@ -3,9 +3,9 @@ import os
 import tempfile
 
 import xgboost
-from ebonite.core.analyzer.model import ModelHook
-from ebonite.core.analyzer.base import TypeHookMixin
 
+from ebonite.core.analyzer.base import TypeHookMixin
+from ebonite.core.analyzer.model import ModelHook
 from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
 from ebonite.core.objects.wrapper import FilesContextManager

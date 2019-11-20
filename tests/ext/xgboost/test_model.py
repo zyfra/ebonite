@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 import xgboost
+
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects import ModelWrapper
 from ebonite.ext.xgboost.model import XGBoostModelWrapper
-
 
 
 @pytest.fixture
@@ -27,6 +27,7 @@ def test_wrapper__predict(wrapper, dmatrix):
     predict = wrapper.predict(dmatrix)
     assert isinstance(predict, np.ndarray)
     assert len(predict) == dmatrix.num_row()
+
 
 def test_wrapper__predict_not_dmatrix(wrapper):
     data = [1]

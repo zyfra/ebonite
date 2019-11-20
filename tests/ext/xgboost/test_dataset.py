@@ -1,5 +1,6 @@
 import pytest
 import xgboost
+
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.xgboost.dataset import DMatrixDatasetType
 
