@@ -19,7 +19,7 @@ from ebonite.core.objects.artifacts import (ArtifactCollection, Blob, Blobs, Com
 from ebonite.core.objects.base import EboniteParams
 from ebonite.utils.pickling import EbonitePickler
 
-FilesContextManager = Iterable[ArtifactCollection]
+FilesContextManager = typing.ContextManager[ArtifactCollection]
 
 
 @type_field('type')
