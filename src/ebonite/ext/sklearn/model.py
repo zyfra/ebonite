@@ -24,5 +24,6 @@ class SklearnHook(ModelHook, LibHookMixin):
 
     base_module_name = 'sklearn'
 
+    @ModelWrapper.with_model
     def process(self, obj) -> ModelWrapper:
         return SklearnModelWrapper().bind_model(obj)
