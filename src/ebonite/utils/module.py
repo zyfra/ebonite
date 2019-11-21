@@ -370,10 +370,6 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
             if not self._should_ignore(mod) and is_local_module(mod):
                 r.add(CustomRequirement.from_module(mod))
 
-                # add imports of this local module
-                for obj in mod.__dict__.values():
-                    self._add_requirement(obj)
-
         for mod in self._modules:
             r.add(get_module_as_requirement(get_base_module(mod)))
         return r
