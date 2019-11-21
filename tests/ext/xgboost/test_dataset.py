@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 import xgboost
 
@@ -45,20 +44,16 @@ def test_deserialize__df(dtype_df, df_payload):
 
 
 def test_np__schema(dtype_np):
-    schema = [
-        spec._field_to_schema(f) for f in dtype_np.get_spec()
-    ]
+    schema = spec.type_to_schema(dtype_np)
 
-    assert schema == [
-        {'properties': {}, 'type': 'object'}
-    ]
+    assert schema == {
+        'items': {'type': 'number'},
+        'maxItems': 1,
+        'minItems': 1,
+        'type': 'array'
+    }
 
 
 def test_df__schema(dtype_df):
-    schema = [
-        spec._field_to_schema(f) for f in dtype_df.get_spec()
-    ]
-
-    assert schema == [
-        {'type': 'integer'}
-    ]
+    schema = spec.type_to_schema(dtype_df)
+    assert schema == {'properties': {'a': {'type': 'integer'}}, 'required': ['a'], 'type': 'object'}

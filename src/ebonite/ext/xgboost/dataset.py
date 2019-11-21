@@ -1,12 +1,12 @@
-from typing import List, Any
+from typing import List
 
 import xgboost
-from ebonite.ext.numpy.dataset import _np_type_from_string
 from pyjackson.core import ArgList, Field
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects import DatasetType
+from ebonite.ext.numpy.dataset import _python_type_from_np_string_repr
 
 
 class DMatrixDatasetType(DatasetType):
@@ -34,7 +34,7 @@ class DMatrixDatasetType(DatasetType):
 
     @property
     def feature_types(self):
-        return [_np_type_from_string(t) for t in self.feature_type_names]
+        return [_python_type_from_np_string_repr(t) for t in self.feature_type_names]
 
     def get_spec(self) -> ArgList:
         return [Field(n, t, False) for n, t in zip(self.feature_names, self.feature_types)]
