@@ -366,7 +366,7 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
     def to_requirements(self):
         r = Requirements()
 
-        for mod in sys.modules.values():
+        for mod in list(sys.modules.values()):
             if not self._should_ignore(mod) and is_local_module(mod):
                 r.add(CustomRequirement.from_module(mod))
 
