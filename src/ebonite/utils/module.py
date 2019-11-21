@@ -291,13 +291,13 @@ def get_module_repr(mod: ModuleType, validate_pypi=False) -> str:
 
 
 def get_module_as_requirement(mod: ModuleType, validate_pypi=False) -> InstallableRequirement:
-    '''
+    """
     Builds Ebonite representation of given module object
 
     :param mod: module object to use
     :param validate_pypi: if `True` (default is `False`) perform representation validation in PyPi repository
     :return: representation as :class:`.InstallableRequirement`
-    '''
+    """
     mod_version = get_module_version(mod)
     if validate_pypi:
         mod_name = get_package_name(mod)
@@ -341,7 +341,8 @@ def add_closure_inspection(f):
 class _EboniteRequirementAnalyzer(EbonitePickler):
     ignoring = (
         'dill',
-        'ebonite'
+        'ebonite',
+        'tests'
     )
     dispatch = EbonitePickler.dispatch.copy()
 

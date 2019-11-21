@@ -12,6 +12,9 @@ from ebonite.core.objects.wrapper import FilesContextManager
 
 
 class XGBoostModelWrapper(ModelWrapper):
+    """
+    :class:`~.ModelWrapper` implementation for XGBoost models
+    """
     type = 'xgboost'
     model_path = 'model.xgb'
 
@@ -36,6 +39,9 @@ class XGBoostModelWrapper(ModelWrapper):
 
 
 class XGBoostModelHook(ModelHook, TypeHookMixin):
+    """
+    :class:`.ModelHook` implementation for `xgboost.Booster` objects
+    """
     valid_types = [xgboost.Booster]
 
     def process(self, obj) -> ModelWrapper:

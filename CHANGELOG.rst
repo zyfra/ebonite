@@ -1,9 +1,8 @@
-
 Changelog
 =========
 
-0.2.2
-------------------
+Current release candidate
+-------------------------
 
 * Added support for XGBoost models
 

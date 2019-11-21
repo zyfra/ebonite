@@ -8,8 +8,8 @@ from ebonite.ext.xgboost.model import XGBoostModelWrapper
 
 
 @pytest.fixture
-def booster(dmatrix):
-    return xgboost.train({}, dmatrix, 1)
+def booster(dmatrix_np):
+    return xgboost.train({}, dmatrix_np, 1)
 
 
 @pytest.fixture
@@ -23,10 +23,10 @@ def test_hook(booster):
     assert wrapper.model == booster
 
 
-def test_wrapper__predict(wrapper, dmatrix):
-    predict = wrapper.predict(dmatrix)
+def test_wrapper__predict(wrapper, dmatrix_np):
+    predict = wrapper.predict(dmatrix_np)
     assert isinstance(predict, np.ndarray)
-    assert len(predict) == dmatrix.num_row()
+    assert len(predict) == dmatrix_np.num_row()
 
 
 def test_wrapper__predict_not_dmatrix(wrapper):
@@ -36,12 +36,12 @@ def test_wrapper__predict_not_dmatrix(wrapper):
     assert len(predict) == len(data)
 
 
-def test_wrapper__dump_load(tmpdir, wrapper: ModelWrapper, dmatrix):
+def test_wrapper__dump_load(tmpdir, wrapper: ModelWrapper, dmatrix_np):
     with wrapper.dump() as d:
         d.materialize(tmpdir)
     wrapper.unbind()
     with pytest.raises(ValueError):
-        wrapper.predict(dmatrix)
+        wrapper.predict(dmatrix_np)
 
     wrapper.load(tmpdir)
-    test_wrapper__predict(wrapper, dmatrix)
+    test_wrapper__predict(wrapper, dmatrix_np)
