@@ -342,7 +342,7 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
     ignoring = (
         'dill',
         'ebonite',
-        'tests'
+        'tests'  # pytest scans all test modules and all their imports are treated as requirements
     )
     dispatch = EbonitePickler.dispatch.copy()
 
