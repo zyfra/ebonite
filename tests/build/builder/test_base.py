@@ -68,6 +68,7 @@ def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuild
     python_builder_mock._write_distribution(tmpdir)
 
     _check_basic_distr_contents(tmpdir)
+    _check_requirements(tmpdir, set(_get_builder_requirements(python_builder_mock)))
 
 
 def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: PythonBuilder):
@@ -76,19 +77,25 @@ def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: Pytho
 
     _check_basic_distr_contents(tmpdir)
     assert os.path.isdir(os.path.join(tmpdir, 'ebonite'))
-    _check_requirements(tmpdir, 'pyjackson')
+    from setup import setup_args
+    _check_requirements(tmpdir, {*setup_args['install_requires'], *_get_builder_requirements(python_builder_mock)})
+
+
+def _get_builder_requirements(python_builder: PythonBuilder):
+    return python_builder.provider.get_requirements().to_pip()
 
 
 def _check_basic_distr_contents(base_dir):
     _check_contents(base_dir, 'server.py', SERVER_CODE)
-    _check_requirements(base_dir, 'dill')
     _check_contents(base_dir, 'test.bin', b'test_bytes')
     _check_contents(base_dir, 'run.sh', re.compile('ebonite'))
 
 
-def _check_requirements(base_dir, mod_name):
-    version = get_module_version(__import__(mod_name))
-    _check_contents(base_dir, 'requirements.txt', re.compile(f'^{mod_name}=={re.escape(version)}$', re.MULTILINE))
+def _check_requirements(base_dir, expected_modules):
+    from setup import get_requirements
+    actual_modules = set(get_requirements(os.path.join(base_dir, 'requirements.txt')))
+
+    assert actual_modules == expected_modules
 
 
 def _check_contents(base_dir, name, contents):
@@ -115,6 +122,11 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
 
 def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuilder, pandas_data):
     args, env = _prepare_distribution(tmpdir, python_builder)
+
+    from setup import setup_args
+    _check_requirements(tmpdir, {*setup_args['install_requires'],
+                                 'flasgger==0.9.3',  # server reqs
+                                 'pandas==0.25.1', 'scikit-learn==0.21.3', 'numpy==1.17.3'})  # model reqs
 
     # TODO make ModelLoader.load cwd-independent
     server = subprocess.Popen(args, env=env, cwd=tmpdir)
