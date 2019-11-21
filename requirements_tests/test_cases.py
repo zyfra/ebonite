@@ -12,4 +12,4 @@ def test_requirements_analyzer__custom_modules():
     assert {'model_trainer', 'custom_module', 'test_cases'} == custom_reqs
 
     inst_reqs = {req.package for req in reqs.installable}
-    assert {'scikit-learn'} == inst_reqs
+    assert {'scikit-learn', 'pandas', 'six'} == inst_reqs
