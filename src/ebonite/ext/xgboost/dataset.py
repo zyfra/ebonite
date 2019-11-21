@@ -17,6 +17,7 @@ class DMatrixDatasetType(DatasetType):
         pass
 
     def serialize(self, instance: xgboost.DMatrix) -> list:
+        # There is no way to extract original data from DMatrix
         raise RuntimeError('DMatrixDatasetType does not support serialization')
 
     def deserialize(self, obj: list) -> xgboost.DMatrix:

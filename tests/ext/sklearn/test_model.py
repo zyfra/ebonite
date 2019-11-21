@@ -27,15 +27,13 @@ def test_hook(wrapper):
 
 
 def test_wrapper__predict(wrapper, data):
-    data = [[1, 2, 3]]
 
     prediction = wrapper.predict(data)
 
     assert len(prediction) == len(data)
 
 
-def test_wrapper__dump_load(tmpdir, wrapper):
-    data = [[1, 2, 3]]
+def test_wrapper__dump_load(tmpdir, wrapper, data):
     with wrapper.dump() as d:
         d.materialize(tmpdir)
     wrapper.unbind()
