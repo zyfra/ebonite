@@ -2,49 +2,63 @@ import contextlib
 import os
 import tempfile
 
-from catboost import CatBoostClassifier
+from catboost import CatBoostClassifier, CatBoostRegressor
 from pyjackson.decorators import make_string
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
 from ebonite.core.analyzer.model import ModelHook
-from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
+from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, LocalFileBlob
 from ebonite.core.objects.wrapper import ModelWrapper
 
 
 class CatBoostModelWrapper(ModelWrapper):
     """
     :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
-    `.model` attribute is a `catboost.CatBoostClassifier` instance
+    `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
     """
     type = 'catboost_model_wrapper'
-    model_file_name = 'model.pth'
+    classifier_file_name = 'clf.cb'
+    regressor_file_name = 'rgr.cb'
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
     def dump(self) -> ArtifactCollection:
         """
-        Dumps `catboost.CatBoostClassifier` instance to :class:`.InMemoryBlob` and creates :class:`.ArtifactCollection` from it
+        Dumps `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance to :class:`.LocalFileBlob` and
+        creates :class:`.ArtifactCollection` from it
 
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
         model_file = tempfile.mktemp()
-        self.model.save_model(model_file)
-        with open(model_file, mode='rb') as f:
-            yield Blobs({self.model_file_name: InMemoryBlob(f.read())})
+        try:
+            self.model.save_model(model_file)
+            yield Blobs({self._get_model_file_name(): LocalFileBlob(model_file)})
+        finally:
+            os.remove(model_file)
+
+    def _get_model_file_name(self):
+        if isinstance(self.model, CatBoostClassifier):
+            return self.classifier_file_name
+        return self.regressor_file_name
 
     def load(self, path):
         """
-        Loads `catboost.CatBoostClassifier` instance from path
+        Loads `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance from path
 
         :param path: path to load from
         """
-        self.model = CatBoostClassifier()
-        self.model.load_model(os.path.join(path, self.model_file_name))
+        if os.path.exists(os.path.join(path, self.classifier_file_name)):
+            model_type = CatBoostClassifier
+        else:
+            model_type = CatBoostRegressor
+
+        self.model = model_type()
+        self.model.load_model(os.path.join(path, self._get_model_file_name()))
 
     @ModelWrapper.with_model
     def predict(self, data):
         """
-        Runs `catboost.CatBoostClassifier` and returns predictions
+        Runs `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` and returns predictions
 
         :param data: data to predict
         :return: prediction
@@ -60,12 +74,12 @@ class CatBoostModelHook(ModelHook, CanIsAMustHookMixin):
 
     def must_process(self, obj) -> bool:
         """
-        Returns `True` if object is `catboost.CatBoostClassifier`
+        Returns `True` if object is `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor`
 
         :param obj: obj to check
         :return: `True` or `False`
         """
-        return isinstance(obj, CatBoostClassifier)
+        return any(isinstance(obj, t) for t in [CatBoostClassifier,  CatBoostRegressor])
 
     def process(self, obj) -> ModelWrapper:
         """
