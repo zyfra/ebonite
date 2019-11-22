@@ -12,6 +12,9 @@ from ebonite.core.objects.wrapper import FilesContextManager
 
 
 class LightGBMModelWrapper(ModelWrapper):
+    """
+    :class:`.ModelWrapper` implementation for `lightgbm.Booster` type
+    """
     type = 'lightgbm'
     model_path = 'model.lgb'
 
@@ -30,12 +33,15 @@ class LightGBMModelWrapper(ModelWrapper):
 
     @ModelWrapper.with_model
     def predict(self, data):
-        if not isinstance(data, lgb.Dataset):
-            data = lgb.Dataset(data)
+        if isinstance(data, lgb.Dataset):
+            data = data.data
         return self.model.predict(data)
 
 
 class LightGBMModelHook(ModelHook, TypeHookMixin):
+    """
+    :class:`.ModelHook` implementation for `lightgbm.Booster` type
+    """
     valid_types = [lgb.Booster]
 
     def process(self, obj) -> ModelWrapper:

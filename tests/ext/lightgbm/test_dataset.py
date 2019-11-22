@@ -1,6 +1,7 @@
+import lightgbm as lgb
 import numpy as np
 import pytest
-import lightgbm as lgb
+
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.lightgbm.dataset import LightGBMDatasetType
 from ebonite.ext.numpy import NumpyNdarrayDatasetType

@@ -3,7 +3,7 @@ from pyjackson.core import ArgList
 from pyjackson.decorators import as_list
 
 from ebonite.core.analyzer import TypeHookMixin
-from ebonite.core.analyzer.dataset import DatasetHook, DatasetAnalyzer
+from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
 from ebonite.core.objects import DatasetType
 
 
@@ -34,7 +34,7 @@ class LightGBMDatasetType(DatasetType):
         return self.inner.serialize(instance.data)
 
     def deserialize(self, obj: dict) -> lgb.Dataset:
-        return lgb.Dataset(self.inner.deserialize(obj))
+        return lgb.Dataset(self.inner.deserialize(obj), free_raw_data=False)
 
     @classmethod
     def from_dataset(cls, dataset: lgb.Dataset):
