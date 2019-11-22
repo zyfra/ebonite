@@ -11,6 +11,7 @@ class SklearnModelWrapper(PickleModelWrapper):
     """
     type = 'sklearn'
 
+    @ModelWrapper.with_model
     def predict(self, data):
         return self.model.predict(data)
 

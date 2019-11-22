@@ -1,11 +1,15 @@
-
 Changelog
 =========
+
+Current release candidate
+-------------------------
+
+* Added support for XGBoost models
 
 0.2.1 (2019-11-19)
 ------------------
 
-Minor bug fixes
+* Minor bug fixes
 
 0.2.0 (2019-11-14)
 ------------------

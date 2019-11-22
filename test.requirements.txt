@@ -10,3 +10,4 @@ responses==0.10.6
 psutil==5.6.3
 testcontainers==2.5
 pytest==5.2.2
+xgboost==0.90

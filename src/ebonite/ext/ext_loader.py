@@ -60,7 +60,8 @@ class ExtensionLoader:
         Extension('ebonite.ext.flask', ['flask', 'flaskgger']),
         Extension('ebonite.ext.sqlalchemy', ['sqlalchemy']),
         Extension('ebonite.ext.s3', ['boto3']),
-        Extension('ebonite.ext.imageio', ['imageio'])
+        Extension('ebonite.ext.imageio', ['imageio']),
+        Extension('ebonite.ext.xgboost', ['xgboost'], False)
     )
 
     _loaded_extensions: Dict[Extension, ModuleType] = {}
