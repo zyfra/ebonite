@@ -13,14 +13,17 @@ def test_torch__single_tensor(first_tensor):
     assert tdt.shape == (5, 5)
     assert tdt.dtype == 'int32'
     assert tdt.list_size() == 5
-    assert type_to_schema(tdt) == {'items':
-                                       {'items': {'type': 'integer'},
-                                        'maxItems': 5,
-                                        'minItems': 5,
-                                        'type': 'array'},
-                                   'maxItems': 5,
-                                   'minItems': 5,
-                                   'type': 'array'}
+    assert type_to_schema(tdt) == {
+        'items': {
+            'items': {'type': 'integer'},
+            'maxItems': 5,
+            'minItems': 5,
+            'type': 'array'
+        },
+        'maxItems': 5,
+        'minItems': 5,
+        'type': 'array'
+    }
 
     tensor_deser = tdt.deserialize(tdt.serialize(first_tensor))
     assert torch.equal(first_tensor, tensor_deser)
@@ -41,22 +44,34 @@ def test_torch__tensors_list(first_tensor, second_tensor):
     assert tdt.items[1].shape == (5, 10)
     assert tdt.items[1].dtype == 'float32'
     assert tdt.items[1].list_size() == 5
-    assert type_to_schema(tdt) == {'properties': {0: {'items': {'items': {'type': 'integer'},
-                                                                'maxItems': 5,
-                                                                'minItems': 5,
-                                                                'type': 'array'},
-                                                      'maxItems': 5,
-                                                      'minItems': 5,
-                                                      'type': 'array'},
-                                                  1: {'items': {'items': {'type': 'number'},
-                                                                'maxItems': 10,
-                                                                'minItems': 10,
-                                                                'type': 'array'},
-                                                      'maxItems': 5,
-                                                      'minItems': 5,
-                                                      'type': 'array'}},
-                                   'required': [0, 1],
-                                   'type': 'object'}
+    assert type_to_schema(tdt) == {
+        'properties': {
+            0: {
+                'items': {
+                    'items': {'type': 'integer'},
+                    'maxItems': 5,
+                    'minItems': 5,
+                    'type': 'array'
+                },
+                'maxItems': 5,
+                'minItems': 5,
+                'type': 'array'
+            },
+            1: {
+                'items': {
+                    'items': {'type': 'number'},
+                    'maxItems': 10,
+                    'minItems': 10,
+                    'type': 'array'
+                },
+                'maxItems': 5,
+                'minItems': 5,
+                'type': 'array'
+            }
+        },
+        'required': [0, 1],
+        'type': 'object'
+    }
 
     tensor_list_deser = tdt.deserialize(tdt.serialize(tensor_list))
     assert len(tensor_list) == len(tensor_list_deser)
