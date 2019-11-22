@@ -1,13 +1,12 @@
 import pytest
+import torch
 
 
 @pytest.fixture
 def first_tensor():
-    import torch
-    return torch.rand(5, 10)
+    return torch.ones(5, 5, dtype=torch.int32)
 
 
 @pytest.fixture
 def second_tensor():
-    import torch
-    return torch.rand(5, 5)
+    return torch.rand(5, 10, dtype=torch.float32)

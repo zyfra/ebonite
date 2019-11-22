@@ -63,7 +63,7 @@ class ListDatasetType(DatasetType):
         self.items = items
 
     def get_spec(self) -> ArgList:
-        return [Field(i, t, False) for i, t in enumerate(self.item_types)]
+        return [Field(i, t, False) for i, t in enumerate(self.items)]
 
     def deserialize(self, obj):
         return [deserialize(o, t) for t, o in zip(self.items, obj)]

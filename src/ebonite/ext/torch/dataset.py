@@ -3,25 +3,20 @@ from typing import List, Tuple
 import torch
 from pyjackson.core import ArgList, Field
 
-from ebonite.core.analyzer.base import CanIsAMustHookMixin
+from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.runtime.interface.typing import ListTypeWithSpec, SizedTypedListType
 
 
-class TorchTensorHook(CanIsAMustHookMixin, DatasetHook):
+class TorchTensorHook(TypeHookMixin, DatasetHook):
     """
-    :class:`.DatasetHook` implementation for `torch.Tensor` objects which uses
-    :class:`TorchTensorDatasetType` and :class:`TorchTensorListDatasetType`
+    :class:`.DatasetHook` implementation for `torch.Tensor` objects which uses :class:`TorchTensorDatasetType`
     """
-    def must_process(self, obj) -> bool:
-        return isinstance(obj, torch.Tensor) or \
-               isinstance(obj, list) and all(isinstance(e, torch.Tensor) for e in obj)
+    valid_types = [torch.Tensor]
 
     def process(self, obj) -> DatasetType:
-        if isinstance(obj, torch.Tensor):
-            return TorchTensorDatasetType(tuple(obj.shape), str(obj.dtype)[len('torch.'):])
-        return TorchTensorListDatasetType([self.process(e) for e in obj])
+        return TorchTensorDatasetType(tuple(obj.shape), str(obj.dtype)[len('torch.'):])
 
 
 class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
@@ -61,51 +56,17 @@ class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
 
     @staticmethod
     def _get_dtype_from_str(dtype_str: str):
-        # `torch.float32` and others are singleton instances of type `torch.dtype` and not types
-        # thus we use corresponding built-in types instead
-        known_types = ['float', 'int', 'complex']
+        known_types = ['float', 'int']
         for known_type in known_types:
             if dtype_str.startswith(known_type):
                 return __builtins__[known_type]
-        raise ValueError(f'unknown tensor dtype {dtype_str}')
+        raise ValueError(f'unsupported tensor dtype {dtype_str}')
 
     def get_spec(self) -> ArgList:
         return [Field(None, self._get_subtype(self.shape[1:]), False)]
 
     def deserialize(self, obj):
-        return torch.Tensor(obj)
+        return torch.tensor(obj, dtype=getattr(torch, self.dtype))
 
     def serialize(self, instance: torch.Tensor):
         return instance.tolist()
-
-
-class TorchTensorListDatasetType(DatasetType, ListTypeWithSpec):
-    """
-    :class:`.DatasetType` implementation for lists of `torch.Tensor` objects
-    which converts them to built-in Python lists of lists and vice versa.
-
-    :param types: list of :class:`TorchTensorDatasetType` instances per element in tensor list
-    """
-
-    real_type = list
-    type = 'torch_tensor_list'
-
-    def __init__(self, types):
-        self.types = types
-
-    @property
-    def size(self):
-        return len(self.types)
-
-    def list_size(self):
-        return len(self.types)
-
-    def get_spec(self) -> ArgList:
-        # FIXME elements have different types but we couldn't specify this
-        return [Field(None, self.types[0], False)]
-
-    def deserialize(self, obj):
-        return [t.deserialize(e) for t, e in zip(self.types, obj)]
-
-    def serialize(self, instance: List[torch.Tensor]):
-        return [t.serialize(e) for t, e in zip(self.types, instance)]

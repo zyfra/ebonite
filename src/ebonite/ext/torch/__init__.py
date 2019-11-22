@@ -1,5 +1,4 @@
-from .dataset import TorchTensorDatasetType, TorchTensorHook, TorchTensorListDatasetType
+from .dataset import TorchTensorDatasetType, TorchTensorHook
 from .model import TorchModelHook, TorchModelWrapper
 
-__all__ = ['TorchTensorDatasetType', 'TorchTensorHook', 'TorchTensorListDatasetType',
-           'TorchModelHook', 'TorchModelWrapper']
+__all__ = ['TorchTensorDatasetType', 'TorchTensorHook', 'TorchModelHook', 'TorchModelWrapper']
