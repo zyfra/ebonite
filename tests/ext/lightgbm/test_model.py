@@ -17,8 +17,7 @@ def wrapper(booster) -> ModelWrapper:
     return ModelAnalyzer.analyze(booster)
 
 
-def test_hook(booster):
-    wrapper = ModelAnalyzer.analyze(booster)
+def test_hook(wrapper):
     assert isinstance(wrapper, LightGBMModelWrapper)
     assert wrapper.model == booster
 
