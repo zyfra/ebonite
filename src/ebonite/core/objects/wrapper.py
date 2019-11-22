@@ -7,7 +7,6 @@ from functools import wraps
 from importlib import import_module
 from io import BytesIO
 from pickle import _Unpickler
-from typing import Iterable
 from uuid import uuid4
 
 from pyjackson.core import Unserializable
@@ -19,7 +18,7 @@ from ebonite.core.objects.artifacts import (ArtifactCollection, Blob, Blobs, Com
 from ebonite.core.objects.base import EboniteParams
 from ebonite.utils.pickling import EbonitePickler
 
-FilesContextManager = Iterable[ArtifactCollection]
+FilesContextManager = typing.ContextManager[ArtifactCollection]
 
 
 @type_field('type')
