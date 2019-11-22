@@ -5,6 +5,7 @@ Current release candidate
 -------------------------
 
 * Added support for XGBoost models
+* Added support for PyTorch models
 
 0.2.1 (2019-11-19)
 ------------------
