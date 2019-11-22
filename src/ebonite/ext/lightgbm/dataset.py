@@ -3,28 +3,49 @@ from pyjackson.core import ArgList
 from pyjackson.decorators import as_list
 
 from ebonite.core.analyzer import TypeHookMixin
-from ebonite.core.analyzer.dataset import DatasetHook
+from ebonite.core.analyzer.dataset import DatasetHook, DatasetAnalyzer
 from ebonite.core.objects import DatasetType
 
 
 @as_list
 class LightGBMDatasetType(DatasetType):
+    """
+    :class:`.DatasetType` implementation for `lightgbm.Dataset` type
+
+    :param inner: :class:`.DatasetType` instance for underlying data
+    """
     type = 'lightgbm_dataset'
 
     real_type = lgb.Dataset
 
+    def __init__(self, inner: DatasetType):
+        self.inner = inner
+
+    def is_list(self):
+        return self.inner.is_list()
+
+    def list_size(self):
+        return self.inner.list_size()
+
     def get_spec(self) -> ArgList:
-        pass
+        return self.inner.get_spec()
 
-    def serialize(self, instance: lgb.Dataset) -> list:
-        return instance.data
+    def serialize(self, instance: lgb.Dataset) -> dict:
+        return self.inner.serialize(instance.data)
 
-    def deserialize(self, obj: list) -> lgb.Dataset:
-        return lgb.Dataset(obj)
+    def deserialize(self, obj: dict) -> lgb.Dataset:
+        return lgb.Dataset(self.inner.deserialize(obj))
+
+    @classmethod
+    def from_dataset(cls, dataset: lgb.Dataset):
+        return cls(DatasetAnalyzer.analyze(dataset.data))
 
 
-class DMatrixHook(DatasetHook, TypeHookMixin):
+class LightGBMDatasetHook(DatasetHook, TypeHookMixin):
+    """
+    :class:`.DatasetHook` implementation for `lightgbm.Dataset` type
+    """
     valid_types = [lgb.Dataset]
 
     def process(self, obj) -> DatasetType:
-        return LightGBMDatasetType()
+        return LightGBMDatasetType.from_dataset(obj)
