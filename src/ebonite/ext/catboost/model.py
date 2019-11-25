@@ -16,7 +16,6 @@ class CatBoostModelWrapper(ModelWrapper):
     :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
     `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
     """
-    type = 'catboost_model_wrapper'
     classifier_file_name = 'clf.cb'
     regressor_file_name = 'rgr.cb'
 

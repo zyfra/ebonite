@@ -12,7 +12,6 @@ class FeedDictDatasetType(DictDatasetType):
     """
     :class:`~ebonite.core.objects.DatasetType` implementation for tensorflow feed dict argument
     """
-    type = 'tf_feed_dict'
 
     @classmethod
     def from_feed_dict(cls, feed_dict):

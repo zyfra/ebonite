@@ -14,7 +14,6 @@ class LightGBMDatasetType(DatasetType):
 
     :param inner: :class:`.DatasetType` instance for underlying data
     """
-    type = 'lightgbm_dataset'
 
     real_type = lgb.Dataset
 

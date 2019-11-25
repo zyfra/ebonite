@@ -15,7 +15,6 @@ class TorchModelWrapper(ModelWrapper):
     """
     :class:`ebonite.core.objects.ModelWrapper` for PyTorch models. `.model` attribute is a `torch.nn.Module` instance
     """
-    type = 'torch_model_wrapper'
     model_file_name = 'model.pth'
 
     @ModelWrapper.with_model

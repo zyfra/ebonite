@@ -28,7 +28,6 @@ class SeriesType(DatasetType):
     """
 
     real_type = pd.Series
-    type = 'pandas_series'
 
     def __init__(self, columns: List[str]):
         self.columns = columns
@@ -44,14 +43,13 @@ class SeriesType(DatasetType):
 
 
 class DataFrameType(DatasetType):
+
     """
     :class:`.DatasetType` implementation for `pandas.DataFrame` objects which stores them as
     built-in Python dicts with the only key `values` and value in a form of records list.
 
     :param columns: list of columns names in dataset
     """
-
-    type = 'pandas_df'
     real_type = pd.DataFrame
 
     def __init__(self, columns: List[str]):

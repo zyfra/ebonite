@@ -29,7 +29,6 @@ class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
     """
 
     real_type = torch.Tensor
-    type = 'torch_tensor'
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         self.shape = shape

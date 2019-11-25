@@ -9,7 +9,6 @@ class SklearnModelWrapper(PickleModelWrapper):
     """
     `pickle`-based :class:`.ModelWrapper` implementation for `scikit-learn` models
     """
-    type = 'sklearn'
 
     @ModelWrapper.with_model
     def predict(self, data):
