@@ -58,6 +58,7 @@ class ExtensionLoader:
         Extension('ebonite.ext.sklearn', ['sklearn'], False),
         Extension('ebonite.ext.tensorflow', ['tensorflow'], False),
         Extension('ebonite.ext.torch', ['torch'], False),
+        Extension('ebonite.ext.catboost', ['catboost'], False),
         Extension('ebonite.ext.flask', ['flask', 'flasgger']),
         Extension('ebonite.ext.sqlalchemy', ['sqlalchemy']),
         Extension('ebonite.ext.s3', ['boto3']),

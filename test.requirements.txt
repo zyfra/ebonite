@@ -3,6 +3,7 @@ numpy==1.17.3
 scikit-learn==0.21.3
 sqlalchemy==1.3.10
 tensorflow==1.14.0
+catboost==0.19.1
 flasgger==0.9.3
 boto3==1.9.252
 imageio==2.6.1
