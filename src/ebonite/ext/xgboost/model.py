@@ -15,7 +15,6 @@ class XGBoostModelWrapper(ModelWrapper):
     """
     :class:`~.ModelWrapper` implementation for XGBoost models
     """
-    type = 'xgboost'
     model_path = 'model.xgb'
 
     @contextlib.contextmanager

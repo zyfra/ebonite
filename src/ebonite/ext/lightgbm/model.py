@@ -15,7 +15,6 @@ class LightGBMModelWrapper(ModelWrapper):
     """
     :class:`.ModelWrapper` implementation for `lightgbm.Booster` type
     """
-    type = 'lightgbm'
     model_path = 'model.lgb'
 
     @contextlib.contextmanager
