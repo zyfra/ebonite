@@ -100,6 +100,7 @@ class DockerBuilder(PythonBuilder):
         logger.debug('Putting Dockerfile to distribution...')
         with open(os.path.join(target_dir, 'Dockerfile'), 'w') as df:
             dockerfile = self.dockerfile_gen.generate()
+            #print(dockerfile)
             df.write(dockerfile)
 
     def _build_image(self, context_dir):
@@ -162,7 +163,8 @@ class _DockerfileGenerator:
             'python_version': python_version,
             'base_image': base_image,
             'run_cmd': self._resolve_property('run_cmd', 'sh run.sh'),
-            'ebonite_install': ''
+            'ebonite_install': '',
+            'templates_dir': templates_dir
         }
         if ebonite_from_pip():
             import ebonite

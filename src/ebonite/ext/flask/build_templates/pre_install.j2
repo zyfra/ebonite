@@ -1,0 +1,7 @@
+RUN apt update
+RUN apt install -y \
+    bash \
+    nginx \
+    supervisor
+
+RUN pip install uwsgi==2.0.17.1

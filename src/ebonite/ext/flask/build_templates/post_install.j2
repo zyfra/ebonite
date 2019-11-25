@@ -1,0 +1,4 @@
+COPY {{ templates_dir }}/nginx.conf /etc/nginx/
+COPY {{ templates_dir }}/flask-site-nginx.conf /etc/nginx/conf.d/
+COPY {{ templates_dir }}/uwsgi.ini /etc/uwsgi/
+COPY {{ templates_dir }}/supervisord.conf /etc/supervisord.conf
