@@ -79,7 +79,7 @@ class CatBoostModelHook(ModelHook, CanIsAMustHookMixin):
         :param obj: obj to check
         :return: `True` or `False`
         """
-        return any(isinstance(obj, t) for t in [CatBoostClassifier,  CatBoostRegressor])
+        return isinstance(obj, (CatBoostClassifier,  CatBoostRegressor))
 
     def process(self, obj) -> ModelWrapper:
         """
