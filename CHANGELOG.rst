@@ -4,6 +4,7 @@ Changelog
 Current release candidate
 -------------------------
 
+* Added support for LightGBM models
 * Added support for XGBoost models
 * Added support for PyTorch models
 

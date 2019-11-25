@@ -11,3 +11,4 @@ psutil==5.6.3
 testcontainers==2.5
 pytest==5.2.2
 xgboost==0.90
+lightgbm==2.3.0

@@ -62,6 +62,7 @@ class ExtensionLoader:
         Extension('ebonite.ext.sqlalchemy', ['sqlalchemy']),
         Extension('ebonite.ext.s3', ['boto3']),
         Extension('ebonite.ext.imageio', ['imageio']),
+        Extension('ebonite.ext.lightgbm', ['lightgbm'], False),
         Extension('ebonite.ext.xgboost', ['xgboost'], False)
     )
 
