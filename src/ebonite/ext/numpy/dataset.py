@@ -37,7 +37,6 @@ class NumpyNumberDatasetType(DatasetType):
     :param dtype: `numpy.number` data type as string
     """
 
-
     def __init__(self, dtype: str):
         self.dtype = dtype
 
