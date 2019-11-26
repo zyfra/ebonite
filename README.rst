@@ -106,6 +106,14 @@ Supported libraries and repositories
 
   * TensorFlow < 2
 
+  * XGBoost
+
+  * LightGBM
+
+  * PyTorch
+
+  * CatBoost
+
 * Data
 
   * NumPy
