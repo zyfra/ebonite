@@ -18,7 +18,6 @@ from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader
 from ebonite.utils.module import get_module_version
 
-
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
 Pattern = type(re.compile(''))
 
@@ -166,5 +165,6 @@ def _prepare_distribution(target_dir, python_builder):
     # prevent leak of PYTHONPATH used for running tests
     env = os.environ.copy()
     env['PYTHONPATH'] = str(target_dir)
+    env.update(python_builder.provider.get_env())
 
     return args, env

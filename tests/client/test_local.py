@@ -29,7 +29,7 @@ def container_name():
         return
 
     rm_container(name)
-    rm_image(name + ":latest")  # FIXME latter
+    rm_image(name + ":latest")  # FIXME later
 
 
 @pytest.fixture

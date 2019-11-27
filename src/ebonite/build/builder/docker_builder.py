@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from threading import Lock
+from typing import Dict
 
 import docker
 import requests
@@ -15,7 +16,6 @@ from ebonite.build.provider.base import PythonProvider
 from ebonite.utils.log import logger
 
 TEMPLATE_FILE = 'dockerfile.j2'
-
 
 EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
 
@@ -82,6 +82,7 @@ class DockerBuilder(PythonBuilder):
     :param tag: tag for docker image
     :param force_overwrite: if false, raise error if image already exists
     """
+
     def __init__(self, provider: PythonProvider, name: str, tag: str = 'latest', force_overwrite=False, **kwargs):
         super().__init__(provider)
         self.name = name
@@ -98,8 +99,10 @@ class DockerBuilder(PythonBuilder):
         super()._write_distribution(target_dir)
 
         logger.debug('Putting Dockerfile to distribution...')
+        env = self.provider.get_env()
+        logger.debug('Determined environment for running model: %s.', env)
         with open(os.path.join(target_dir, 'Dockerfile'), 'w') as df:
-            dockerfile = self.dockerfile_gen.generate()
+            dockerfile = self.dockerfile_gen.generate(env)
             df.write(dockerfile)
 
     def _build_image(self, context_dir):
@@ -112,7 +115,11 @@ class DockerBuilder(PythonBuilder):
                     raise ValueError(f'Image {tag} already exists. Change name or set force_overwrite=True.')
                 except errors.ImageNotFound:
                     pass
-
+            else:
+                try:
+                    client.images.remove(tag)  # to avoid spawning dangling images
+                except errors.ImageNotFound:
+                    pass
             try:
                 _, logs = client.images.build(path=context_dir, tag=tag)
                 logger.info('Build successful')
@@ -126,52 +133,42 @@ class _DockerfileGenerator:
     """
     Class to generate Dockerfile
 
-    `kwargs` possible keys:
-
-    - `base_image` - base image for the built image, default: python:{python_version}
-    - `python_version` - Python version to use, default: version of running interpreter
-    - `templates_dir` - directory for Dockerfile templates, default: ./docker_templates
+    :param base_image:  base image for the built image, default: python:{python_version}
+    :param python_version: Python version to use, default: version of running interpreter
+    :param templates_dir: directory for Dockerfile templates, default: ./docker_templates
        - `pre_install.j2` - Dockerfile commands to run before pip
        - `post_install.j2` - Dockerfile commands to run after pip
        - `post_copy.j2` - Dockerfile commands to run after pip and Ebonite distribution copy
-    - `run_cmd` - command to run in container, default: sh run.sh
+    :param run_cmd: command to run in container, default: sh run.sh
     """
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
 
-        valid_keys = {'base_image', 'python_version', 'templates_dir', 'run_cmd'}
-        if self.kwargs.keys() - valid_keys:
-            raise ValueError(f'DockerBuilder accepts {valid_keys} only as kwargs, {self.kwargs.keys()} given')
+    def __init__(self, base_image=None, python_version=None, templates_dir=None, run_cmd='sh run.sh'):
+        self.python_version = python_version or PythonProvider.get_python_version()
+        self.base_image = base_image or f'python:{self.python_version}'
+        self.templates_dir = templates_dir or os.path.join(os.getcwd(), 'docker_templates')
+        self.run_cmd = run_cmd
 
-    def generate(self):
+    def generate(self, env: Dict[str, str]):
         """Generate Dockerfile using provided base image, python version and run_cmd"""
-        templates_dir = self._resolve_property('templates_dir', os.path.join(os.getcwd(), 'docker_templates'))
-        logger.debug('Generating Dockerfile via templates from "%s"...', templates_dir)
+        logger.debug('Generating Dockerfile via templates from "%s"...', self.templates_dir)
         j2 = Environment(loader=FileSystemLoader([
             os.path.dirname(__file__),
-            templates_dir
+            self.templates_dir
         ]))
         docker_tmpl = j2.get_template(TEMPLATE_FILE)
 
-        python_version = self._resolve_property('python_version', PythonProvider.get_python_version())
-        logger.debug('Docker image is using Python version: %s.', python_version)
-        base_image = self._resolve_property('base_image', 'python:{}'.format(python_version))
-        logger.debug('Docker image is based on "%s".', base_image)
+        logger.debug('Docker image is using Python version: %s.', self.python_version)
+        logger.debug('Docker image is based on "%s".', self.base_image)
 
         docker_args = {
-            'python_version': python_version,
-            'base_image': base_image,
-            'run_cmd': self._resolve_property('run_cmd', 'sh run.sh'),
-            'ebonite_install': ''
+            'python_version': self.python_version,
+            'base_image': self.base_image,
+            'run_cmd': self.run_cmd,
+            'ebonite_install': '',
+            'env': env
         }
         if ebonite_from_pip():
             import ebonite
             docker_args['ebonite_install'] = 'RUN ' + EBONITE_INSTALL_COMMAND.format(version=ebonite.__version__)
 
         return docker_tmpl.render(**docker_args)
-
-    def _resolve_property(self, name, default):
-        if name in self.kwargs:
-            return self.kwargs[name]
-        else:
-            return os.getenv('EBONITE_DOCKER_' + name.upper(), default)

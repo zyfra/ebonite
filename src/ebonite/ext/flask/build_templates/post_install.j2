@@ -1,0 +1,6 @@
+COPY nginx.conf /etc/nginx/
+COPY flask-site-nginx.conf /etc/nginx/conf.d/
+COPY uwsgi.ini /etc/uwsgi/
+COPY supervisord.conf /etc/supervisord.conf
+
+ENV EBONITE_RUN_FLASK=false

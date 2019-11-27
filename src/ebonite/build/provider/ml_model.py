@@ -1,6 +1,8 @@
-import ebonite.ext as ext
-from ebonite.build.provider import LOADER_ENV, PythonProvider, SERVER_ENV
-from ebonite.core.objects.artifacts import ArtifactCollection, _RelativePathWrapper
+import os
+
+from ebonite.build.provider import PythonProvider
+from ebonite.core.objects.artifacts import ArtifactCollection, _RelativePathWrapper, CompositeArtifactCollection, Blobs, \
+    LocalFileBlob
 from ebonite.core.objects import core
 from ebonite.core.objects.requirements import Requirements
 from pyjackson import dumps
@@ -15,34 +17,23 @@ SERVER_PATH = 'server'
 MODEL_META_PATH = 'model.json'
 
 
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
 class MLModelProvider(PythonProvider):
     """Provider to build service from Model object
 
     :param model: Model instance to build from
     :param server: Server instance to build with
+    :param debug: Whether to run image in debug mode
     """
 
-    def __init__(self, model: 'core.Model', server: Server):
+    def __init__(self, model: 'core.Model', server: Server, debug: bool = False):
         from ebonite.runtime.interface.ml_model import ModelLoader
-        super().__init__(server, ModelLoader())
+        super().__init__(server, ModelLoader(), debug)
         self.model = model
-
-    def get_env(self):
-        """Sets loader, server and extensions env variables"""
-        env = {
-            LOADER_ENV: self.loader.classpath,
-            SERVER_ENV: self.server.classpath,
-
-        }
-
-        modules = set(self.get_requirements().modules)
-
-        extensions = ext.ExtensionLoader.loaded_extensions.keys()
-        used_extensions = [e.module for e in extensions if all(r in modules for r in e.reqs)]
-        if len(used_extensions) > 0:
-            env['EBONITE_EXTENSIONS'] = ','.join(used_extensions)
-
-        return env
 
     @cached_property
     def _requirements(self) -> Requirements:
@@ -66,9 +57,16 @@ class MLModelProvider(PythonProvider):
         """Returns model metadata file and sources of custom modules from requirements"""
         return {
             MODEL_META_PATH: dumps(self.model.without_artifacts()),
-            **self._get_sources()
+            **self._get_sources(),
+            **{os.path.basename(f): read(f) for f in self.server.additional_sources}
         }
 
     def get_artifacts(self) -> ArtifactCollection:
         """Return model binaries"""
-        return _RelativePathWrapper(self.model.artifact_any, MODEL_BIN_PATH)
+        artifacts = _RelativePathWrapper(self.model.artifact_any, MODEL_BIN_PATH)
+        if len(self.server.additional_binaries) > 0:
+            artifacts = CompositeArtifactCollection([
+                artifacts,
+                Blobs({os.path.basename(f): LocalFileBlob(f) for f in self.server.additional_binaries})
+            ])
+        return artifacts

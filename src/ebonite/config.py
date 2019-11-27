@@ -1,5 +1,5 @@
 import argparse
-from typing import Callable, Type
+from typing import Any, Callable, Dict, Type
 
 from everett import NO_VALUE
 from everett.manager import ConfigManager, ConfigOSEnv, ListOf, generate_uppercase_key
@@ -78,11 +78,23 @@ class _ConfigMeta(type):
 
 
 class Config(metaclass=_ConfigMeta):
-    pass
+    @classmethod
+    def get_params(cls) -> Dict[str, Any]:
+        return {name: value.__get__(cls, type(cls)) for name, value in cls.__dict__.items() if isinstance(value, Param)}
+
+    @classmethod
+    def log_params(cls):
+        from ebonite.utils.log import logger
+        logger.debug('%s environment:', cls.__name__)
+        for name, value in cls.get_params().items():
+            logger.debug('%s: %s', name, value)
 
 
 class Core(Config):
     DEBUG = Param('debug', default='false', doc='turn debug on', parser=bool)
+    LOG_LEVEL = Param('log_level', default='INFO' if not DEBUG else 'DEBUG',
+                      doc='Logging level for ebonite',
+                      parser=str)
     ADDITIONAL_EXTENSIONS = Param('extensions', default='',
                                   doc='comma-separated list of additional ebonite extensions to load',
                                   parser=ListOf(str),
@@ -96,3 +108,8 @@ class Core(Config):
 class Runtime(Config):
     SERVER = Param('server', doc='server for runtime')
     LOADER = Param('loader', doc='interface loader for runtime')
+
+
+if Core.DEBUG:
+    Core.log_params()
+    Runtime.log_params()

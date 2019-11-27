@@ -1,8 +1,8 @@
 import logging.config
-import os
 
-LOG_LEVEL_NAME = os.environ.get('EBONITE_LOG_LEVEL', 'INFO')
-LOG_LEVEL = logging._nameToLevel.get(LOG_LEVEL_NAME, logging.DEBUG)
+from ebonite.config import Core
+
+LOG_LEVEL = logging._nameToLevel.get(Core.LOG_LEVEL, logging.DEBUG)
 
 logging_config = {
     'version': 1,
