@@ -18,7 +18,6 @@ from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader
 from ebonite.utils.module import get_module_version
 
-
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
 Pattern = type(re.compile(''))
 
@@ -115,7 +114,7 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
 
 def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuilder, pandas_data):
     args, env = _prepare_distribution(tmpdir, python_builder)
-
+    env['EBONITE_RUN_FLASK'] = 'true'  # default 'false' is needed for uwsgi, which we don't have here
     # TODO make ModelLoader.load cwd-independent
     server = subprocess.Popen(args, env=env, cwd=tmpdir)
     with pytest.raises(subprocess.TimeoutExpired):
@@ -154,5 +153,6 @@ def _prepare_distribution(target_dir, python_builder):
     # prevent leak of PYTHONPATH used for running tests
     env = os.environ.copy()
     env['PYTHONPATH'] = str(target_dir)
+    env.update(python_builder.provider.get_env())
 
     return args, env

@@ -101,4 +101,4 @@ CMD echo "cmd" && sh run.sh
 
 def _generate_dockerfile(**kwargs):
     with use_local_installation():
-        return _DockerfileGenerator(**kwargs).generate()
+        return _DockerfileGenerator(**kwargs).generate({})

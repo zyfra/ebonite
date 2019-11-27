@@ -8,7 +8,7 @@ from ebonite.utils.importing import module_importable
 
 
 def build_model_docker(image_name: str, model: 'core.Model', server: Server = None,
-                       image_tag='latest', force_overwrite=False, **kwargs):
+                       image_tag='latest', force_overwrite=False, debug=False, **kwargs):
     """
     Builds docker image from Model instance
 
@@ -17,6 +17,7 @@ def build_model_docker(image_name: str, model: 'core.Model', server: Server = No
     :param server: server instance to wrap model
     :param image_tag: docker image tag
     :param force_overwrite: force overwrite image if it exists
+    :param debug: run server in debug mode
     :param kwargs: same as in DockerBuilder.__init__
     """
     if server is None:
@@ -32,7 +33,7 @@ def build_model_docker(image_name: str, model: 'core.Model', server: Server = No
     if not is_docker_running():
         raise RuntimeError("Docker is unavailable")
 
-    provider = MLModelProvider(model, server)
+    provider = MLModelProvider(model, server, debug)
     builder = DockerBuilder(provider, image_name, image_tag, force_overwrite, **kwargs)
     builder.build()
 

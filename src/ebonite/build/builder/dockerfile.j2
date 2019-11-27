@@ -11,7 +11,9 @@ RUN pip install -r requirements.txt
 {% include "post_install.j2" ignore missing %}
 
 COPY . ./
-
+{% for name, value in env.items() %}
+ENV {{ name }}={{ value }}
+{% endfor %}
 {% include "post_copy.j2" ignore missing %}
 
 CMD {{ run_cmd }}

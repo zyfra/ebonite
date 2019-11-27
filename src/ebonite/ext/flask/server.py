@@ -6,14 +6,16 @@ from flasgger import Swagger, swag_from, validate
 from flask import jsonify, request, send_file
 from pyjackson import deserialize
 
-from ebonite.config import Config, Param
+from ebonite.config import Config, Core, Param
 from ebonite.runtime.interface import ExecutionError, Interface
 from ebonite.runtime.interface.base import InterfaceDescriptor
 from ebonite.runtime.openapi.spec import create_spec
 from ebonite.runtime.server import Server
+from ebonite.utils.fs import current_module_path
 from ebonite.utils.log import rlogger
 
 VALIDATE = False
+current_app = None
 
 
 class FlaskServerError(Exception):
@@ -110,6 +112,11 @@ def create_schema_route(app, interface: Interface):
 class FlaskConfig(Config):
     host = Param('host', default='0.0.0.0', parser=str)
     port = Param('port', default='9000', parser=int)
+    run_flask = Param('run_flask', default='true', parser=bool)
+
+
+if Core.DEBUG:
+    FlaskConfig.log_params()
 
 
 class FlaskServer(Server):
@@ -125,6 +132,12 @@ class FlaskServer(Server):
 
     Port to which server binds to is configured via `EBONITE_PORT` environment variable: default is 9000.
     """
+    additional_sources = [
+        current_module_path('build_templates', 'flask-site-nginx.conf'),
+        current_module_path('build_templates', 'nginx.conf'),
+        current_module_path('build_templates', 'supervisord.conf'),
+        current_module_path('build_templates', 'uwsgi.ini')
+    ]
 
     def __init__(self):
         # we do not reference real Flask/Flasgger objects here and this breaks `get_object_requirements`
@@ -161,6 +174,13 @@ class FlaskServer(Server):
 
         :param interface: runtime interface to expose via HTTP
         """
+        global current_app
         app = self._create_app()
         self._prepare_app(app, interface)
-        app.run(FlaskConfig.host, FlaskConfig.port)
+
+        current_app = app
+        if FlaskConfig.run_flask:
+            rlogger.debug('Running flask on %s:%s', FlaskConfig.host, FlaskConfig.port)
+            app.run(FlaskConfig.host, FlaskConfig.port)
+        else:
+            rlogger.debug('Skipping direct flask application run')

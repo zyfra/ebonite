@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Dict, List
 
 from ebonite.runtime.interface import Interface, InterfaceLoader
 from ebonite.runtime.utils import registering_type
@@ -11,6 +12,9 @@ class Server(_ServerBase):
     """
     Base class for Ebonite servers
     """
+    additional_sources: List[str] = []
+    additional_binaries: List[str] = []
+    additional_envs: Dict[str, str] = {}
 
     @staticmethod
     def get(class_path) -> 'Server':

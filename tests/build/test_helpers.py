@@ -18,7 +18,7 @@ def img_name():
     with use_local_installation():
         yield img_name
 
-    rm_image(img_name + ":latest")  # FIXME latter
+    rm_image(img_name + ":latest")  # FIXME later
 
 
 @pytest.fixture

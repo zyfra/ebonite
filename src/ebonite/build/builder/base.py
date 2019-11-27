@@ -104,10 +104,5 @@ class PythonBuilder(BuilderBase):
         Writes run.sh script to dir
         :param target_dir: target directory to script
         """
-        env = self.provider.get_env()
-        logger.debug('Determined environment for running model: %s.', env)
         with open(os.path.join(target_dir, 'run.sh'), 'w') as sh:
-            envs = ' '.join('{}={}'.format(k, v) for k, v in env.items())
-            sh.write(
-                'EBONITE_RUNTIME=true {} python -c "from ebonite import start_runtime; start_runtime()"'.format(
-                    envs))
+            sh.write('python -c "from ebonite import start_runtime; start_runtime()"')
