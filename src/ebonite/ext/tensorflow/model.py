@@ -78,7 +78,6 @@ class TFTensorModelWrapper(ModelWrapper):
     :param output_tensor_names: list of output tensor names
     :param is_frozen: flag to mark frozen graphs. They will be saved with protobuf instead of saver
     """
-    type = 'tf_tensor_model_wrapper'
 
     def __init__(self, output_tensor_names: List[str], is_frozen: bool):
         super().__init__()

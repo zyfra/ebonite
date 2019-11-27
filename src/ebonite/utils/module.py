@@ -102,7 +102,7 @@ def get_base_module(mod: ModuleType):
 
 
 def get_object_module(obj: object) -> ModuleType:
-    '''
+    """
     Determines module given object comes from
 
     >>> import numpy
@@ -111,7 +111,7 @@ def get_object_module(obj: object) -> ModuleType:
 
     :param obj: obj to determine module it comes from
     :return: Python module object for object module
-    '''
+    """
     return inspect.getmodule(obj)
 
 
@@ -139,10 +139,11 @@ class ISortModuleFinder:
     def __init__(self):
         config = default.copy()
         config['known_first_party'].append('ebonite')
+        config['known_third_party'].append('xgboost')
         config['known_standard_library'].extend(
             ['opcode', 'nturl2path',  # pytest requirements missed by isort
              'pkg_resources',  # EBNT-112: workaround for imports from setup.py (see docker_builder.py)
-             'posixpath',
+             'posixpath', 'setuptools',
              'pydevconsole', 'pydevd_tracing', 'pydev_ipython.matplotlibtools', 'pydev_console.protocol',
              'pydevd_file_utils', 'pydevd_plugins.extensions.types.pydevd_plugins_django_form_str', 'pydev_console',
              'pydev_ipython', 'pydevd_plugins.extensions.types.pydevd_plugin_numpy_types',
@@ -163,32 +164,32 @@ class ISortModuleFinder:
 
 
 def is_private_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents private module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return mod.__name__.startswith('_')
 
 
 def is_pseudo_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents pseudo (aka Python "magic") module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return mod.__name__.startswith('__') and mod.__name__.endswith('__')
 
 
 def is_extension_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents native code extension module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     try:
         path = mod.__file__
         return any(path.endswith(ext) for ext in {'.so', '.pyd'})
@@ -197,23 +198,23 @@ def is_extension_module(mod: ModuleType):
 
 
 def is_installable_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents PyPi-installable (aka third party) module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return ISortModuleFinder.is_thirdparty(mod.__name__)
     # return hasattr(mod, '__file__') and mod.__file__.startswith(PYTHON_BASE) and 'site-packages' in mod.__file__
 
 
 def is_builtin_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents standard library (aka builtin) module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return ISortModuleFinder.is_stdlib(mod.__name__)
     # if mod.__name__ == 'builtins':
     #     return True
@@ -222,33 +223,33 @@ def is_builtin_module(mod: ModuleType):
 
 
 def is_local_module(mod: ModuleType):
-    '''
+    """
     Determines that given module object represents local module.
     Local module is a module (Python file) which is not from standard library and not installed via pip.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return not is_builtin_module(mod) and not is_installable_module(mod) and not is_extension_module(mod)
 
 
 def is_from_installable_module(obj: object):
-    '''
+    """
     Determines that given object comes from PyPi-installable (aka third party) module.
 
     :param mod: module object to use
     :return: boolean flag
-    '''
+    """
     return is_installable_module(get_object_base_module(obj))
 
 
 def get_module_version(mod: ModuleType):
-    '''
+    """
     Determines version of given module object.
 
     :param mod: module object to use
     :return: version as `str` or `None` if version could not be determined
-    '''
+    """
     try:
         return mod.__version__
     except AttributeError:
@@ -260,12 +261,12 @@ def get_module_version(mod: ModuleType):
 
 
 def get_package_name(mod: ModuleType) -> str:
-    '''
+    """
     Determines PyPi package name for given module object
 
     :param mod: module object to use
     :return: name as `str`
-    '''
+    """
     if mod is None:
         raise ValueError('mod must not be None')
     name = mod.__name__
@@ -273,13 +274,13 @@ def get_package_name(mod: ModuleType) -> str:
 
 
 def get_module_repr(mod: ModuleType, validate_pypi=False) -> str:
-    '''
+    """
     Builds PyPi `requirements.txt`-compatible representation of given module object
 
     :param mod: module object to use
     :param validate_pypi: if `True` (default is `False`) perform representation validation in PyPi repository
     :return: representation as `str`
-    '''
+    """
     if mod is None:
         raise ValueError('mod must not be None')
     mod_name = get_package_name(mod)
@@ -342,7 +343,7 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
     ignoring = (
         'dill',
         'ebonite',
-        'tests'
+        'tests'  # pytest scans all test modules and all their imports are treated as requirements
     )
     dispatch = EbonitePickler.dispatch.copy()
 

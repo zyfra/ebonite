@@ -37,8 +37,6 @@ class NumpyNumberDatasetType(DatasetType):
     :param dtype: `numpy.number` data type as string
     """
 
-    type = 'numpy_number'
-
     def __init__(self, dtype: str):
         self.dtype = dtype
 
@@ -101,7 +99,6 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
     """
 
     real_type = np.ndarray
-    type = 'numpy_ndarray'
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         # TODO assert shape and dtypes len

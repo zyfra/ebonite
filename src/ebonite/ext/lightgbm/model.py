@@ -2,7 +2,7 @@ import contextlib
 import os
 import tempfile
 
-import xgboost
+import lightgbm as lgb
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.model import ModelHook
@@ -11,37 +11,37 @@ from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
 from ebonite.core.objects.wrapper import FilesContextManager
 
 
-class XGBoostModelWrapper(ModelWrapper):
+class LightGBMModelWrapper(ModelWrapper):
     """
-    :class:`~.ModelWrapper` implementation for XGBoost models
+    :class:`.ModelWrapper` implementation for `lightgbm.Booster` type
     """
-    model_path = 'model.xgb'
+    model_path = 'model.lgb'
 
     @contextlib.contextmanager
     @ModelWrapper.with_model
     def dump(self) -> FilesContextManager:
-        model: xgboost.Booster = self.model
-        with tempfile.TemporaryDirectory(prefix='ebonite_xgboost_dump') as f:
+        model: lgb.Booster = self.model
+        with tempfile.TemporaryDirectory(prefix='ebonite_lightgbm_dump') as f:
             path = os.path.join(f, self.model_path)
             model.save_model(path)
             yield Blobs({self.model_path: LocalFileBlob(path)})
 
     def load(self, path):
-        self.model = xgboost.Booster()
-        self.model.load_model(os.path.join(path, self.model_path))
+        model_file = os.path.join(path, self.model_path)
+        self.model = lgb.Booster(model_file=model_file)
 
     @ModelWrapper.with_model
     def predict(self, data):
-        if not isinstance(data, xgboost.DMatrix):
-            data = xgboost.DMatrix(data)
+        if isinstance(data, lgb.Dataset):
+            data = data.data
         return self.model.predict(data)
 
 
-class XGBoostModelHook(ModelHook, TypeHookMixin):
+class LightGBMModelHook(ModelHook, TypeHookMixin):
     """
-    :class:`.ModelHook` implementation for `xgboost.Booster` objects
+    :class:`.ModelHook` implementation for `lightgbm.Booster` type
     """
-    valid_types = [xgboost.Booster]
+    valid_types = [lgb.Booster]
 
     def process(self, obj) -> ModelWrapper:
-        return XGBoostModelWrapper().bind_model(obj)
+        return LightGBMModelWrapper().bind_model(obj)

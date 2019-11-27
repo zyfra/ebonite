@@ -17,7 +17,6 @@ class DMatrixDatasetType(DatasetType):
     :param feature_types: string representation of feature types
     :param feature_names: list of feature names
     """
-    type = 'xgboost_dmatrix'
 
     real_type = xgboost.DMatrix
 
