@@ -80,6 +80,11 @@ def test_create_existing_project(meta: MetadataRepository, project: Project):
         meta.create_project(project)
 
 
+def test_get_projects(meta: MetadataRepository, project: Project):
+    created_project = meta.create_project(project)
+    assert meta.get_projects() == [created_project]
+
+
 def test_get_project_by_name(meta: MetadataRepository, project: Project):
     project = meta.create_project(project)
     assert project == meta.get_project_by_name(project.name)
@@ -253,6 +258,14 @@ def test_create_existing_task(meta: MetadataRepository, project: Project, task: 
     task2.project_id = project_id
     with pytest.raises(ExistingTaskError):
         meta.create_task(task2)
+
+
+def test_get_tasks(meta: MetadataRepository, project: Project, task: Task):
+    created_project = meta.create_project(project)
+    task.project = created_project
+    created_task = meta.create_task(task)
+
+    assert meta.get_tasks(created_project) == [created_task]
 
 
 def test_get_task_by_name(meta: MetadataRepository, project: Project, task: Task):
