@@ -9,7 +9,6 @@ from collections import namedtuple
 from functools import wraps
 from pickle import PicklingError
 from types import FunctionType, LambdaType, MethodType, ModuleType
-from typing import Mapping, MutableSequence
 
 import requests
 from isort.finders import FindersManager
@@ -32,7 +31,8 @@ def analyze_module_imports(module_path):
             mod = obj
         else:
             mod = get_object_base_module(obj)
-        requirements.add(get_module_repr(mod))
+        if is_installable_module(mod) and not is_private_module(mod):
+            requirements.add(get_module_repr(mod))
 
     return requirements
 
@@ -306,24 +306,6 @@ def get_module_as_requirement(mod: ModuleType, validate_pypi=False) -> Installab
     return InstallableRequirement(mod.__name__, mod_version)
 
 
-def get_object_requirements_old(obj) -> Requirements:
-    if isinstance(obj, MutableSequence):
-        return sum(get_object_requirements_old(o) for o in obj)
-    if isinstance(obj, Mapping):
-        return sum(get_object_requirements_old(o) for o in obj.keys()) + \
-               sum(get_object_requirements_old(o) for o in obj.values())
-    mod = get_object_base_module(obj)
-
-    if mod is None:
-        raise ValueError('Cant determine object module')
-    elif mod.__name__ == 'builtins':
-        return Requirements()
-    if not is_installable_module(mod):
-        return Requirements([CustomRequirement(mod.__name__)])
-    else:
-        return Requirements([get_module_as_requirement(mod)])
-
-
 def add_closure_inspection(f):
     @wraps(f)
     def wrapper(pickler: '_EboniteRequirementAnalyzer', obj):
@@ -420,7 +402,3 @@ def get_object_requirements(obj) -> Requirements:
     a = _EboniteRequirementAnalyzer(recurse=True)
     a.dump(obj)
     return a.to_requirements()
-
-
-if __name__ == '__main__':
-    check_pypi_module('numpy', 2e3)
