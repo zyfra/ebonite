@@ -142,6 +142,7 @@ class Ebonite:
     def from_config_file(cls, filepath):
         """
         Read and create Ebonite instance from config file
+
         :param filepath: path to read config from
         :return: :class:`~ebontie.Ebonite` instance
         """
@@ -150,6 +151,7 @@ class Ebonite:
     def save_client_config(self, filepath):
         """
         Save current client config to a file
+
         :param filepath: path to file
         """
         write(filepath, self, Ebonite)

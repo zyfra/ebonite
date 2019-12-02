@@ -1,6 +1,5 @@
 """This example shows how you can use ebonite to wrap your sklearn model into flask service"""
 from ebonite import Ebonite
-from ebonite.runtime import run_model_server
 
 
 def main():
@@ -10,6 +9,7 @@ def main():
     model = ebnt.get_model(project='my_project', task='regression_is_my_profession', model_name='mymodel')
 
     # run flask service with this model
+    from ebonite.runtime import run_model_server
     run_model_server(model)
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 

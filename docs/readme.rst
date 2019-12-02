@@ -12,5 +12,5 @@ Ebonite consists of three main modules
 * Build
 * Runtime
 
-Ebonite is meant to be customizable, and every module has it's
+Ebonite was meant to be customizable, and every module has it's
  own abstractions one can implement.

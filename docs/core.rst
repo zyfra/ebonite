@@ -2,14 +2,14 @@
 Ebonite Core
 ============
 
-This module is responsible for model understanding and
+This module is responsible for model analysis and
 model persisting.
-If you just use vanilla ebonite, this is mainly what
+If you use plain vanilla ebonite, this is mainly what
 you are working with.
 
-Main model understanding API abstractions are
+Main model analysis API abstractions are
 
-* :class:`~ebonite.core.analyzer.dataset.DatasetHook` - hook for dataset understanding
+* :class:`~ebonite.core.analyzer.dataset.DatasetHook` - hook for dataset analysis
 
 * :class:`~ebonite.core.objects.dataset_type.DatasetType` - dataset descriptor
 
