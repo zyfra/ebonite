@@ -555,6 +555,17 @@ def test_create_existing_model(meta: MetadataRepository, project: Project, task:
         meta.create_model(model2)
 
 
+@pytest.mark.skip('FIXME Local repo doesn\'t pass this test')
+def test_get_models(meta: MetadataRepository, project: Project, task: Task, model: Model):
+    task.project = meta.create_project(project)
+    created_task = meta.create_task(task)
+    model.task = created_task
+    created_model = meta.create_model(model)
+
+    actual_models = meta.get_models(created_task)
+    assert actual_models == [created_model]
+
+
 def test_get_model(meta: MetadataRepository, project: Project, task: Task, model: Model):
     task.project = meta.create_project(project)
     task = meta.create_task(task)
