@@ -92,9 +92,6 @@ class Config(metaclass=_ConfigMeta):
 
 class Core(Config):
     DEBUG = Param('debug', default='false', doc='turn debug on', parser=bool)
-    LOG_LEVEL = Param('log_level', default='INFO' if not DEBUG else 'DEBUG',
-                      doc='Logging level for ebonite',
-                      parser=str)
     ADDITIONAL_EXTENSIONS = Param('extensions', default='',
                                   doc='comma-separated list of additional ebonite extensions to load',
                                   parser=ListOf(str),
@@ -105,11 +102,18 @@ class Core(Config):
     RUNTIME = Param('runtime', default='false', doc='is this instance a runtime', parser=bool)
 
 
+class Logging(Config):
+    LOG_LEVEL = Param('log_level', default='INFO' if not Core.DEBUG else 'DEBUG',
+                      doc='Logging level for ebonite',
+                      parser=str)
+
+
 class Runtime(Config):
     SERVER = Param('server', doc='server for runtime')
     LOADER = Param('loader', doc='interface loader for runtime')
 
 
 if Core.DEBUG:
+    Logging.log_params()
     Core.log_params()
     Runtime.log_params()

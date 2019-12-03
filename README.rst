@@ -5,11 +5,11 @@
     :stub-columns: 1
 
     * - docs
-      - |docs|
+      - |docs| |slack|
     * - tests
       - | |build| |coveralls|
     * - package
-      - | |version| |wheel| |supported-versions| |supported-implementations|
+      - | |version| |wheel| |downloads| |supported-versions|
         | |commits-since|
 
 .. |docs| image:: https://readthedocs.org/projects/ebonite/badge/?style=flat
@@ -39,6 +39,14 @@
 .. |version| image:: https://img.shields.io/pypi/v/ebonite.svg
     :alt: PyPI Package latest release
     :target: https://pypi.org/project/ebonite
+
+.. |downloads| image:: https://pepy.tech/badge/ebonite
+    :alt: PyPI downloads
+    :target: https://pepy.tech/project/ebonite
+
+.. |slack| image:: https://img.shields.io/badge/ODS-slack-red
+    :alt: ODS slack channel
+    :target: https://app.slack.com/client/T040HKJE3/CR1K8N2KA
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.3.0.svg
     :alt: Commits since latest release
