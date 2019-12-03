@@ -230,7 +230,7 @@ class LocalMetadataRepository(MetadataRepository):
     @bind_to_self
     def get_models(self, task: TaskVar, project: ProjectVar = None) -> List[Model]:
         task = self._resolve_task(task, project)
-        return list(task.models.values())
+        return copy.deepcopy(list(task.models.values()))
 
     @bind_to_self
     def get_model_by_name(self, model_name: str, task: TaskVar, project: ProjectVar = None) -> Optional[Model]:
