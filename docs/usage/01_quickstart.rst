@@ -30,7 +30,7 @@ Now you need to create task to push your model into:
    :lines: 28,32
 ..
 
-Great, now you can reproduce this model in different environment using this code
+Great, now you can reproduce this model in different environment using this code:
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
@@ -38,7 +38,7 @@ Great, now you can reproduce this model in different environment using this code
    :lines: 9
 ..
 
-And start a server that processes inference request like this (function can be imported from )
+And start a server that processes inference request like this:
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
@@ -46,7 +46,7 @@ And start a server that processes inference request like this (function can be i
    :lines: 12-13
 ..
 
-Or create and start a docker container like this
+Or create and start a docker container like this:
 
 .. literalinclude:: ../../examples/sklearn_model/model_create_image.py
    :linenos:
