@@ -38,7 +38,7 @@ jobs:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
-          tox -e clean,py36,py37,report,codecov
+          tox -e clean,py36,py37,report,coveralls
 
   build_windows:
 
