@@ -1,3 +1,13 @@
+# EBNT-142 too many Tensorflow deprecation warnings
+def fix_warnings():  # noqa
+    import logging  # noqa
+    import warnings  # noqa
+    logging.getLogger("tensorflow").setLevel(logging.CRITICAL)  # noqa
+    warnings.filterwarnings('ignore', category=FutureWarning)  # noqa
+    warnings.filterwarnings('ignore', category=DeprecationWarning)  # noqa
+fix_warnings()  # noqa
+
+
 from ebonite import config
 from ebonite.client import Ebonite, create_model
 from ebonite.ext.ext_loader import ExtensionLoader, load_extensions
