@@ -1,3 +1,5 @@
+from time import sleep
+
 import pytest
 from everett.manager import config_override
 from testcontainers.core.container import DockerContainer
@@ -32,6 +34,7 @@ def s3server():
             .with_env('SCALITY_ACCESS_KEY_ID', ACCESS_KEY) \
             .with_env('SCALITY_SECRET_ACCESS_KEY', SECRET_KEY) \
             .with_bind_ports(PORT, PORT):
+        sleep(5)  # wait to ensure that s3server has enough time to properly start
         yield
 
 

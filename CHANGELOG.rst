@@ -4,6 +4,8 @@ Changelog
 Current release candidate
 -------------------------
 
+* Minor bug fixes
+
 0.3.0 (2019-11-27)
 ------------------
 

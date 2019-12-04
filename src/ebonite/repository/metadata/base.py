@@ -343,7 +343,7 @@ class MetadataRepository:
 
     def _resolve_task(self, task: TaskVar, project: ProjectVar = None) -> Optional['core.Task']:
         if isinstance(task, core.Task):
-            return task
+            task = task.id
         # task is task_id
         resolved = self.get_task_by_id(task)
         if resolved is not None:

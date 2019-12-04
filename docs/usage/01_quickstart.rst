@@ -4,6 +4,9 @@ Quickstart
 
 Ebonite can be used to reproduce arbitrary machine learning model in different environments.
 
+.. note::
+    Don't forget to install requirements for this example: ``pip install pandas scikit-learn flask flasgger``
+
 For instance, you can train sklearn model:
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
@@ -27,23 +30,23 @@ Now you need to create task to push your model into:
    :lines: 28,32
 ..
 
-Great, now you can reproduce this model in different environment using this code
+Great, now you can reproduce this model in different environment using this code:
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
    :language: python
-   :lines: 10
+   :lines: 9
 ..
 
-And start a server that processes inference request like this
+And start a server that processes inference request like this:
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
    :language: python
-   :lines: 13
+   :lines: 12-13
 ..
 
-Or create and start a docker container like this
+Or create and start a docker container like this:
 
 .. literalinclude:: ../../examples/sklearn_model/model_create_image.py
    :linenos:

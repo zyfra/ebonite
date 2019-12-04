@@ -309,6 +309,7 @@ class CompositeArtifactCollection(ArtifactCollection):
             self.artifacts += other.artifacts
         else:
             self.artifacts.append(other)
+        return self
 
 
 class _RelativePathWrapper(ArtifactCollection):
@@ -327,9 +328,9 @@ class _RelativePathWrapper(ArtifactCollection):
         return self.artifact.materialize(os.path.join(path, self.path))
 
     def bytes_dict(self) -> typing.Dict[str, bytes]:
-        return {os.path.join(p, self.path): b for p, b in self.artifact.bytes_dict().items()}
+        return {os.path.join(self.path, p): b for p, b in self.artifact.bytes_dict().items()}
 
     @contextlib.contextmanager
     def blob_dict(self) -> typing.Iterable[typing.Dict[str, Blob]]:
         with self.artifact.blob_dict() as blobs:
-            yield {os.path.join(p, self.path): b for p, b in blobs.items()}
+            yield {os.path.join(self.path, p): b for p, b in blobs.items()}
