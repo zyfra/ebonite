@@ -1,11 +1,32 @@
+import pytest
+
 from ebonite.utils.importing import import_module
-from ebonite.utils.module import (get_module_repr, get_module_version, get_object_module, is_builtin_module,
-                                  is_extension_module, is_installable_module, is_local_module, is_private_module,
-                                  is_pseudo_module)
+from ebonite.utils.module import (analyze_module_imports, check_pypi_module, get_module_repr, get_module_version,
+                                  get_object_module, is_builtin_module, is_extension_module, is_installable_module,
+                                  is_local_module, is_private_module, is_pseudo_module)
 
 
 class Obj:
     pass
+
+
+def test_analyze_module_imports():
+    reqs = analyze_module_imports('tests.utils.test_module_tools')
+    assert reqs == {get_module_repr(pytest)}
+
+
+def test_check_pypi_module():
+    assert check_pypi_module('numpy', '1.17.3')
+    assert check_pypi_module('pandas')
+
+    assert not check_pypi_module('my-super-module')
+    assert not check_pypi_module('pandas', '100.200.300')
+
+    with pytest.raises(ValueError):
+        check_pypi_module('my-super-module', raise_on_error=True)
+
+    with pytest.raises(ImportError):
+        check_pypi_module('pandas', '100.200.300', raise_on_error=True)
 
 
 def test_module_representation():

@@ -37,7 +37,7 @@ jobs:
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         run: |
-          tox -e clean,py36,py37,report,coveralls
+          CI_BRANCH=${GITHUB_REF#refs/heads/} tox -e clean,py36,py37,report,coveralls
 
   build_windows:
 

@@ -36,17 +36,18 @@ class _Saver(_TFDump):
     """
 
     def dump(self, session, path) -> FilesContextManager:
-        # path = os.path.join(path, TF_MODEL_FILENAME) # TODO check if it is needed
-        saver = tf.train.Saver()
-        saver.save(session, path)
+        with session.as_default(), session.graph.as_default():
+            saver = tf.train.Saver(save_relative_paths=True)
+            saver.save(session, os.path.join(path, TF_MODEL_FILENAME))
+
         yield Blobs({
             name: LocalFileBlob(os.path.join(path, name)) for name in os.listdir(path)
         })
 
-    def load(self, session, path) -> tf.Graph:
-        saver = tf.train.Saver()
-        saver.restore(session, path)
-        return session.graph
+    def load(self, session, path):
+        with session.as_default(), session.graph.as_default():
+            saver = tf.train.import_meta_graph(os.path.join(path, TF_MODEL_FILENAME) + '.meta')
+            saver.restore(session, os.path.join(path, TF_MODEL_FILENAME))
 
 
 class _Protobuf(_TFDump):
@@ -60,15 +61,13 @@ class _Protobuf(_TFDump):
             TF_MODEL_FILENAME: LocalFileBlob(os.path.join(path, TF_MODEL_FILENAME))
         })
 
-    def load(self, session, path) -> tf.Graph:
-        detection_graph = session.graph
-        with detection_graph.as_default():
+    def load(self, session, path):
+        with session.graph.as_default():
             od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(path, 'rb') as fid:
+            with tf.gfile.GFile(os.path.join(path, TF_MODEL_FILENAME), 'rb') as fid:
                 serialized_graph = fid.read()
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name='')
-        return detection_graph
 
 
 class TFTensorModelWrapper(ModelWrapper):
@@ -95,11 +94,7 @@ class TFTensorModelWrapper(ModelWrapper):
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
         with tempfile.TemporaryDirectory(prefix='ebonite_tensor_') as tempdir:
-            sess = tf.get_default_session()
-            if sess is None:
-                raise ValueError('Cant save model without session, use inside "with session.as_default()"')
-
-            yield from self._dumper.dump(sess, tempdir)
+            yield from self._dumper.dump(self._get_session(), tempdir)
 
     def load(self, path):
         """
@@ -107,10 +102,17 @@ class TFTensorModelWrapper(ModelWrapper):
 
         :param path: path to load from
         """
-        if os.path.isdir(path):
-            path = os.path.join(path, TF_MODEL_FILENAME)
-        graph = self._dumper.load(self._session, path)
-        self.model = [graph.get_tensor_by_name(n) for n in self.output_tensor_names]
+        if self.__session is not None:
+            self.__session.close()
+        graph = tf.Graph()
+        self.__session = tf.Session(graph=graph)
+
+        self._dumper.load(self.__session, path)
+
+        if isinstance(self.output_tensor_names, list):
+            self.model = [graph.get_tensor_by_name(n) for n in self.output_tensor_names]
+        else:
+            self.model = graph.get_tensor_by_name(self.output_tensor_names)
 
     @ModelWrapper.with_model
     def predict(self, data):
@@ -120,20 +122,16 @@ class TFTensorModelWrapper(ModelWrapper):
         :param data: data to predict
         :return: prediction
         """
-        prediction = self._session.run(self.model, feed_dict=data)
+        prediction = self._get_session().run(self.model, feed_dict=data)
         if isinstance(prediction, list):
             return {str(i): tensor for i, tensor in enumerate(prediction)}
         return prediction
 
-    @property
-    def _session(self):
-        """
-        tensorflow Session object
-        """
-        if self.__session is None:
-            self.__session = tf.Session()
-            self.__session.run(tf.global_variables_initializer())
-        return self.__session
+    def _get_session(self):
+        session = self.__session or tf.get_default_session()
+        if session is None:
+            raise ValueError('Cant work with model without session, please use inside "with session.as_default()"')
+        return session
 
 
 def is_graph_frozen() -> bool:
@@ -170,6 +168,6 @@ class TFTensorHook(CanIsAMustHookMixin, ModelHook):
         if isinstance(obj, list):
             tensor_names = [t.name for t in obj]
         else:
-            tensor_names = [obj.name]
+            tensor_names = obj.name
 
         return TFTensorModelWrapper(tensor_names, is_graph_frozen()).bind_model(obj)
