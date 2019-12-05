@@ -6,6 +6,7 @@ import responses
 from pandas import DataFrame
 from requests.exceptions import HTTPError
 
+import ebonite
 from ebonite.ext.flask.client import HTTPClient
 
 interface_json = '''
@@ -15,9 +16,9 @@ interface_json = '''
       "args":{"vector":{"columns":["a","b"],"type":"ebonite.ext.pandas.dataset.DataFrameType"}},
       "name":"predict",
       "out_type":{"dtype":"float64","shape":[2],"type":"ebonite.ext.numpy.dataset.NumpyNdarrayDatasetType"}}],
-  "version":"0.2.0"
+  "version":"%s"
 }
-'''
+''' % ebonite.__version__
 
 
 @pytest.fixture
