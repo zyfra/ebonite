@@ -16,9 +16,9 @@ interface_json = '''
       "args":{"vector":{"columns":["a","b"],"type":"ebonite.ext.pandas.dataset.DataFrameType"}},
       "name":"predict",
       "out_type":{"dtype":"float64","shape":[2],"type":"ebonite.ext.numpy.dataset.NumpyNdarrayDatasetType"}}],
-  "version":"EBONITE_VERSION"
+  "version":"%s"
 }
-'''.replace('EBONITE_VERSION', ebonite.__version__)
+''' % ebonite.__version__
 
 
 @pytest.fixture
