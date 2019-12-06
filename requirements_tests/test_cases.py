@@ -2,7 +2,7 @@ from ebonite.utils.module import get_object_requirements
 
 
 def test_requirements_analyzer__custom_modules():
-    import tensorflow  # noqa
+    import catboost  # noqa
     from custom_module import MODEL
     reqs = get_object_requirements(MODEL)
 

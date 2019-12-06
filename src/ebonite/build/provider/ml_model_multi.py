@@ -1,12 +1,13 @@
+import os
 from typing import List
 
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
-from ebonite.build.provider.ml_model import MLModelProvider
+from ebonite.build.provider.ml_model import MLModelProvider, MODEL_BIN_PATH
 from ebonite.core.objects import core
 from ebonite.core.objects.requirements import Requirements
-from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
+from ebonite.core.objects.artifacts import ArtifactCollection, _RelativePathWrapper, CompositeArtifactCollection
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
 
@@ -29,7 +30,7 @@ class MLModelMultiProvider(MLModelProvider):
         """Union of server, loader and all models requirements"""
         return (get_object_requirements(self.server) +
                 get_object_requirements(self.loader) +
-                [_ for model in self.models for _ in model.params.requirements])
+                sum((model.requirements for model in self.models), Requirements()))
 
     def get_requirements(self):
         """Returns union of server, loader and all models requirements"""
@@ -45,5 +46,6 @@ class MLModelMultiProvider(MLModelProvider):
     def get_artifacts(self) -> ArtifactCollection:
         """Returns binaries of models artifacts"""
         return CompositeArtifactCollection([
-            m.artifact_any for m in self.models
+            _RelativePathWrapper(m.artifact_any, os.path.join(MODEL_BIN_PATH, str(i)))
+            for i, m in enumerate(self.models)
         ])

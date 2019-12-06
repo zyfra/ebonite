@@ -4,6 +4,7 @@ from typing import List
 from pyjackson import read
 
 from ebonite.build.provider.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
+from ebonite.build.provider.ml_model_multi import MODELS_META_PATH
 from ebonite.core.objects import core
 from ebonite.runtime.interface import Interface, expose
 from ebonite.runtime.interface.base import InterfaceLoader
@@ -56,9 +57,9 @@ class MultiModelLoader(InterfaceLoader):
     """
 
     def load(self) -> Interface:
-        metas = read(MODEL_META_PATH, List[core.Model])
-        for meta in metas:
-            meta.wrapper.load(os.path.join(MODEL_BIN_PATH, meta.name))
+        metas = read(MODELS_META_PATH, List[core.Model])
+        for i, meta in enumerate(metas):
+            meta.wrapper.load(os.path.join(MODEL_BIN_PATH, str(i)))
         ifaces = {
             meta.name: model_interface(meta) for meta in metas
         }

@@ -19,8 +19,8 @@ def test_check_pypi_module():
     assert check_pypi_module('numpy', '1.17.3')
     assert check_pypi_module('pandas')
 
-    assert not check_pypi_module('my-super-module')
-    assert not check_pypi_module('pandas', '100.200.300')
+    assert not check_pypi_module('my-super-module', warn_on_error=False)
+    assert not check_pypi_module('pandas', '100.200.300', warn_on_error=False)
 
     with pytest.raises(ValueError):
         check_pypi_module('my-super-module', raise_on_error=True)

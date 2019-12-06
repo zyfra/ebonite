@@ -24,7 +24,7 @@
     :alt: Requirements Status
     :target: https://requires.io/github/zyfra/ebonite/requirements/?branch=master
 
-.. |coveralls| image:: https://coveralls.io/repos/zyfra/ebonite/badge.svg?branch=HEAD&service=github
+.. |coveralls| image:: https://coveralls.io/repos/github/zyfra/ebonite/badge.svg?branch=master
     :alt: Coverage Status
     :target: https://coveralls.io/r/zyfra/ebonite
 
@@ -48,9 +48,9 @@
     :alt: ODS slack channel
     :target: https://app.slack.com/client/T040HKJE3/CR1K8N2KA
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.3.1.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.3.2.svg
     :alt: Commits since latest release
-    :target: https://github.com/zyfra/ebonite/compare/v0.3.1...master
+    :target: https://github.com/zyfra/ebonite/compare/v0.3.2...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/ebonite.svg
     :alt: PyPI Wheel

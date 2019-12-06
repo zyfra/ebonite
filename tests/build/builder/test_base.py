@@ -10,12 +10,13 @@ import pytest
 
 from ebonite.build.builder.base import PythonBuilder, use_local_installation
 from ebonite.build.provider import LOADER_ENV, PythonProvider, SERVER_ENV
+from ebonite.build.provider.ml_model_multi import MLModelMultiProvider
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.requirements import InstallableRequirement, Requirements
 from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.client import HTTPClient
-from ebonite.runtime.interface.ml_model import ModelLoader
+from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
 from ebonite.utils.module import get_module_version
 
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
@@ -61,6 +62,11 @@ def python_builder_mock() -> PythonBuilder:
 @pytest.fixture
 def python_builder(created_model) -> PythonBuilder:
     return PythonBuilder(MLModelProvider(created_model, FlaskServer()))
+
+
+@pytest.fixture
+def python_multi_builder(created_model) -> PythonBuilder:
+    return PythonBuilder(MLModelMultiProvider([created_model], FlaskServer()))
 
 
 def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuilder):
@@ -111,6 +117,38 @@ def _check_contents(base_dir, name, contents):
             assert re.findall(contents, file_contents)
         else:
             assert file_contents == contents
+
+
+def test_python_builder__distr_loadable(tmpdir, python_builder: PythonBuilder, created_model, pandas_data):
+    prediction = created_model.wrapper.predict(pandas_data)
+
+    with use_local_installation():
+        python_builder._write_distribution(tmpdir)
+
+    iface = _load(ModelLoader(), tmpdir)
+    prediction2 = iface.predict(pandas_data)
+
+    np.testing.assert_almost_equal(prediction, prediction2)
+
+
+def test_python_multi_builder__distr_loadable(tmpdir, python_multi_builder: PythonBuilder, created_model, pandas_data):
+    prediction = created_model.wrapper.predict(pandas_data)
+
+    with use_local_installation():
+        python_multi_builder._write_distribution(tmpdir)
+
+    iface = _load(MultiModelLoader(), tmpdir)
+    prediction2 = getattr(iface, f'{created_model.name}-predict')(pandas_data)
+
+    np.testing.assert_almost_equal(prediction, prediction2)
+
+
+def _load(loader, tmpdir):
+    cwd = os.getcwd()
+    os.chdir(tmpdir)
+    iface = loader.load()
+    os.chdir(cwd)
+    return iface
 
 
 def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuilder):
