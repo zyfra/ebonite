@@ -4,7 +4,7 @@ Ebonite Core
 
 This module is responsible for model analysis and
 model persisting.
-If you use plain vanilla ebonite, this is mainly what
+If you use vanilla ebonite, this is mainly what
 you are working with.
 
 Main model analysis API abstractions are
@@ -15,7 +15,7 @@ Main model analysis API abstractions are
 
 * :class:`~ebonite.core.analyzer.model.ModelHook` - hook for model understanding
 
-* :class:`~ebonite.core.objects.model_wrapper.ModelWrapper` - model wrapper for different ml libraries
+* :class:`~ebonite.core.objects.wrapper.ModelWrapper` - model wrapper for different ml libraries
 
 Main model persisting abstractions are
 
@@ -23,3 +23,9 @@ Main model persisting abstractions are
 
 * :class:`~ebonite.repository.ArtifactRepository` - Repository to store model artifacts (like s3 or nexus)
 
+* :class:`~ebonite.client.Ebonite` - Main user-facing ebonite client class
+
+
+Also these helper functions available:
+
+* :func:`~ebonite.create_model` - creates :class:`~ebonite.core.objects.core.Model` instance from model object and sample data
