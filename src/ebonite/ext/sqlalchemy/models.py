@@ -170,7 +170,7 @@ class SModel(Base, Attaching):
                     author=model.author,
                     creation_date=model.creation_date,
                     wrapper=dumps(model.wrapper),
-                    artifact=dumps(model.artifact_req_persisted),
+                    artifact=dumps(model.artifact),
                     input_meta=dumps(model.input_meta),
                     output_meta=dumps(model.output_meta),
                     requirements=dumps(model.requirements),
