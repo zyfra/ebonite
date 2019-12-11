@@ -1,6 +1,6 @@
 import os
 
-from ebonite.build import build_model_docker
+from ebonite.build.helpers import build_model_docker
 from ebonite.core.objects import core
 from ebonite.ext.flask.server import FlaskServer
 
