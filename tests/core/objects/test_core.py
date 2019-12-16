@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from ebonite.core.errors import MetadataError, NonExistingModelError, NonExistingTaskError, UnboundObjectError
+from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model, Project, Task
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
 from ebonite.ext.pandas import DataFrameType
@@ -142,6 +143,20 @@ def test_task__delete_model(task_b: Task, model):
     assert model.task_id is None
 
 
+def test_task__delete_model_with_artifacts(task_b: Task, model, artifact_repo):
+    model._unpersisted_artifacts = Blobs({'data': InMemoryBlob(b'data')})
+    task_b.bind_artifact_repo(artifact_repo)
+    task_b.push_model(model)
+    assert model.id is not None
+    assert model.task_id is not None
+
+    task_b.delete_model(model)
+    assert len(task_b.models) == 0
+
+    assert model.id is None
+    assert model.task_id is None
+
+
 def test_task__delete_model__nonexistent(task_factory, model):
     model_task = task_factory(True)
     model_task.add_model(model)
@@ -160,12 +175,14 @@ def test_task__create_and_push_model(task_b2, sklearn_model_obj, pandas_data):
     task_b2.create_and_push_model(sklearn_model_obj, pandas_data, model_name)
 
     assert task_b2._meta.get_model_by_name(model_name, task_b2) is not None
+    assert task_b2.models(model_name) is not None
 
 
 def test_task__push_model(task_b2, created_model):
     task_b2.push_model(created_model)
 
     assert task_b2._meta.get_model_by_name(created_model.name, task_b2) is not None
+    assert created_model.id in task_b2.models
 
 
 # ###############MODEL##################

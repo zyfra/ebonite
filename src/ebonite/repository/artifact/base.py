@@ -39,7 +39,10 @@ class ArtifactRepository:
     type = None
 
     def get_model_id(self, model: 'core.Model') -> str:
-        return model.id
+        model_id = model.id
+        if model_id is None:
+            raise ValueError('model_id cannot be "None"')
+        return model_id
 
     def push_artifacts(self, model: 'core.Model'):
         """
