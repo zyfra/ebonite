@@ -350,6 +350,10 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
         r = Requirements()
 
         for mod in list(sys.modules.values()):
+            if not isinstance(mod, ModuleType):
+                # EBNT-177 coverage 5.0.0 adds spurious non-module objects to `sys.modules`
+                continue
+
             if not self._should_ignore(mod) and is_local_module(mod):
                 r.add(CustomRequirement.from_module(mod))
 
