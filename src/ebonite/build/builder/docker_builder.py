@@ -1,5 +1,4 @@
 import os
-import subprocess
 import tempfile
 from contextlib import contextmanager
 from threading import Lock
@@ -27,11 +26,10 @@ def is_docker_running():
     :return: true or false
     """
     try:
-        subprocess.check_output('which docker', shell=True)
         with create_docker_client() as client:
             client.images.list()
         return True
-    except (subprocess.CalledProcessError, ImportError, requests.exceptions.ConnectionError):
+    except (ImportError, requests.exceptions.ConnectionError, docker.errors.DockerException):
         return False
 
 
