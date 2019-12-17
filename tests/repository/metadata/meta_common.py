@@ -344,7 +344,7 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     task.add_model(model)
 
     task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
-    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact',
+    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'output_proba_meta',
                                                          'output_meta', 'input_meta', 'requirements',
                                                          'transformer', 'task_id'])
     updated_task = meta.update_task(task)
@@ -601,7 +601,7 @@ def test_update_model(meta: MetadataRepository, project: Project, task: Task, mo
 
     id = model.id
 
-    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact',
+    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'output_proba_meta',
                                                          'output_meta', 'input_meta', 'requirements',
                                                          'transformer', 'task_id'])
     model = meta.update_model(model)
@@ -622,7 +622,7 @@ def test_update_model_source_is_changed(meta: MetadataRepository, project: Proje
 
     id = saved_model.id
 
-    saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact',
+    saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'output_proba_meta',
                                                                'output_meta', 'input_meta', 'requirements',
                                                                'transformer', 'task_id'])
     saved_model = meta.update_model(saved_model)
@@ -701,7 +701,7 @@ def test_save_updated_existing_model(meta: MetadataRepository, project: Project,
     model.task_id = task.id
     model = meta.create_model(model)
 
-    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact',
+    model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'output_proba_meta',
                                                          'output_meta', 'input_meta', 'requirements',
                                                          'transformer', 'task_id'])
 

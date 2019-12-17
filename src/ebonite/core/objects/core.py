@@ -280,7 +280,8 @@ class Model(EboniteObject):
     :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
     :param input_meta: :class:`~ebonite.core.objects.DatasetType` instance for model input
-    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output
+    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict`)
+    :param output_proba_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict_proba`)
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
     :param id: model id
     :param task_id: parent task_id
@@ -290,12 +291,14 @@ class Model(EboniteObject):
 
     def __init__(self, name: str, wrapper: ModelWrapper,
                  artifact: 'ArtifactCollection' = None, input_meta: DatasetType = None,
-                 output_meta: DatasetType = None, requirements: Requirements = None, id: str = None,
+                 output_meta: DatasetType = None, output_proba_meta: DatasetType = None,
+                 requirements: Requirements = None, id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.wrapper = wrapper
 
+        self.output_proba_meta = output_proba_meta
         self.output_meta = output_meta
         self.input_meta = input_meta
         self.requirements = requirements
@@ -389,7 +392,7 @@ class Model(EboniteObject):
                additional_artifacts: ArtifactCollection = None, additional_requirements: AnyRequirements = None,
                custom_wrapper: ModelWrapper = None, custom_artifact: ArtifactCollection = None,
                custom_input_meta: DatasetType = None, custom_output_meta: DatasetType = None, custom_prediction=None,
-               custom_requirements: AnyRequirements = None) -> 'Model':
+               custom_output_proba_meta: DatasetType = None, custom_requirements: AnyRequirements = None) -> 'Model':
         """
         Creates Model instance from arbitrary model objects and sample of input data
 
@@ -416,6 +419,9 @@ class Model(EboniteObject):
         input_meta = custom_input_meta or DatasetAnalyzer.analyze(input_data)
         prediction = custom_prediction or wrapper.predict(input_data)
         output_meta = custom_output_meta or DatasetAnalyzer.analyze(prediction)
+        output_proba_meta = custom_output_proba_meta
+        if not custom_output_proba_meta and hasattr(wrapper, 'predict_proba'):
+            output_proba_meta = DatasetAnalyzer.analyze(wrapper.predict_proba(input_data))
 
         if custom_requirements is not None:
             requirements = resolve_requirements(custom_requirements)
@@ -426,7 +432,7 @@ class Model(EboniteObject):
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, input_meta, output_meta, requirements)
+        model = Model(name, wrapper, None, input_meta, output_meta, output_proba_meta, requirements)
         model._unpersisted_artifacts = artifact
         return model
 

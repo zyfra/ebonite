@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from _pytest.doctest import DoctestModule
 from _pytest.python import Module
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model
@@ -41,14 +41,14 @@ def artifact_repository(tmpdir):
 
 @pytest.fixture
 def sklearn_model_obj(pandas_data):
-    reg = LinearRegression()
+    reg = LogisticRegression()
     reg.fit(pandas_data, [1, 0])
     return reg
 
 
 @pytest.fixture
 def pandas_data():
-    return pd.DataFrame([[1, 1], [2, 1]], columns=['a', 'b'])
+    return pd.DataFrame([[1, 0], [0, 1]], columns=['a', 'b'])
 
 
 @pytest.fixture

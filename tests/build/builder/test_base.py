@@ -175,6 +175,9 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuild
         client = HTTPClient()
         predictions = client.predict(pandas_data)
         np.testing.assert_array_almost_equal(predictions, [1, 0])
+
+        probas = client.predict_proba(pandas_data)
+        np.testing.assert_array_almost_equal(np.argmax(probas, axis=1), [1, 0])
     finally:
         # our server runs for eternity, thus we should kill it to clean up
         # `server.kill` kills just shell script, Python subprocess still alive

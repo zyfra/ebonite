@@ -14,7 +14,7 @@ from ebonite.utils.log import rlogger
 
 def model_interface(model_meta: 'core.Model'):
     """
-    Creates an interface from given model with the only `predict` method.
+    Creates an interface from given model with `predict` and (if available) `predict_proba` methods.
     Methods signature is determined via metadata associated with given model.
 
     :param model_meta: model to create interface for
@@ -24,6 +24,8 @@ def model_interface(model_meta: 'core.Model'):
     rlogger.debug('Creating interface for model %s', model_meta)
     input_type = model_meta.input_meta
     output_type = model_meta.output_meta
+    output_proba_type = model_meta.output_proba_meta
+    wrapper = model_meta.wrapper
 
     class MLModelInterface(Interface):
         def __init__(self, model):
@@ -36,7 +38,22 @@ def model_interface(model_meta: 'core.Model'):
             rlogger.debug('prediction: %s', predict)
             return output_type.serialize(predict)
 
-    return MLModelInterface(model_meta.wrapper)
+    class MLModelWithProbaInterface(MLModelInterface):
+        def __init__(self, model):
+            super().__init__(model)
+
+        @expose  # TODO make `@expose` work for inherited methods
+        def predict(self, vector: input_type) -> output_type:
+            return super().predict(vector)
+
+        @expose
+        def predict_proba(self, vector: input_type) -> output_proba_type:
+            rlogger.debug('predicting (proba) given %s', vector)
+            predict = self.model.predict_proba(vector)
+            rlogger.debug('prediction (proba): %s', predict)
+            return output_type.serialize(predict)
+
+    return MLModelInterface(wrapper) if output_proba_type is None else MLModelWithProbaInterface(wrapper)
 
 
 class ModelLoader(InterfaceLoader):
