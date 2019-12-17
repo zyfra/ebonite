@@ -3,7 +3,7 @@ import uuid
 
 import flask
 from flasgger import Swagger, swag_from, validate
-from flask import jsonify, request, send_file
+from flask import jsonify, redirect, request, send_file
 from pyjackson import deserialize
 
 from ebonite.config import Config, Core, Param
@@ -155,6 +155,10 @@ class FlaskServer(Server):
         @app.route('/health')
         def health():
             return 'OK'
+
+        @app.route('/')
+        def root():
+            return redirect('/apidocs')
 
         @app.before_request
         def log_request_info():
