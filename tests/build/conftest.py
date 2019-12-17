@@ -1,12 +1,10 @@
 import os
-import subprocess
 import time
 
 import docker.errors
 import pandas as pd
 import pytest
-import requests
-from ebonite.build.builder.docker_builder import create_docker_client
+from ebonite.build.builder.docker_builder import create_docker_client, is_docker_running
 from ebonite.build.runner.base import LocalTargetHost, TargetHost
 from ebonite.core.objects.core import Model
 from sklearn.linear_model import LinearRegression
@@ -17,14 +15,7 @@ from tests.client.test_func import func
 def has_docker():
     if os.environ.get('SKIP_DOCKER_TESTS', None) == 'true':
         return False
-    try:
-        subprocess.check_output('which docker', shell=True)
-        with create_docker_client() as client:
-            client.images.list()
-        return True
-    except (subprocess.CalledProcessError, ImportError, requests.exceptions.ConnectionError,
-            docker.errors.DockerException):
-        return False
+    return is_docker_running()
 
 
 def has_local_image(img_name: str) -> bool:
