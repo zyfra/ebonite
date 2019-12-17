@@ -41,3 +41,8 @@ def test_catboost_model_wrapper(catboost_model, pandas_data, tmpdir, request):
     assert cbmw.model is not catboost_model
 
     np.testing.assert_array_almost_equal(catboost_model.predict(pandas_data), cbmw.predict(pandas_data))
+
+    if isinstance(catboost_model, CatBoostClassifier):
+        np.testing.assert_array_almost_equal(catboost_model.predict_proba(pandas_data), cbmw.predict_proba(pandas_data))
+    else:
+        assert not hasattr(cbmw, 'predict_proba')
