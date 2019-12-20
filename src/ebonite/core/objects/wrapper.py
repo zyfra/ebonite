@@ -9,16 +9,23 @@ from io import BytesIO
 from pickle import _Unpickler
 from uuid import uuid4
 
+from pyjackson import dumps, loads
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
 from pyjackson.utils import get_class_fields
 
+from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.objects.artifacts import (ArtifactCollection, Blob, Blobs, CompositeArtifactCollection, InMemoryBlob,
                                             _RelativePathWrapper)
 from ebonite.core.objects.base import EboniteParams
+from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.utils.pickling import EbonitePickler
 
 FilesContextManager = typing.ContextManager[ArtifactCollection]
+MethodArg = DatasetType
+MethodReturn = DatasetType
+Method = typing.Tuple[str, MethodArg, MethodReturn]
+Methods = typing.Dict[str, Method]
 
 
 @type_field('type')
@@ -28,20 +35,32 @@ class ModelWrapper(EboniteParams):
     Must be pyjackson-serializable
     """
     type = None
+    methods_json = 'methods.json'
 
     def __init__(self):
         self.model = None
+        self.methods: typing.Optional[Methods] = None
+
+    @contextlib.contextmanager
+    def dump(self) -> FilesContextManager:
+        with self._dump() as artifact:
+            yield artifact + Blobs({self.methods_json: InMemoryBlob(dumps(self.methods).encode('utf-8'))})
 
     @abstractmethod
-    def dump(self) -> FilesContextManager:
+    def _dump(self) -> FilesContextManager:
         """
         Must return context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         :return: :class:`~ebonite.core.objects.ArtifactCollection`
         """
         pass
 
-    @abstractmethod
     def load(self, path):
+        self._load(path)
+        with open(os.path.join(path, self.methods_json), 'r', encoding='utf-8') as f:
+            self.methods = loads(f.read(), typing.Optional[Methods])
+
+    @abstractmethod
+    def _load(self, path):
         """
         Must load and set internal .model field
         :param path:
@@ -49,15 +68,30 @@ class ModelWrapper(EboniteParams):
         """
         pass
 
-    def bind_model(self, model):
+    def bind_model(self, model, **kwargs):
         """
-        Bind model object to this wrapper
+        Bind model object to this wrapper by using given input data sample
 
         :param model: model object to bind
+        :param kwargs: additional information to be used for analysis
         :return: self
         """
+        input_data = kwargs.get('input_data', None)
+        if input_data is None:
+            raise ValueError("Input data sample should be specified as 'input_data' key in order to analyze model")
+
         self.model = model
+        self.methods = self._prepare_methods(input_data)
         return self
+
+    def _prepare_methods(self, input_data):
+        arg_type = DatasetAnalyzer.analyze(input_data)
+        methods = {}
+        for exposed, wrapped in self._exposed_methods_mapping().items():
+            output_data = self._call_method(wrapped, input_data)
+            out_type = DatasetAnalyzer.analyze(output_data)
+            methods[exposed] = (wrapped, arg_type, out_type)
+        return methods
 
     def unbind(self):
         """
@@ -65,15 +99,62 @@ class ModelWrapper(EboniteParams):
         :return: self
         """
         self.model = None
+        self.methods = None
         return self
 
-    @abstractmethod
-    def predict(self, data):
-        """
-        Must return model prediction on data
+    @property
+    def exposed_methods(self) -> typing.Set[str]:
+        if self.methods is None:
+            raise ValueError('Wrapper {} has no model yet'.format(self))
+        return set(self.methods.keys())
 
-        :param data: data to predict
-        :return: prediction
+    def method_signature(self, name) -> typing.Tuple[DatasetType, DatasetType]:
+        """
+        Determines input / output types of model wrapper method with given name
+
+        :param name: name of the method to determine input / output types
+        :return: input / output type of method with given name
+        """
+        self._check_method(name)
+        _, *signature = self.methods[name]
+        return signature
+
+    def call_method(self, name, input_data):
+        """
+        Calls model wrapper method with given name on given input data
+
+        :param name: name of the method to call
+        :param input_data: argument for the method
+        :return: call result
+        """
+        self._check_method(name)
+        wrapped, *_ = self.methods[name]
+        output_data = self._call_method(wrapped, input_data)
+        return output_data
+
+    def _check_method(self, name):
+        if self.model is None:
+            raise ValueError('Wrapper {} has no model yet'.format(self))
+        if name not in self.methods:
+            raise ValueError(f"Wrapper '{self}' obj doesn't expose method '{name}'")
+
+    def _call_method(self, wrapped, input_data):
+        if wrapped is None:
+            return self.model(input_data)
+        if hasattr(self, wrapped):
+            return getattr(self, wrapped)(input_data)
+        return getattr(self.model, wrapped)(input_data)
+
+    @abstractmethod
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        """
+        Should return methods exposed by this model wrapper
+
+        :return: methods dict: exposed method name to wrapped method name
+        If wrapped method name is `None` then wrapped model object should be called directly.
+        If method name is given and model wrapper itself has such method then it is going to be called:
+        this allows to wrap existing API with your own pre/postprocessing.
+        Otherwise, wrapped model object method is going to be called.
         """
         pass
 
@@ -98,6 +179,7 @@ class ModelWrapper(EboniteParams):
         cls = type(self)
         obj = object.__new__(cls)
         obj.model = self.model
+        obj.methods = self.methods
         for field in get_class_fields(cls):
             setattr(obj, field.name, getattr(self, field.name))
         return obj
@@ -158,7 +240,7 @@ class PickleModelWrapper(ModelWrapper):
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
-    def dump(self) -> ArtifactCollection:
+    def _dump(self) -> ArtifactCollection:
         """
         Dumps model artifacts as :class:`~ebonite.core.objects.ArtifactCollection`
 
@@ -175,7 +257,7 @@ class PickleModelWrapper(ModelWrapper):
 
         yield CompositeArtifactCollection([Blobs(blobs)] + additional_artifacts)
 
-    def load(self, path):
+    def _load(self, path):
         """
         Loads artifacts into model field
 
@@ -346,6 +428,7 @@ class CallableMethodModelWrapper(PickleModelWrapper):
     """
     type = 'callable_method'
 
-    @ModelWrapper.with_model
-    def predict(self, data):
-        return self.model(data)
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            'predict': None
+        }

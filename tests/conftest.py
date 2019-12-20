@@ -1,5 +1,6 @@
 import contextlib
 import os
+import typing
 from itertools import chain
 
 import pandas as pd
@@ -19,13 +20,18 @@ class MockModelWrapper(ModelWrapper):
     type = 'mock_wrapper'
 
     @contextlib.contextmanager
-    def dump(self) -> FilesContextManager:
+    def _dump(self) -> FilesContextManager:
         yield Blobs({'test.bin': InMemoryBlob(b'test')})
 
-    def load(self, path):
+    def _load(self, path):
         pass
 
-    def predict(self, data):
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            'predict': '_predict'
+        }
+
+    def _predict(self, data):
         return data
 
 

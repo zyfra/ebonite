@@ -11,10 +11,8 @@ from pyjackson.decorators import make_string
 import ebonite.repository
 from ebonite import client
 from ebonite.core import errors
-from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
-from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.repository.artifact import NoSuchArtifactError
@@ -290,17 +288,13 @@ class Model(EboniteObject):
     """
 
     def __init__(self, name: str, wrapper: ModelWrapper,
-                 artifact: 'ArtifactCollection' = None, input_meta: DatasetType = None,
-                 output_meta: DatasetType = None, output_proba_meta: DatasetType = None,
+                 artifact: 'ArtifactCollection' = None,
                  requirements: Requirements = None, id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.wrapper = wrapper
 
-        self.output_proba_meta = output_proba_meta
-        self.output_meta = output_meta
-        self.input_meta = input_meta
         self.requirements = requirements
         self.transformer = None
         self.task_id = task_id
@@ -391,8 +385,7 @@ class Model(EboniteObject):
     def create(cls, model_object, input_data, model_name: str = None,
                additional_artifacts: ArtifactCollection = None, additional_requirements: AnyRequirements = None,
                custom_wrapper: ModelWrapper = None, custom_artifact: ArtifactCollection = None,
-               custom_input_meta: DatasetType = None, custom_output_meta: DatasetType = None, custom_prediction=None,
-               custom_output_proba_meta: DatasetType = None, custom_requirements: AnyRequirements = None) -> 'Model':
+               custom_requirements: AnyRequirements = None) -> 'Model':
         """
         Creates Model instance from arbitrary model objects and sample of input data
 
@@ -403,36 +396,28 @@ class Model(EboniteObject):
         :param additional_requirements: Additional requirements.
         :param custom_wrapper: Custom model wrapper.
         :param custom_artifact: Custom artifact collection to replace all other.
-        :param custom_input_meta: Custom input DatasetType.
-        :param custom_output_meta: Custom output DatasetType.
-        :param custom_prediction: Custom prediction output.
         :param custom_requirements: Custom requirements to replace all other.
         :returns: :py:class:`Model`
         """
-        wrapper: ModelWrapper = custom_wrapper or ModelAnalyzer.analyze(model_object)
+        wrapper: ModelWrapper = custom_wrapper or ModelAnalyzer.analyze(model_object, input_data=input_data)
         name = model_name or _generate_model_name(wrapper)
 
         artifact = custom_artifact or WrapperArtifactCollection(wrapper)
         if additional_artifacts is not None:
             artifact += additional_artifacts
 
-        input_meta = custom_input_meta or DatasetAnalyzer.analyze(input_data)
-        prediction = custom_prediction or wrapper.predict(input_data)
-        output_meta = custom_output_meta or DatasetAnalyzer.analyze(prediction)
-        output_proba_meta = custom_output_proba_meta
-        if not custom_output_proba_meta and hasattr(wrapper, 'predict_proba'):
-            output_proba_meta = DatasetAnalyzer.analyze(wrapper.predict_proba(input_data))
-
         if custom_requirements is not None:
             requirements = resolve_requirements(custom_requirements)
         else:
             requirements = get_object_requirements(model_object)
             requirements += get_object_requirements(input_data)
-            requirements += get_object_requirements(prediction)
+            for method in wrapper.exposed_methods:
+                output_data = wrapper.call_method(method, input_data)
+                requirements += get_object_requirements(output_data)
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, input_meta, output_meta, output_proba_meta, requirements)
+        model = Model(name, wrapper, None, requirements)
         model._unpersisted_artifacts = artifact
         return model
 

@@ -1,13 +1,11 @@
 import lightgbm as lgb
 from pyjackson.core import ArgList
-from pyjackson.decorators import as_list
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
 from ebonite.core.objects import DatasetType
 
 
-@as_list
 class LightGBMDatasetType(DatasetType):
     """
     :class:`.DatasetType` implementation for `lightgbm.Dataset` type
@@ -46,5 +44,5 @@ class LightGBMDatasetHook(DatasetHook, TypeHookMixin):
     """
     valid_types = [lgb.Dataset]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return LightGBMDatasetType.from_dataset(obj)

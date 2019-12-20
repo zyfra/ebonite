@@ -27,7 +27,7 @@ def test_catboost_model_wrapper(catboost_model, pandas_data, tmpdir, request):
     # this import is required to ensure that CatBoost model wrapper is registered
     import ebonite.ext.catboost  # noqa
 
-    cbmw = ModelAnalyzer.analyze(catboost_model)
+    cbmw = ModelAnalyzer.analyze(catboost_model, input_data=pandas_data)
     assert cbmw.model is catboost_model
 
     with cbmw.dump() as artifact:
@@ -35,14 +35,15 @@ def test_catboost_model_wrapper(catboost_model, pandas_data, tmpdir, request):
 
     cbmw.unbind()
     with pytest.raises(ValueError):
-        cbmw.predict(pandas_data)
+        cbmw.call_method('predict', pandas_data)
 
     cbmw.load(tmpdir)
     assert cbmw.model is not catboost_model
 
-    np.testing.assert_array_almost_equal(catboost_model.predict(pandas_data), cbmw.predict(pandas_data))
+    np.testing.assert_array_almost_equal(catboost_model.predict(pandas_data), cbmw.call_method('predict', pandas_data))
 
     if isinstance(catboost_model, CatBoostClassifier):
-        np.testing.assert_array_almost_equal(catboost_model.predict_proba(pandas_data), cbmw.predict_proba(pandas_data))
+        np.testing.assert_array_almost_equal(catboost_model.predict_proba(pandas_data),
+                                             cbmw.call_method('predict_proba', pandas_data))
     else:
-        assert not hasattr(cbmw, 'predict_proba')
+        assert 'predict_proba' not in cbmw.exposed_methods

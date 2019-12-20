@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import ArgList, Field
-from pyjackson.decorators import as_list, type_field
+from pyjackson.decorators import type_field
 
 from ebonite.core.objects.base import EboniteParams
 from ebonite.runtime.interface.typing import TypeWithSpec
@@ -51,7 +51,6 @@ class PrimitiveDatasetType(DatasetType):
         return instance
 
 
-@as_list
 class ListDatasetType(DatasetType):
     """
     DatasetType for list type

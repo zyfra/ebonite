@@ -15,7 +15,7 @@ class TorchTensorHook(TypeHookMixin, DatasetHook):
     """
     valid_types = [torch.Tensor]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return TorchTensorDatasetType(tuple(obj.shape), str(obj.dtype)[len('torch.'):])
 
 

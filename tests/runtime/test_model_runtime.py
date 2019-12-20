@@ -1,4 +1,7 @@
 import os
+import typing
+
+import pandas as pd
 
 from ebonite.build.provider import LOADER_ENV, SERVER_ENV
 from ebonite.core.objects.core import Model
@@ -13,10 +16,15 @@ from ebonite.runtime.server import Server
 class MockModelWrapper(ModelWrapper):
     type = 'test_wrapper2'
 
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            'predict': 'predict'
+        }
+
 
 model_params = ['a', 'b']
 predict_params = ['c', 'd']
-mdl = Model('', MockModelWrapper(), input_meta=DataFrameType(model_params), output_meta=DataFrameType(predict_params))
+mdl = Model('', MockModelWrapper())
 exposed_methods = ['predict']
 
 
@@ -29,15 +37,16 @@ class PrintServer(Server):
 
 
 class MockModel:
-    last_args = None
-
     def predict(self, *args, **kwargs):
-        MockModel.last_args = (args, kwargs)
+        assert len(args) == 1
+        assert list(args[0].columns) == model_params
+        assert len(kwargs) == 0
+        return pd.DataFrame([[1, 0], [0, 1]], columns=predict_params)
 
 
 class MockLoader(InterfaceLoader):
     def load(self) -> Interface:
-        mdl.wrapper.bind_model(MockModel())
+        mdl.wrapper.bind_model(MockModel(), input_data=pd.DataFrame([[1, 0], [0, 1]], columns=model_params))
         return model_interface(mdl)
 
 

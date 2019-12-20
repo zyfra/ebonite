@@ -1,5 +1,6 @@
 import contextlib
 import os
+import typing
 from io import BytesIO
 
 import torch
@@ -19,7 +20,7 @@ class TorchModelWrapper(ModelWrapper):
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
-    def dump(self) -> ArtifactCollection:
+    def _dump(self) -> ArtifactCollection:
         """
         Dumps `torch.nn.Module` instance to :class:`.InMemoryBlob` and creates :class:`.ArtifactCollection` from it
 
@@ -29,7 +30,7 @@ class TorchModelWrapper(ModelWrapper):
         torch.save(self.model, buffer)
         yield Blobs({self.model_file_name: InMemoryBlob(buffer.getvalue())})
 
-    def load(self, path):
+    def _load(self, path):
         """
         Loads `torch.nn.Module` instance from path
 
@@ -38,15 +39,16 @@ class TorchModelWrapper(ModelWrapper):
         with open(os.path.join(path, self.model_file_name), 'rb') as f:
             self.model = torch.load(f)
 
-    @ModelWrapper.with_model
-    def predict(self, data):
-        """
-        Runs `torch.nn.Module` and returns output tensor values
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            'predict': '_predict'
+        }
 
-        :param data: data to predict
-        :return: prediction
-        """
-        return self.model(data)
+    @ModelWrapper.with_model
+    def _predict(self, data):
+        if isinstance(data, torch.Tensor):
+            return self.model(data)
+        return self.model(*data)
 
 
 @make_string(include_name=True)
@@ -64,11 +66,12 @@ class TorchModelHook(ModelHook, CanIsAMustHookMixin):
         """
         return isinstance(obj, torch.nn.Module)
 
-    def process(self, obj) -> ModelWrapper:
+    def process(self, obj, **kwargs) -> ModelWrapper:
         """
         Creates :class:`TorchModelWrapper` for PyTorch model object
 
         :param obj: obj to process
+        :param kwargs: additional information to be used for analysis
         :return: :class:`TorchModelWrapper` instance
         """
-        return TorchModelWrapper().bind_model(obj)
+        return TorchModelWrapper().bind_model(obj, **kwargs)

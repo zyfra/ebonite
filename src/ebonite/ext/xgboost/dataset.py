@@ -67,5 +67,5 @@ class DMatrixHook(DatasetHook, TypeHookMixin):
     """
     valid_types = [xgboost.DMatrix]
 
-    def process(self, obj: xgboost.DMatrix) -> DatasetType:
+    def process(self, obj: xgboost.DMatrix, **kwargs) -> DatasetType:
         return DMatrixDatasetType.from_dmatrix(obj)

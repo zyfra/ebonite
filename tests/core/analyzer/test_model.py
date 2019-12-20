@@ -1,5 +1,6 @@
 import contextlib
 import os
+from typing import Dict, Optional
 
 import numpy as np
 import pytest
@@ -21,24 +22,25 @@ class _SummerModelWrapper(ModelWrapper):
     type = 'summer'
     model_filename = 'model.smr'
 
-    @ModelWrapper.with_model
-    def predict(self, data):
-        return self.model.predict(data)
+    def _exposed_methods_mapping(self) -> Dict[str, Optional[str]]:
+        return {
+            'predict': 'predict'
+        }
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
-    def dump(self) -> ArtifactCollection:
+    def _dump(self) -> ArtifactCollection:
         content = str(self.model.b).encode('utf-8')
         yield Blobs({self.model_filename: InMemoryBlob(content)})
 
-    def load(self, path):
+    def _load(self, path):
         with open(os.path.join(path, self.model_filename), 'rb') as f:
             self.model = _SummerModel(int(f.read()))
 
 
 class _SummerModelHook(ModelHook):
-    def process(self, obj) -> ModelWrapper:
-        return _SummerModelWrapper().bind_model(obj)
+    def process(self, obj, **kwargs) -> ModelWrapper:
+        return _SummerModelWrapper().bind_model(obj, **kwargs)
 
     def can_process(self, obj) -> bool:
         return isinstance(obj, _SummerModel)
@@ -64,9 +66,9 @@ def summer_model():
 
 
 @pytest.fixture
-def wrapper(summer_model):
+def wrapper(summer_model, numpy_data):
     model_obj = _wrap_model(summer_model)
-    return ModelAnalyzer.analyze(model_obj)
+    return ModelAnalyzer.analyze(model_obj, input_data=numpy_data)
 
 
 def test_func_model_dump_load(tmpdir, wrapper: ModelWrapper, numpy_data):

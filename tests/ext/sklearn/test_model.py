@@ -30,15 +30,10 @@ def regressor(inp_data, out_data):
     return lr
 
 
-@pytest.fixture
-def wrapper(model):
-    return
-
-
 @pytest.mark.parametrize('model', ['classifier', 'regressor'])
-def test_hook(model, request):
+def test_hook(model, inp_data, request):
     model = request.getfixturevalue(model)
-    wrapper = ModelAnalyzer.analyze(model)
+    wrapper = ModelAnalyzer.analyze(model, input_data=inp_data)
 
     assert isinstance(wrapper, SklearnModelWrapper)
 
@@ -46,33 +41,35 @@ def test_hook(model, request):
 @pytest.mark.parametrize('model', ['classifier', 'regressor'])
 def test_wrapper__predict(model, inp_data, request):
     model = request.getfixturevalue(model)
-    wrapper = ModelAnalyzer.analyze(model)
+    wrapper = ModelAnalyzer.analyze(model, input_data=inp_data)
 
-    np.testing.assert_array_almost_equal(model.predict(inp_data), wrapper.predict(inp_data))
+    np.testing.assert_array_almost_equal(model.predict(inp_data), wrapper.call_method('predict', inp_data))
 
 
 def test_wrapper__clf_predict_proba(classifier, inp_data):
-    wrapper = ModelAnalyzer.analyze(classifier)
+    wrapper = ModelAnalyzer.analyze(classifier, input_data=inp_data)
 
-    np.testing.assert_array_almost_equal(classifier.predict_proba(inp_data), wrapper.predict_proba(inp_data))
+    np.testing.assert_array_almost_equal(classifier.predict_proba(inp_data),
+                                         wrapper.call_method('predict_proba', inp_data))
 
 
 def test_wrapper__reg_predict_proba(regressor, inp_data):
-    wrapper = ModelAnalyzer.analyze(regressor)
+    wrapper = ModelAnalyzer.analyze(regressor, input_data=inp_data)
 
-    assert not hasattr(wrapper, 'predict_proba')
+    with pytest.raises(ValueError):
+        wrapper.call_method('predict_proba', inp_data)
 
 
 @pytest.mark.parametrize('model', ['classifier', 'regressor'])
 def test_wrapper__dump_load(tmpdir, model, inp_data, request):
     model = request.getfixturevalue(model)
-    wrapper = ModelAnalyzer.analyze(model)
+    wrapper = ModelAnalyzer.analyze(model, input_data=inp_data)
 
     with wrapper.dump() as d:
         d.materialize(tmpdir)
     wrapper.unbind()
     with pytest.raises(ValueError):
-        wrapper.predict(inp_data)
+        wrapper.call_method('predict', inp_data)
 
     wrapper.load(tmpdir)
-    np.testing.assert_array_almost_equal(model.predict(inp_data), wrapper.predict(inp_data))
+    np.testing.assert_array_almost_equal(model.predict(inp_data), wrapper.call_method('predict', inp_data))

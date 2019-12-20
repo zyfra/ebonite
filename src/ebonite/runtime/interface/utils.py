@@ -11,9 +11,23 @@ def merge(ifaces: Dict[str, Interface]) -> Interface:
     :param ifaces: dict with (prefix, interface) mappings
     :return: composite interface
     """
-    class MergedInterface(Interface):
-        for name, iface in ifaces.items():
-            for exposed in iface.exposed_methods():
-                locals()['{}-{}'.format(name, exposed)] = getattr(iface, exposed)
+    return _MergedInterface(ifaces)
 
-    return MergedInterface()
+
+class _MergedInterface(Interface):
+    def __init__(self, ifaces):
+        exposed = {**self.exposed}
+        executors = {**self.executors}
+        for pre, iface in ifaces.items():
+            for meth in iface.exposed_methods():
+                pre_meth = '{}-{}'.format(pre, meth)
+                exposed[pre_meth] = iface.exposed_method_signature(meth)
+                executors[pre_meth] = self._exec_factory(iface, meth)
+        self.exposed = exposed
+        self.executors = executors
+
+    @staticmethod
+    def _exec_factory(iface, method):
+        def _exec(**kwargs):
+            return iface.execute(method, kwargs)
+        return _exec

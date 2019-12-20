@@ -14,20 +14,24 @@ class MyNet(torch.nn.Module):
 
 
 def test_torch__builtin_net(first_tensor, tmpdir):
+    input_data = first_tensor.float()
     net = torch.nn.Linear(5, 1)
-    net2 = _check_model_wrapper(net, tmpdir)
-    assert torch.equal(net(first_tensor.float()), net2(first_tensor.float()))
+    net2 = _check_model_wrapper(net, input_data, tmpdir)
+    assert torch.equal(net(input_data), net2(input_data))
 
 
 def test_torch__custom_net(first_tensor, second_tensor, tmpdir):
+    input_data = [first_tensor.float(), second_tensor]
     net = MyNet()
-    net2 = _check_model_wrapper(net, tmpdir)
-    assert torch.equal(net(first_tensor.float(), second_tensor),
-                       net2(first_tensor.float(), second_tensor))
+    net2 = _check_model_wrapper(net, input_data, tmpdir)
+    assert torch.equal(net(*input_data), net2(*input_data))
 
 
-def _check_model_wrapper(net, tmpdir):
-    tmw = ModelAnalyzer.analyze(net)
+def _check_model_wrapper(net, input_data, tmpdir):
+    # this import is required for dataset type to be registered
+    import ebonite.ext.torch  # noqa
+
+    tmw = ModelAnalyzer.analyze(net, input_data=input_data)
 
     assert tmw.model is net
 
