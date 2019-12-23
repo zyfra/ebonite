@@ -1,5 +1,6 @@
 import pytest
 import xgboost
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.xgboost.dataset import DMatrixDatasetType
@@ -29,13 +30,22 @@ def test_hook_df(dtype_df):
 
 def test_serialize__np(dtype_np, np_payload):
     dmatrix = xgboost.DMatrix(np_payload)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(SerializationError):
         dtype_np.serialize(dmatrix)
 
 
 def test_deserialize__np(dtype_np, np_payload):
     dmatrix = dtype_np.deserialize(np_payload)
     assert isinstance(dmatrix, xgboost.DMatrix)
+
+
+@pytest.mark.parametrize('obj', [
+    [123, 'abc'],
+    {'abc': 123}
+])
+def test_deserialize__np_failure(dtype_np, obj):
+    with pytest.raises(DeserializationError):
+        dtype_np.deserialize(obj)
 
 
 def test_deserialize__df(dtype_df, df_payload):

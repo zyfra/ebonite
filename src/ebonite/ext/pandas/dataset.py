@@ -3,6 +3,7 @@ from typing import List
 import pandas as pd
 from pyjackson.core import ArgList, Field
 from pyjackson.decorators import cached_property
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
@@ -56,10 +57,22 @@ class DataFrameType(DatasetType):
         self.columns = columns
 
     def deserialize(self, obj):
-        return pd.DataFrame.from_records(obj['values'])
+        self._check_type(obj, dict, DeserializationError)
+        try:
+            ret = pd.DataFrame.from_records(obj['values'])
+        except (ValueError, KeyError):
+            raise DeserializationError(f'given object: {obj} could not be converted to dataframe')
+        self._check_columns(ret, DeserializationError)
+        return ret
 
     def serialize(self, instance: pd.DataFrame):
+        self._check_type(instance, pd.DataFrame, SerializationError)
+        self._check_columns(instance, SerializationError)
         return {'values': instance.to_dict('records')}
+
+    def _check_columns(self, df, exc_type):
+        if list(df.columns) != self.columns:
+            raise exc_type(f'given dataframe has columns: {list(df.columns)}, expected: {self.columns}')
 
     def get_spec(self) -> ArgList:
         return [Field('values', List[self.row_type], False)]

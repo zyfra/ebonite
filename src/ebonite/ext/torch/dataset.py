@@ -2,6 +2,7 @@ from typing import Tuple
 
 import torch
 from pyjackson.core import ArgList, Field
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
@@ -58,7 +59,22 @@ class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
         return [Field(None, self._get_subtype(self.shape[1:]), False)]
 
     def deserialize(self, obj):
-        return torch.tensor(obj, dtype=getattr(torch, self.dtype))
+        try:
+            ret = torch.tensor(obj, dtype=getattr(torch, self.dtype))
+        except (ValueError, TypeError):
+            raise DeserializationError(f'given object: {obj} could not be converted to tensor '
+                                       f'of type: {getattr(torch, self.dtype)}')
+        self._check_shape(ret, DeserializationError)
+        return ret
 
     def serialize(self, instance: torch.Tensor):
+        self._check_type(instance, torch.Tensor, SerializationError)
+        if instance.dtype is not getattr(torch, self.dtype):
+            raise SerializationError(f'given tensor is of dtype: {instance.dtype}, '
+                                     f'expected: {getattr(torch, self.dtype)}')
+        self._check_shape(instance, SerializationError)
         return instance.tolist()
+
+    def _check_shape(self, tensor, exc_type):
+        if tuple(tensor.shape)[1:] != self.shape[1:]:
+            raise exc_type(f'given tensor is of shape: {(None,) + tuple(tensor.shape)[1:]}, expected: {self.shape}')
