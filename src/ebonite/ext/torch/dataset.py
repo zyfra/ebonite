@@ -31,15 +31,8 @@ class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
     real_type = torch.Tensor
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
-        self.shape = shape
+        self.shape = (None, ) + shape[1:]
         self.dtype = dtype
-
-    @property
-    def size(self):
-        if len(self.shape) == 1:
-            return 1
-        else:
-            return self.shape[0]
 
     def list_size(self):
         return self.shape[0]
