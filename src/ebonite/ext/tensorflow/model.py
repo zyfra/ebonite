@@ -2,7 +2,7 @@ import contextlib
 import os
 import tempfile
 from abc import abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import tensorflow as tf
 from pyjackson.decorators import make_string
@@ -114,7 +114,7 @@ class TFTensorModelWrapper(ModelWrapper):
         else:
             self.model = graph.get_tensor_by_name(self.output_tensor_names)
 
-    def _exposed_methods_mapping(self) -> Dict[str, Optional[str]]:
+    def _exposed_methods_mapping(self) -> Dict[str, str]:
         return {
             'predict': '_predict'
         }

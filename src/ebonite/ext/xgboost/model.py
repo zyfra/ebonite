@@ -31,7 +31,7 @@ class XGBoostModelWrapper(ModelWrapper):
         self.model = xgboost.Booster()
         self.model.load_model(os.path.join(path, self.model_path))
 
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
             'predict': '_predict'
         }

@@ -9,7 +9,7 @@ from io import BytesIO
 from pickle import _Unpickler
 from uuid import uuid4
 
-from pyjackson import dumps, loads
+from pyjackson import dumps, read
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
 from pyjackson.utils import get_class_fields
@@ -56,8 +56,7 @@ class ModelWrapper(EboniteParams):
 
     def load(self, path):
         self._load(path)
-        with open(os.path.join(path, self.methods_json), 'r', encoding='utf-8') as f:
-            self.methods = loads(f.read(), typing.Optional[Methods])
+        self.methods = read(os.path.join(path, self.methods_json), typing.Optional[Methods])
 
     @abstractmethod
     def _load(self, path):
@@ -68,15 +67,15 @@ class ModelWrapper(EboniteParams):
         """
         pass
 
-    def bind_model(self, model, **kwargs):
+    def bind_model(self, model, input_data=None, **kwargs):
         """
         Bind model object to this wrapper by using given input data sample
 
         :param model: model object to bind
+        :param input_data: input data sample to determine model methods signatures
         :param kwargs: additional information to be used for analysis
         :return: self
         """
-        input_data = kwargs.get('input_data', None)
         if input_data is None:
             raise ValueError("Input data sample should be specified as 'input_data' key in order to analyze model")
 
@@ -139,20 +138,17 @@ class ModelWrapper(EboniteParams):
             raise ValueError(f"Wrapper '{self}' obj doesn't expose method '{name}'")
 
     def _call_method(self, wrapped, input_data):
-        if wrapped is None:
-            return self.model(input_data)
         if hasattr(self, wrapped):
             return getattr(self, wrapped)(input_data)
         return getattr(self.model, wrapped)(input_data)
 
     @abstractmethod
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         """
         Should return methods exposed by this model wrapper
 
         :return: methods dict: exposed method name to wrapped method name
-        If wrapped method name is `None` then wrapped model object should be called directly.
-        If method name is given and model wrapper itself has such method then it is going to be called:
+        If model wrapper itself has such method then it is going to be called:
         this allows to wrap existing API with your own pre/postprocessing.
         Otherwise, wrapped model object method is going to be called.
         """
@@ -428,7 +424,7 @@ class CallableMethodModelWrapper(PickleModelWrapper):
     """
     type = 'callable_method'
 
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
-            'predict': None
+            'predict': '__call__'
         }

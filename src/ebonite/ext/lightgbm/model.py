@@ -31,7 +31,7 @@ class LightGBMModelWrapper(ModelWrapper):
         model_file = os.path.join(path, self.model_path)
         self.model = lgb.Booster(model_file=model_file)
 
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
             'predict': '_predict'
         }

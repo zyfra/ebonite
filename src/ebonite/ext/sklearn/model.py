@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 
 from pyjackson.decorators import make_string
 from sklearn.base import ClassifierMixin
@@ -13,7 +13,7 @@ class SklearnModelWrapper(PickleModelWrapper):
     `pickle`-based :class:`.ModelWrapper` implementation for `scikit-learn` models
     """
 
-    def _exposed_methods_mapping(self) -> Dict[str, Optional[str]]:
+    def _exposed_methods_mapping(self) -> Dict[str, str]:
         ret = {
             'predict': 'predict'
         }

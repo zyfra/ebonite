@@ -39,7 +39,7 @@ class TorchModelWrapper(ModelWrapper):
         with open(os.path.join(path, self.model_file_name), 'rb') as f:
             self.model = torch.load(f)
 
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
             'predict': '_predict'
         }
