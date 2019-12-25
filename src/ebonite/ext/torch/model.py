@@ -17,6 +17,7 @@ class TorchModelWrapper(ModelWrapper):
     :class:`ebonite.core.objects.ModelWrapper` for PyTorch models. `.model` attribute is a `torch.nn.Module` instance
     """
     model_file_name = 'model.pth'
+    model_jit_file_name = 'model.jit.pth'
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
@@ -26,9 +27,13 @@ class TorchModelWrapper(ModelWrapper):
 
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
+        is_jit = isinstance(self.model, torch.jit.ScriptModule)
+        save = torch.jit.save if is_jit else torch.save
+        model_name = self.model_jit_file_name if is_jit else self.model_file_name
+
         buffer = BytesIO()
-        torch.save(self.model, buffer)
-        yield Blobs({self.model_file_name: InMemoryBlob(buffer.getvalue())})
+        save(self.model, buffer)
+        yield Blobs({model_name: InMemoryBlob(buffer.getvalue())})
 
     def _load(self, path):
         """
@@ -36,8 +41,14 @@ class TorchModelWrapper(ModelWrapper):
 
         :param path: path to load from
         """
-        with open(os.path.join(path, self.model_file_name), 'rb') as f:
-            self.model = torch.load(f)
+        model_path = os.path.join(path, self.model_jit_file_name)
+        load = torch.jit.load
+        if not os.path.exists(model_path):
+            model_path = os.path.join(path, self.model_file_name)
+            load = torch.load
+
+        with open(model_path, 'rb') as f:
+            self.model = load(f)
 
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
