@@ -249,7 +249,7 @@ class Task(EboniteObject):
         Create :class:`Model` instance from model object and push it to repository
 
         :param model_object: model object to build Model from
-        :param input_data: input data sample
+        :param input_data: input data sample to determine structure of inputs and outputs for given model
         :param model_name: name for model
         :param kwargs: other :meth:`~Model.create` arguments
         :return: created :class:`Model`
@@ -390,7 +390,7 @@ class Model(EboniteObject):
         Creates Model instance from arbitrary model objects and sample of input data
 
         :param model_object: The model object to analyze.
-        :param input_data: The image to run.
+        :param input_data: Input data sample to determine structure of inputs and outputs for given model object.
         :param model_name: The model name.
         :param additional_artifacts: Additional artifact.
         :param additional_requirements: Additional requirements.
