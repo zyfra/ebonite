@@ -16,7 +16,7 @@ class PandasHook(TypeHookMixin, DatasetHook):
 
     valid_types = [pd.DataFrame]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return DataFrameType(list(obj.columns))
 
 

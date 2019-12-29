@@ -21,7 +21,7 @@ class CatBoostModelWrapper(ModelWrapper):
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
-    def dump(self) -> ArtifactCollection:
+    def _dump(self) -> ArtifactCollection:
         """
         Dumps `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance to :class:`.LocalFileBlob` and
         creates :class:`.ArtifactCollection` from it
@@ -40,7 +40,7 @@ class CatBoostModelWrapper(ModelWrapper):
             return self.classifier_file_name
         return self.regressor_file_name
 
-    def load(self, path):
+    def _load(self, path):
         """
         Loads `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance from path
 
@@ -54,15 +54,13 @@ class CatBoostModelWrapper(ModelWrapper):
         self.model = model_type()
         self.model.load_model(os.path.join(path, self._get_model_file_name()))
 
-    @ModelWrapper.with_model
-    def predict(self, data):
-        """
-        Runs `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` and returns predictions
-
-        :param data: data to predict
-        :return: prediction
-        """
-        return self.model.predict(data)
+    def _exposed_methods_mapping(self):
+        ret = {
+            'predict': 'predict'
+        }
+        if isinstance(self.model, CatBoostClassifier):
+            ret['predict_proba'] = 'predict_proba'
+        return ret
 
 
 @make_string(include_name=True)
@@ -80,11 +78,11 @@ class CatBoostModelHook(ModelHook, CanIsAMustHookMixin):
         """
         return isinstance(obj, (CatBoostClassifier,  CatBoostRegressor))
 
-    def process(self, obj) -> ModelWrapper:
+    def process(self, obj, **kwargs) -> ModelWrapper:
         """
         Creates :class:`CatBoostModelWrapper` for CatBoost model object
 
         :param obj: obj to process
         :return: :class:`CatBoostModelWrapper` instance
         """
-        return CatBoostModelWrapper().bind_model(obj)
+        return CatBoostModelWrapper().bind_model(obj, **kwargs)

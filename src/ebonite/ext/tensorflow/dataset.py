@@ -53,7 +53,7 @@ class FeedDictHook(CanIsAMustHookMixin, DatasetHook):
         is_mapping = isinstance(obj, Mapping)
         return is_mapping and any(isinstance(k, tf.Tensor) for k in obj.keys())
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         """
         :param obj: obj to process
         :return: :class:`FeedDictDatasetType` instance

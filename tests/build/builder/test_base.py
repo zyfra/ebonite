@@ -120,25 +120,25 @@ def _check_contents(base_dir, name, contents):
 
 
 def test_python_builder__distr_loadable(tmpdir, python_builder: PythonBuilder, created_model, pandas_data):
-    prediction = created_model.wrapper.predict(pandas_data)
+    prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
         python_builder._write_distribution(tmpdir)
 
     iface = _load(ModelLoader(), tmpdir)
-    prediction2 = iface.predict(pandas_data)
+    prediction2 = iface.execute('predict', {'vector': pandas_data})
 
     np.testing.assert_almost_equal(prediction, prediction2)
 
 
 def test_python_multi_builder__distr_loadable(tmpdir, python_multi_builder: PythonBuilder, created_model, pandas_data):
-    prediction = created_model.wrapper.predict(pandas_data)
+    prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
         python_multi_builder._write_distribution(tmpdir)
 
     iface = _load(MultiModelLoader(), tmpdir)
-    prediction2 = getattr(iface, f'{created_model.name}-predict')(pandas_data)
+    prediction2 = iface.execute(f'{created_model.name}-predict', {'vector': pandas_data})
 
     np.testing.assert_almost_equal(prediction, prediction2)
 
@@ -175,6 +175,9 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuild
         client = HTTPClient()
         predictions = client.predict(pandas_data)
         np.testing.assert_array_almost_equal(predictions, [1, 0])
+
+        probas = client.predict_proba(pandas_data)
+        np.testing.assert_array_almost_equal(np.argmax(probas, axis=1), [1, 0])
     finally:
         # our server runs for eternity, thus we should kill it to clean up
         # `server.kill` kills just shell script, Python subprocess still alive
@@ -194,7 +197,7 @@ def _prepare_distribution(target_dir, python_builder):
         contents = f.read()
     # windows paths are deadly for shell scripts under Cygwin
     python_exe = sys.executable.replace('\\', '/')
-    contents = contents.replace(' python ', f' {python_exe} ')
+    contents = contents.replace('python', python_exe)
     with open(run_sh, 'w') as f:
         f.write(contents)
 

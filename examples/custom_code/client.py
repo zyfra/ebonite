@@ -12,7 +12,7 @@ def main():
     payload = {'vector': {'values': [{'value': value}]}}
     r = requests.post('http://localhost:9000/predict', json=payload)
     r.raise_for_status()
-    print(r.json()['data'][0])
+    print(r.json()['data']['values'][0]['value'])
 
 
 if __name__ == '__main__':

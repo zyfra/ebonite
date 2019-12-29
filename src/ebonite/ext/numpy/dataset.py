@@ -62,7 +62,7 @@ class NumpyNumberHook(CanIsAMustHookMixin, DatasetHook):
     def must_process(self, obj) -> bool:
         return isinstance(obj, np.number)
 
-    def process(self, obj: np.number) -> DatasetType:
+    def process(self, obj: np.number, **kwargs) -> DatasetType:
         return NumpyNumberDatasetType(obj.dtype.name)
 
 
@@ -73,7 +73,7 @@ class NumpyNdarrayHook(TypeHookMixin, DatasetHook):
 
     valid_types = [np.ndarray]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return NumpyNdarrayDatasetType(obj.shape, obj.dtype.name)
 
 
