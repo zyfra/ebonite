@@ -60,8 +60,6 @@ def test_np__schema(dtype_np):
                                 'maxItems': 1,
                                 'minItems': 1,
                                 'type': 'array'},
-                      'maxItems': 5,
-                      'minItems': 5,
                       'type': 'array'}
 
 

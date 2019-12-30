@@ -102,15 +102,8 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         # TODO assert shape and dtypes len
-        self.shape = shape
+        self.shape = (None, ) + shape[1:]
         self.dtype = dtype
-
-    @property
-    def size(self):
-        if len(self.shape) == 1:
-            return 1
-        else:
-            return self.shape[0]  # TODO more dimensions
 
     def list_size(self):
         return self.shape[0]
