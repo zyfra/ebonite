@@ -2,6 +2,7 @@ from typing import Tuple, Type
 
 import numpy as np
 from pyjackson.core import ArgList, Field
+from pyjackson.errors import DeserializationError, SerializationError
 from pyjackson.generics import Serializer
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin, TypeHookMixin
@@ -47,6 +48,7 @@ class NumpyNumberDatasetType(DatasetType):
         return self.actual_type(obj)
 
     def serialize(self, instance: np.number) -> object:
+        self._check_type(instance, np.number, SerializationError)
         return instance.item()
 
     @property
@@ -121,9 +123,22 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
         return [Field(None, self._get_subtype(self.shape[1:]), False)]
 
     def deserialize(self, obj):
-        return np.array(obj)
+        try:
+            ret = np.array(obj, dtype=_np_type_from_string(self.dtype))
+        except (ValueError, TypeError):
+            raise DeserializationError(f'given object: {obj} could not be converted to array '
+                                       f'of type: {_np_type_from_string(self.dtype)}')
+        self._check_shape(ret, DeserializationError)
+        return ret
 
     def serialize(self, instance: np.ndarray):
-        # if self.shape == 1:
-        #     return [instance.tolist()]  # TODO better shapes
+        self._check_type(instance, np.ndarray, SerializationError)
+        exp_type = _np_type_from_string(self.dtype)
+        if instance.dtype != exp_type:
+            raise SerializationError(f'given array is of type: {instance.dtype}, expected: {exp_type}')
+        self._check_shape(instance, SerializationError)
         return instance.tolist()
+
+    def _check_shape(self, array, exc_type):
+        if tuple(array.shape)[1:] != self.shape[1:]:
+            raise exc_type(f'given array is of shape: {(None,) + tuple(array.shape)[1:]}, expected: {self.shape}')
