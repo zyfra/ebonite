@@ -163,7 +163,7 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuild
     from setup import setup_args
     _check_requirements(tmpdir, {*setup_args['install_requires'],
                                  'flasgger==0.9.3',  # server reqs
-                                 'pandas==0.25.1', 'scikit-learn==0.21.3', 'numpy==1.17.3'})  # model reqs
+                                 'pandas==0.25.1', 'scikit-learn==0.22', 'numpy==1.17.3'})  # model reqs
 
     # TODO make ModelLoader.load cwd-independent
     server = subprocess.Popen(args, env=env, cwd=tmpdir)
