@@ -1,9 +1,9 @@
 import pytest
-from pyjackson import serialize, deserialize
+from pyjackson import deserialize, serialize
 from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
-from ebonite.core.objects.dataset_type import DatasetType, PrimitiveDatasetType, ListDatasetType, DictDatasetType
+from ebonite.core.objects.dataset_type import DatasetType, DictDatasetType, ListDatasetType, PrimitiveDatasetType
 
 
 class DTHolder:
