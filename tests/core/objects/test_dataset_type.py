@@ -118,8 +118,6 @@ def test_dict_with_list_dataset_type():
     data = {'a': ['b']}
     dt = DatasetAnalyzer.analyze(data)
 
-    a = serialize(dt)
-
     assert dt == DictDatasetType({'a': ListDatasetType([PrimitiveDatasetType('str')])})
 
     assert serialize(data, dt) == data
