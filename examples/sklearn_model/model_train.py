@@ -2,16 +2,16 @@
 from typing import Tuple
 
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 
 import ebonite
 
 
-def train_model() -> Tuple[LinearRegression, pd.DataFrame]:
+def train_model() -> Tuple[LogisticRegression, pd.DataFrame]:
     """This function simulates general data scientist's work.
     It produces trained model and data sample for this model."""
-    reg = LinearRegression()
-    data = pd.DataFrame([[1, 1], [2, 1]], columns=['a', 'b'])
+    reg = LogisticRegression()
+    data = pd.DataFrame([[1, 0], [0, 1]], columns=['a', 'b'])
     reg.fit(data, [1, 0])
     return reg, data
 

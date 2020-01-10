@@ -37,11 +37,12 @@ class Hook:
         pass
 
     @abstractmethod
-    def process(self, obj):
+    def process(self, obj, **kwargs):
         """
         Analyzes obj and returns result. Result type is determined by specific Hook class sub-hierarchy
 
         :param obj: object to analyze
+        :param kwargs: additional information to be used for analysis
         :return: analysis result
         """
         pass
@@ -148,18 +149,19 @@ def analyzer_class(hook_type: type, return_type: type):
         hooks: List[hook_type] = []
 
         @classmethod
-        def analyze(cls, obj) -> return_type:
+        def analyze(cls, obj, **kwargs) -> return_type:
             f"""
             Run {hook_type.__name__} hooks to analyze obj
 
             :param obj: objects to analyze
+            :param kwargs: additional information to be used for analysis
             :return: Instance of {return_type.__name__}
             """
             hooks = []
             for hook in cls.hooks:
                 if hook.must_process(obj):
                     logger.debug('processing class %s with %s', type(obj).__name__, hook.__class__.__name__)
-                    return hook.process(obj)
+                    return hook.process(obj, **kwargs)
                 elif hook.can_process(obj):
                     hooks.append(hook)
 
@@ -170,7 +172,7 @@ def analyzer_class(hook_type: type, return_type: type):
             elif len(hooks) > 1:
                 raise ValueError(f'Multiple suitable hooks for object {obj} ({hooks})')
 
-            return hooks[0].process(obj)
+            return hooks[0].process(obj, **kwargs)
 
     Analyzer.__name__ = '{}Analyzer'.format(hook_type.__name__)
     setattr(hook_type, ANALYZER_FIELD, Analyzer)

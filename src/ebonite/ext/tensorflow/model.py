@@ -2,7 +2,7 @@ import contextlib
 import os
 import tempfile
 from abc import abstractmethod
-from typing import List
+from typing import Dict, List
 
 import tensorflow as tf
 from pyjackson.decorators import make_string
@@ -87,7 +87,7 @@ class TFTensorModelWrapper(ModelWrapper):
 
     @ModelWrapper.with_model
     @contextlib.contextmanager
-    def dump(self) -> FilesContextManager:
+    def _dump(self) -> FilesContextManager:
         """
         Dumps session to temporary directory and creates :class:`~ebonite.core.objects.ArtifactCollection` from it
 
@@ -96,7 +96,7 @@ class TFTensorModelWrapper(ModelWrapper):
         with tempfile.TemporaryDirectory(prefix='ebonite_tensor_') as tempdir:
             yield from self._dumper.dump(self._get_session(), tempdir)
 
-    def load(self, path):
+    def _load(self, path):
         """
         Loads graph from path
 
@@ -114,8 +114,13 @@ class TFTensorModelWrapper(ModelWrapper):
         else:
             self.model = graph.get_tensor_by_name(self.output_tensor_names)
 
+    def _exposed_methods_mapping(self) -> Dict[str, str]:
+        return {
+            'predict': '_predict'
+        }
+
     @ModelWrapper.with_model
-    def predict(self, data):
+    def _predict(self, data):
         """
         Runs session and returns output tensor values
 
@@ -158,11 +163,12 @@ class TFTensorHook(CanIsAMustHookMixin, ModelHook):
         """
         return isinstance(obj, tf.Tensor) or (isinstance(obj, list) and all(isinstance(o, tf.Tensor) for o in obj))
 
-    def process(self, obj) -> ModelWrapper:
+    def process(self, obj, **kwargs) -> ModelWrapper:
         """
         Creates :class:`TFTensorModelWrapper` for tensorflow model object
 
         :param obj: obj to process
+        :param kwargs: additional information to be used for analysis
         :return: :class:`TFTensorModelWrapper` instance
         """
         if isinstance(obj, list):
@@ -170,4 +176,4 @@ class TFTensorHook(CanIsAMustHookMixin, ModelHook):
         else:
             tensor_names = obj.name
 
-        return TFTensorModelWrapper(tensor_names, is_graph_frozen()).bind_model(obj)
+        return TFTensorModelWrapper(tensor_names, is_graph_frozen()).bind_model(obj, **kwargs)

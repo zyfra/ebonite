@@ -11,7 +11,14 @@ class DatasetHook(Hook):
     Analysis result is an instance of :class:`~ebonite.core.objects.DatasetType`
     """
     @abstractmethod
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
+        """
+        Analyzes obj and returns result. Result type is determined by specific Hook class sub-hierarchy
+
+        :param obj: object to analyze
+        :param kwargs: additional information to be used for analysis
+        :return: analysis result
+        """
         pass
 
 
@@ -29,7 +36,7 @@ class PrimitivesHook(DatasetHook):
     def must_process(self, obj):
         return False
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return PrimitiveDatasetType(type(obj).__name__)
 
 
@@ -43,7 +50,7 @@ class ListHookDelegator(DatasetHook):
     def must_process(self, obj) -> bool:
         return False
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return ListDatasetType([DatasetAnalyzer.analyze(o) for o in obj])
 
 
@@ -57,7 +64,7 @@ class DictHookDelegator(DatasetHook):
     def must_process(self, obj) -> bool:
         return False
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         try:
             items = {k: DatasetAnalyzer.analyze(o) for k, o in obj.items()}
         except ValueError:
@@ -69,7 +76,7 @@ class FilelikeDatasetHook(DatasetHook):
     """
     Hook for file-like objects
     """
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return FilelikeDatasetType()
 
     def can_process(self, obj) -> bool:
