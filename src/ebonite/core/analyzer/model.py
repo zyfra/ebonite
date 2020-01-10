@@ -13,7 +13,7 @@ class ModelHook(Hook):
     """
 
     @abstractmethod
-    def process(self, obj) -> ModelWrapper:
+    def process(self, obj, **kwargs) -> ModelWrapper:
         pass
 
     def get_requirements(self, obj) -> Requirements:
@@ -27,8 +27,8 @@ class CallableMethodModelHook(ModelHook):
     """
     Hook for processing functions
     """
-    def process(self, obj) -> ModelWrapper:
-        return CallableMethodModelWrapper().bind_model(obj)
+    def process(self, obj, **kwargs) -> ModelWrapper:
+        return CallableMethodModelWrapper().bind_model(obj, **kwargs)
 
     def can_process(self, obj) -> bool:
         return callable(obj)

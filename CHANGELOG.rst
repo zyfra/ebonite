@@ -4,6 +4,19 @@ Changelog
 Current release candidate
 -------------------------
 
+0.3.3 (2020-01-10)
+------------------
+
+* Eliminated tensorflow warnings. Added more tests for providers/loaders. Fixed bugs in multi-model provider/builder.
+* Improved documentation
+* Eliminate useless "which docker" check which fails on Windows hosts
+* Perform redirect from / to Swagger API docs in Flask server
+* Support for predict_proba method in ML model
+* Do not fix first dimension size for numpy arrays and torch tensors
+* Support for Pytorch JIT (TorchScript) models
+* Bump tensorflow from 1.14.0 to 1.15.0
+* Added more tests
+
 0.3.2 (2019-12-04)
 ------------------
 

@@ -1,6 +1,7 @@
 import lightgbm as lgb
 import numpy as np
 import pytest
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.lightgbm.dataset import LightGBMDatasetType
@@ -34,11 +35,17 @@ def test_serialize__np(dtype_np, np_payload):
     payload = dtype_np.serialize(ds)
     assert payload == np_payload.tolist()
 
+    with pytest.raises(SerializationError):
+        dtype_np.serialize({'abc': 123})  # wrong type
+
 
 def test_deserialize__np(dtype_np, np_payload):
     ds = dtype_np.deserialize(np_payload)
     assert isinstance(ds, lgb.Dataset)
     assert np.all(ds.data == np_payload)
+
+    with pytest.raises(DeserializationError):
+        dtype_np.deserialize([[1], ['abc']])  # illegal matrix
 
 
 def test_serialize__df(dtype_df, df_payload):
@@ -60,8 +67,6 @@ def test_np__schema(dtype_np):
                                 'maxItems': 1,
                                 'minItems': 1,
                                 'type': 'array'},
-                      'maxItems': 5,
-                      'minItems': 5,
                       'type': 'array'}
 
 

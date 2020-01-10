@@ -3,7 +3,6 @@ import pandas as pd
 import pytest
 from pyjackson import deserialize
 
-from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.objects.core import Model
 from ebonite.core.objects.requirements import Requirements
 from ebonite.ext.sklearn import SklearnModelWrapper
@@ -30,22 +29,19 @@ def prediction(data):
 
 
 @pytest.fixture
-def model(data, prediction):
-    dataset_meta = DatasetAnalyzer.analyze(data)
-    output_meta = DatasetAnalyzer.analyze(prediction)
-    return Model('test model', SklearnModelWrapper(), input_meta=dataset_meta,
-                 output_meta=output_meta, requirements=Requirements([]))
+def model():
+    return Model('test model', SklearnModelWrapper(), requirements=Requirements([]))
 
 
 @pytest.fixture
-def pd_model(model: Model, prediction):
-    model.wrapper.bind_model(PandasModel(prediction))
+def pd_model(model: Model, data, prediction):
+    model.wrapper.bind_model(PandasModel(prediction), input_data=data)
     return model
 
 
 def test_interface_types(pd_model: Model, data, prediction):
     interface = model_interface(pd_model)
-    pred = interface.predict(data)
+    pred = interface.execute('predict', {'vector': data})
     assert (pred == prediction).all()
 
 
@@ -54,7 +50,7 @@ def test_with_serde(pd_model: Model):
 
     obj = {'values': [{'a': 1, 'b': 1}]}
 
-    data_type = pd_model.input_meta
+    data_type, _ = pd_model.wrapper.method_signature('predict')
     data = deserialize(obj, data_type)
 
-    interface.predict(data)
+    interface.execute('predict', {'vector': data})

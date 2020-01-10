@@ -4,7 +4,6 @@ import pytest
 from ebonite.core.errors import MetadataError, NonExistingModelError, NonExistingTaskError, UnboundObjectError
 from ebonite.core.objects.core import Model, Project, Task
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
-from ebonite.ext.pandas import DataFrameType
 from ebonite.ext.sklearn import SklearnModelWrapper
 from ebonite.repository import MetadataRepository
 from tests.core.objects.conftest import serde_and_compare
@@ -173,27 +172,21 @@ def test_create_model(sklearn_model_obj, pandas_data):
     model = Model.create(sklearn_model_obj, pandas_data)
     assert model is not None
     assert isinstance(model.wrapper, SklearnModelWrapper)
-    assert model.input_meta.columns == list(pandas_data)
-    # assert model.input_meta. == data.values
-
-    assert model.output_meta.real_type == np.ndarray
+    input_meta, output_meta = model.wrapper.method_signature('predict')
+    assert input_meta.columns == list(pandas_data)
+    assert output_meta.real_type == np.ndarray
     assert {'numpy', 'sklearn', 'pandas'}.issubset(model.requirements.modules)
 
 
 def test_create_model_with_custom_wrapper(sklearn_model_obj, pandas_data):
-    wrapper = SklearnModelWrapper().bind_model(sklearn_model_obj)
+    wrapper = SklearnModelWrapper().bind_model(sklearn_model_obj, input_data=pandas_data)
     model = Model.create(sklearn_model_obj, pandas_data, custom_wrapper=wrapper)
     assert model is not None
-    assert isinstance(model.wrapper, SklearnModelWrapper)
-    assert model.input_meta.columns == list(pandas_data)
-    assert model.output_meta.real_type == np.ndarray
+    assert model.wrapper is wrapper
+    input_meta, output_meta = model.wrapper.method_signature('predict')
+    assert input_meta.columns == list(pandas_data)
+    assert output_meta.real_type == np.ndarray
     assert {'numpy', 'sklearn', 'pandas'}.issubset(model.requirements.modules)
-
-
-def test_create_model_with_custom_input_meta(sklearn_model_obj, pandas_data):
-    model = Model.create(sklearn_model_obj, pandas_data, custom_input_meta=DataFrameType(['kek1', 'kek2']))
-    assert model is not None
-    assert issubclass(model.input_meta, DataFrameType)
 
 
 def test_create_model_with_custom_requirements(sklearn_model_obj, pandas_data):
@@ -208,7 +201,7 @@ def test_create_model_with_additional_artifact(artifact, sklearn_model_obj, pand
     assert model is not None
     model._id = 'test_model'
     artifact_repository.push_artifacts(model)
-    assert len(model.artifact_req_persisted.bytes_dict()) == 2
+    assert len(model.artifact_req_persisted.bytes_dict()) == 3
 
     model_payloads = model.artifact_req_persisted.bytes_dict()
     for name, payload in artifact.bytes_dict().items():

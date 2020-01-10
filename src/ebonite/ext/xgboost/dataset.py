@@ -2,6 +2,7 @@ from typing import List
 
 import xgboost
 from pyjackson.core import ArgList, Field
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
@@ -41,13 +42,14 @@ class DMatrixDatasetType(DatasetType):
     def serialize(self, instance: xgboost.DMatrix) -> list:
         """
         Raises an error because there is no way to extract original data from DMatrix
-
-        :raises: RuntimeError
         """
-        raise RuntimeError('DMatrixDatasetType does not support serialization')
+        raise SerializationError('xgboost matrix does not support serialization')
 
     def deserialize(self, obj: list) -> xgboost.DMatrix:
-        return xgboost.DMatrix(obj)
+        try:
+            return xgboost.DMatrix(obj)
+        except (ValueError, TypeError):
+            raise DeserializationError(f'given object: {obj} could not be converted to xgboost matrix')
 
     @classmethod
     def from_dmatrix(cls, dmatrix: xgboost.DMatrix):
@@ -67,5 +69,5 @@ class DMatrixHook(DatasetHook, TypeHookMixin):
     """
     valid_types = [xgboost.DMatrix]
 
-    def process(self, obj: xgboost.DMatrix) -> DatasetType:
+    def process(self, obj: xgboost.DMatrix, **kwargs) -> DatasetType:
         return DMatrixDatasetType.from_dmatrix(obj)

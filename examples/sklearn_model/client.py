@@ -23,6 +23,10 @@ def main():
     r.raise_for_status()
     print(r.json()['data'][0])
 
+    r = requests.post('http://localhost:9000/predict_proba', json=payload)
+    r.raise_for_status()
+    print(r.json()['data'][0])
+
 
 if __name__ == '__main__':
     main()

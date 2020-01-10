@@ -1,4 +1,5 @@
 import contextlib
+import typing
 
 from ebonite.core.analyzer.model import ModelHook
 from ebonite.core.objects.artifacts import Blobs
@@ -11,14 +12,18 @@ class MyModelWrapper(ModelWrapper):
 
     @contextlib.contextmanager
     @ModelWrapper.with_model
-    def dump(self) -> FilesContextManager:
+    def _dump(self) -> FilesContextManager:
         yield Blobs({})
 
-    def load(self, path):
+    def _load(self, path):
         return self.bind_model('ahaha')
 
-    @ModelWrapper.with_model
-    def predict(self, data):
+    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {
+            'predict': '_predict'
+        }
+
+    def _predict(self, data):
         return data + 1
 
 
@@ -29,5 +34,5 @@ class MyModelHook(ModelHook):
     def must_process(self, obj) -> bool:
         return True
 
-    def process(self, obj) -> ModelWrapper:
-        return MyModelWrapper().bind_model(obj)
+    def process(self, obj, **kwargs) -> ModelWrapper:
+        return MyModelWrapper().bind_model(obj, **kwargs)
