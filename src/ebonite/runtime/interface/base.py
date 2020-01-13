@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable, Field, Signature
@@ -49,6 +49,7 @@ class Interface(metaclass=InterfaceMetaclass):
     """
 
     exposed: Dict[str, Signature] = {}
+    executors: Dict[str, Callable] = {}
 
     def execute(self, method: str, args: Dict[str, object]):
         """
@@ -60,7 +61,7 @@ class Interface(metaclass=InterfaceMetaclass):
         """
 
         self._validate_args(method, args)
-        f = getattr(self, method)
+        f = self.executors[method] if method in self.executors else getattr(self, method)
         return f(**args)
 
     def _validate_args(self, method: str, args: Dict[str, object]):

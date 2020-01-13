@@ -9,7 +9,6 @@ from sqlalchemy.orm import relationship
 
 from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.core import Model, Project, Task
-from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import Requirements
 from ebonite.core.objects.wrapper import ModelWrapper
 
@@ -144,8 +143,6 @@ class SModel(Base, Attaching):
     wrapper = Column(Text)
 
     artifact = Column(Text)
-    input_meta = Column(Text)
-    output_meta = Column(Text)
     requirements = Column(Text)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="models")
@@ -156,8 +153,6 @@ class SModel(Base, Attaching):
                       creation_date=self.creation_date,
                       wrapper=safe_loads(self.wrapper, ModelWrapper),
                       artifact=safe_loads(self.artifact, ArtifactCollection),
-                      input_meta=safe_loads(self.input_meta, DatasetType),
-                      output_meta=safe_loads(self.output_meta, DatasetType),
                       requirements=safe_loads(self.requirements, Requirements),
                       id=tostr(self.id),
                       task_id=tostr(self.task_id))
@@ -171,7 +166,5 @@ class SModel(Base, Attaching):
                     creation_date=model.creation_date,
                     wrapper=dumps(model.wrapper),
                     artifact=dumps(model.artifact),
-                    input_meta=dumps(model.input_meta),
-                    output_meta=dumps(model.output_meta),
                     requirements=dumps(model.requirements),
                     task_id=model.task_id)

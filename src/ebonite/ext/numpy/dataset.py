@@ -2,6 +2,7 @@ from typing import Tuple, Type
 
 import numpy as np
 from pyjackson.core import ArgList, Field
+from pyjackson.errors import DeserializationError, SerializationError
 from pyjackson.generics import Serializer
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin, TypeHookMixin
@@ -47,6 +48,7 @@ class NumpyNumberDatasetType(DatasetType):
         return self.actual_type(obj)
 
     def serialize(self, instance: np.number) -> object:
+        self._check_type(instance, np.number, SerializationError)
         return instance.item()
 
     @property
@@ -62,7 +64,7 @@ class NumpyNumberHook(CanIsAMustHookMixin, DatasetHook):
     def must_process(self, obj) -> bool:
         return isinstance(obj, np.number)
 
-    def process(self, obj: np.number) -> DatasetType:
+    def process(self, obj: np.number, **kwargs) -> DatasetType:
         return NumpyNumberDatasetType(obj.dtype.name)
 
 
@@ -73,7 +75,7 @@ class NumpyNdarrayHook(TypeHookMixin, DatasetHook):
 
     valid_types = [np.ndarray]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return NumpyNdarrayDatasetType(obj.shape, obj.dtype.name)
 
 
@@ -102,15 +104,8 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         # TODO assert shape and dtypes len
-        self.shape = shape
+        self.shape = (None, ) + shape[1:]
         self.dtype = dtype
-
-    @property
-    def size(self):
-        if len(self.shape) == 1:
-            return 1
-        else:
-            return self.shape[0]  # TODO more dimensions
 
     def list_size(self):
         return self.shape[0]
@@ -128,9 +123,22 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
         return [Field(None, self._get_subtype(self.shape[1:]), False)]
 
     def deserialize(self, obj):
-        return np.array(obj)
+        try:
+            ret = np.array(obj, dtype=_np_type_from_string(self.dtype))
+        except (ValueError, TypeError):
+            raise DeserializationError(f'given object: {obj} could not be converted to array '
+                                       f'of type: {_np_type_from_string(self.dtype)}')
+        self._check_shape(ret, DeserializationError)
+        return ret
 
     def serialize(self, instance: np.ndarray):
-        # if self.shape == 1:
-        #     return [instance.tolist()]  # TODO better shapes
+        self._check_type(instance, np.ndarray, SerializationError)
+        exp_type = _np_type_from_string(self.dtype)
+        if instance.dtype != exp_type:
+            raise SerializationError(f'given array is of type: {instance.dtype}, expected: {exp_type}')
+        self._check_shape(instance, SerializationError)
         return instance.tolist()
+
+    def _check_shape(self, array, exc_type):
+        if tuple(array.shape)[1:] != self.shape[1:]:
+            raise exc_type(f'given array is of shape: {(None,) + tuple(array.shape)[1:]}, expected: {self.shape}')

@@ -1,6 +1,6 @@
 """This module loads created ebonite model and then creates and runs docker container made from this model"""
 
-import ebonite.runtime.server.http
+import ebonite
 from ebonite.build import build_model_docker, run_docker_img
 from ebonite.build.builder.base import use_local_installation
 from ebonite.core.objects.core import Model, Task

@@ -1,7 +1,7 @@
 from typing import Mapping
 
 import tensorflow as tf
-from pyjackson import serialize
+from pyjackson.errors import SerializationError
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
 from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
@@ -27,8 +27,12 @@ class FeedDictDatasetType(DictDatasetType):
         return FeedDictDatasetType(types)
 
     def serialize(self, instance: dict):
-        items = ((self.get_key(k), v) for k, v in instance.items())
-        return {k: serialize(v, self.item_types[k]) for k, v in items}
+        self._check_type(instance, dict, SerializationError)
+        try:
+            items = {self.get_key(k): v for k, v in instance.items()}
+        except ValueError as e:
+            raise SerializationError(e)
+        return super().serialize(self, items)
 
     @staticmethod
     def get_key(k):
@@ -53,7 +57,7 @@ class FeedDictHook(CanIsAMustHookMixin, DatasetHook):
         is_mapping = isinstance(obj, Mapping)
         return is_mapping and any(isinstance(k, tf.Tensor) for k in obj.keys())
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         """
         :param obj: obj to process
         :return: :class:`FeedDictDatasetType` instance

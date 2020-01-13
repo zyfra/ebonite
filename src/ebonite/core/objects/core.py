@@ -11,10 +11,8 @@ from pyjackson.decorators import make_string
 import ebonite.repository
 from ebonite import client
 from ebonite.core import errors
-from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
-from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
@@ -258,7 +256,7 @@ class Task(EboniteObject):
         Create :class:`Model` instance from model object and push it to repository
 
         :param model_object: model object to build Model from
-        :param input_data: input data sample
+        :param input_data: input data sample to determine structure of inputs and outputs for given model
         :param model_name: name for model
         :param kwargs: other :meth:`~Model.create` arguments
         :return: created :class:`Model`
@@ -299,7 +297,8 @@ class Model(EboniteObject):
     :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
     :param input_meta: :class:`~ebonite.core.objects.DatasetType` instance for model input
-    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output
+    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict`)
+    :param output_proba_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict_proba`)
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
     :param id: model id
     :param task_id: parent task_id
@@ -308,15 +307,13 @@ class Model(EboniteObject):
     """
 
     def __init__(self, name: str, wrapper: ModelWrapper,
-                 artifact: 'ArtifactCollection' = None, input_meta: DatasetType = None,
-                 output_meta: DatasetType = None, requirements: Requirements = None, id: str = None,
+                 artifact: 'ArtifactCollection' = None,
+                 requirements: Requirements = None, id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.wrapper = wrapper
 
-        self.output_meta = output_meta
-        self.input_meta = input_meta
         self.requirements = requirements
         self.transformer = None
         self.task_id = task_id
@@ -407,45 +404,39 @@ class Model(EboniteObject):
     def create(cls, model_object, input_data, model_name: str = None,
                additional_artifacts: ArtifactCollection = None, additional_requirements: AnyRequirements = None,
                custom_wrapper: ModelWrapper = None, custom_artifact: ArtifactCollection = None,
-               custom_input_meta: DatasetType = None, custom_output_meta: DatasetType = None, custom_prediction=None,
                custom_requirements: AnyRequirements = None) -> 'Model':
         """
         Creates Model instance from arbitrary model objects and sample of input data
 
         :param model_object: The model object to analyze.
-        :param input_data: The image to run.
+        :param input_data: Input data sample to determine structure of inputs and outputs for given model object.
         :param model_name: The model name.
         :param additional_artifacts: Additional artifact.
         :param additional_requirements: Additional requirements.
         :param custom_wrapper: Custom model wrapper.
         :param custom_artifact: Custom artifact collection to replace all other.
-        :param custom_input_meta: Custom input DatasetType.
-        :param custom_output_meta: Custom output DatasetType.
-        :param custom_prediction: Custom prediction output.
         :param custom_requirements: Custom requirements to replace all other.
         :returns: :py:class:`Model`
         """
-        wrapper: ModelWrapper = custom_wrapper or ModelAnalyzer.analyze(model_object)
+        wrapper: ModelWrapper = custom_wrapper or ModelAnalyzer.analyze(model_object, input_data=input_data)
         name = model_name or _generate_model_name(wrapper)
 
         artifact = custom_artifact or WrapperArtifactCollection(wrapper)
         if additional_artifacts is not None:
             artifact += additional_artifacts
 
-        input_meta = custom_input_meta or DatasetAnalyzer.analyze(input_data)
-        prediction = custom_prediction or wrapper.predict(input_data)
-        output_meta = custom_output_meta or DatasetAnalyzer.analyze(prediction)
-
         if custom_requirements is not None:
             requirements = resolve_requirements(custom_requirements)
         else:
             requirements = get_object_requirements(model_object)
             requirements += get_object_requirements(input_data)
-            requirements += get_object_requirements(prediction)
+            for method in wrapper.exposed_methods:
+                output_data = wrapper.call_method(method, input_data)
+                requirements += get_object_requirements(output_data)
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, input_meta, output_meta, requirements)
+        model = Model(name, wrapper, None, requirements)
         model._unpersisted_artifacts = artifact
         return model
 

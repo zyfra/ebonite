@@ -1,13 +1,12 @@
 import lightgbm as lgb
 from pyjackson.core import ArgList
-from pyjackson.decorators import as_list
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
 from ebonite.core.objects import DatasetType
 
 
-@as_list
 class LightGBMDatasetType(DatasetType):
     """
     :class:`.DatasetType` implementation for `lightgbm.Dataset` type
@@ -30,10 +29,15 @@ class LightGBMDatasetType(DatasetType):
         return self.inner.get_spec()
 
     def serialize(self, instance: lgb.Dataset) -> dict:
+        self._check_type(instance, lgb.Dataset, SerializationError)
         return self.inner.serialize(instance.data)
 
     def deserialize(self, obj: dict) -> lgb.Dataset:
-        return lgb.Dataset(self.inner.deserialize(obj), free_raw_data=False)
+        v = self.inner.deserialize(obj)
+        try:
+            return lgb.Dataset(v, free_raw_data=False)
+        except ValueError:
+            raise DeserializationError(f'object: {obj} could not be converted to lightgbm dataset')
 
     @classmethod
     def from_dataset(cls, dataset: lgb.Dataset):
@@ -46,5 +50,5 @@ class LightGBMDatasetHook(DatasetHook, TypeHookMixin):
     """
     valid_types = [lgb.Dataset]
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return LightGBMDatasetType.from_dataset(obj)

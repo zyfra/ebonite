@@ -13,8 +13,8 @@ def booster(dataset_np):
 
 
 @pytest.fixture
-def wrapper(booster) -> ModelWrapper:
-    return ModelAnalyzer.analyze(booster)
+def wrapper(booster, dataset_np) -> ModelWrapper:
+    return ModelAnalyzer.analyze(booster, input_data=dataset_np)
 
 
 def test_hook(wrapper, booster):
@@ -23,14 +23,14 @@ def test_hook(wrapper, booster):
 
 
 def test_wrapper__predict(wrapper, dataset_np):
-    predict = wrapper.predict(dataset_np)
+    predict = wrapper.call_method('predict', dataset_np)
     assert isinstance(predict, np.ndarray)
     assert len(predict) == dataset_np.num_data()
 
 
 def test_wrapper__predict_not_dataset(wrapper):
     data = [[1]]
-    predict = wrapper.predict(data)
+    predict = wrapper.call_method('predict', data)
     assert isinstance(predict, np.ndarray)
     assert len(predict) == len(data)
 
@@ -40,7 +40,7 @@ def test_wrapper__dump_load(tmpdir, wrapper: ModelWrapper, dataset_np):
         d.materialize(tmpdir)
     wrapper.unbind()
     with pytest.raises(ValueError):
-        wrapper.predict(dataset_np)
+        wrapper.call_method('predict', dataset_np)
 
     wrapper.load(tmpdir)
     test_wrapper__predict(wrapper, dataset_np)
