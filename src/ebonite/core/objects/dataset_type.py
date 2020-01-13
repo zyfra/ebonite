@@ -1,5 +1,5 @@
 import builtins
-from typing import Dict, List
+from typing import Dict, List, Sized
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import ArgList, Field
@@ -7,7 +7,7 @@ from pyjackson.decorators import type_field
 from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.objects.base import EboniteParams
-from ebonite.runtime.interface.typing import TypeWithSpec
+from ebonite.runtime.interface.typing import SizedTypedListType, TypeWithSpec
 
 
 # noinspection PyAbstractClass
@@ -61,38 +61,73 @@ class PrimitiveDatasetType(DatasetType):
         return instance
 
 
-class ListDatasetType(DatasetType):
+class ListDatasetType(DatasetType, SizedTypedListType):
     """
     DatasetType for list type
     """
-    real_type = list
+    real_type = None
     type = 'list'
+
+    def __init__(self, dtype: DatasetType, size: int):
+        SizedTypedListType.__init__(self, size, dtype)
+
+    def deserialize(self, obj):
+        _check_type_and_size(obj, list, self.size, DeserializationError)
+        return [deserialize(o, self.dtype) for o in obj]
+
+    def serialize(self, instance: list):
+        _check_type_and_size(instance, list, self.size, SerializationError)
+        return [serialize(o, self.dtype) for o in instance]
+
+
+class _TupleLikeDatasetType(DatasetType):
+    """
+    DatasetType for tuple-like collections
+    """
+    real_type = None
 
     def __init__(self, items: List[DatasetType]):
         self.items = items
 
     def get_spec(self) -> ArgList:
-        return [Field(i, t, False) for i, t in enumerate(self.items)]
+        return [Field(str(i), t, False) for i, t in enumerate(self.items)]
 
     def deserialize(self, obj):
-        self._check_type_and_size(obj, DeserializationError)
-        return [deserialize(o, t) for t, o in zip(self.items, obj)]
+        _check_type_and_size(obj, self.actual_type, len(self.items), DeserializationError)
+        return self.actual_type(deserialize(o, t) for t, o in zip(self.items, obj))
 
-    def serialize(self, instance: list):
-        self._check_type_and_size(instance, SerializationError)
-        return [serialize(o, t) for t, o in zip(self.items, instance)]
+    def serialize(self, instance: Sized):
+        _check_type_and_size(instance, self.actual_type, len(self.items), SerializationError)
+        return self.actual_type(serialize(o, t) for t, o in zip(self.items, instance))
 
-    def _check_type_and_size(self, obj, exc_type):
-        self._check_type(obj, list, exc_type)
-        if len(obj) != len(self.items):
-            raise exc_type(f'given list has len: {len(obj)}, expected: {len(self.items)}')
+
+def _check_type_and_size(obj, dtype, size, exc_type):
+    DatasetType._check_type(obj, dtype, exc_type)
+    if len(obj) != size:
+        raise exc_type(f'given {dtype.__name__} has len: {len(obj)}, expected: {size}')
+
+
+class TupleLikeListDatasetType(_TupleLikeDatasetType):
+    """
+    DatasetType for tuple-like list type
+    """
+    actual_type = list
+    type = 'tuple_like_list'
+
+
+class TupleDatasetType(_TupleLikeDatasetType):
+    """
+    DatasetType for tuple type
+    """
+    actual_type = tuple
+    type = 'tuple'
 
 
 class DictDatasetType(DatasetType):
     """
     DatasetType for dict type
     """
-    real_type = dict
+    real_type = None
     type = 'dict'
 
     def __init__(self, item_types: Dict[str, DatasetType]):
@@ -105,7 +140,7 @@ class DictDatasetType(DatasetType):
         self._check_type_and_keys(obj, DeserializationError)
         return {k: deserialize(v, self.item_types[k]) for k, v in obj.items()}
 
-    def serialize(self, instance: real_type):
+    def serialize(self, instance: dict):
         self._check_type_and_keys(instance, SerializationError)
         return {
             k: serialize(v, self.item_types[k]) for k, v in instance.items()
