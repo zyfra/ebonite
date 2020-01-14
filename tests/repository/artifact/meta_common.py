@@ -6,10 +6,10 @@ import pytest
 from ebonite.core.objects.artifacts import ArtifactCollection, InMemoryBlob
 from ebonite.core.objects.core import Model
 from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
-from tests.repository.artifact.test_local.conftest import local_artifact as repo_fixture
 
+# from tests.repository.artifact.test_local.conftest import local_artifact as repo_fixture
 # from tests.ext.s3.conftest import s3_artifact as repo_fixture
-art_repo = repo_fixture
+# art_repo = repo_fixture
 
 
 def test_push_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob], tmpdir):
@@ -33,12 +33,26 @@ def test_push_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[s
             assert p.read() == blob.payload
 
 
+def test_push_artifact__non_saved_model(art_repo: ArtifactRepository, model: Model):
+    model._id = None
+
+    with pytest.raises(ValueError):
+        art_repo.push_artifacts(model)
+
+
 def test_get_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob]):
     artifact: ArtifactCollection = art_repo.push_artifact(model, blobs)
 
     new_artifact = art_repo.get_artifact(model)
 
     assert new_artifact == artifact
+
+
+def test_get_artifact__non_saved_model(art_repo: ArtifactRepository, model: Model):
+    model._id = None
+
+    with pytest.raises(ValueError):
+        art_repo.get_artifact(model)
 
 
 def test_push_non_existing_artifact(art_repo: ArtifactRepository, model: Model):
@@ -59,6 +73,13 @@ def test_delete_artifact(art_repo: ArtifactRepository, model: Model):
     with pytest.raises(NoSuchArtifactError):
         art_repo.get_artifact(model)
     art_repo.push_artifact(model, {})
+
+
+def test_delete_artifact__non_saved_model(art_repo: ArtifactRepository, model: Model):
+    model._id = None
+
+    with pytest.raises(ValueError):
+        art_repo.delete_artifact(model)
 
 
 def test_delete_non_existing_artifact(art_repo: ArtifactRepository, model: Model):

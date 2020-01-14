@@ -165,6 +165,6 @@ class SModel(Base, Attaching):
                     author=model.author,
                     creation_date=model.creation_date,
                     wrapper=dumps(model.wrapper),
-                    artifact=dumps(model.artifact_req_persisted),
+                    artifact=dumps(model.artifact),
                     requirements=dumps(model.requirements),
                     task_id=model.task_id)

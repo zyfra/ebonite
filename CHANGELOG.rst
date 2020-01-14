@@ -4,6 +4,8 @@ Changelog
 Current release candidate
 -------------------------
 
+* Fixed bug with deleting models from tasks
+
 0.3.3 (2020-01-10)
 ------------------
 

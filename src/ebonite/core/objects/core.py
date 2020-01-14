@@ -15,7 +15,6 @@ from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
-from ebonite.repository.artifact import NoSuchArtifactError
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_object_requirements
 
@@ -163,6 +162,16 @@ class Project(EboniteObject):
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
 
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Project, self).bind_meta_repo(repo)
+        for task in self._tasks.values():
+            task.bind_meta_repo(repo)
+
+    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
+        super(Project, self).bind_artifact_repo(repo)
+        for task in self._tasks.values():
+            task.bind_artifact_repo(repo)
+
 
 @make_string('id', 'name')
 class Task(EboniteObject):
@@ -232,13 +241,11 @@ class Task(EboniteObject):
         if model.id not in self._models:
             raise errors.NonExistingModelError(model)
 
+        if self.has_artifact_repo and model.artifact is not None:
+            self._art.delete_artifact(model)
+
         del self._models[model.id]
         self._meta.delete_model(model)
-        if self.has_artifact_repo:
-            try:
-                self._art.delete_artifact(model)
-            except NoSuchArtifactError:
-                pass
         model.task_id = None
 
     #  ##########API############
@@ -266,7 +273,19 @@ class Task(EboniteObject):
         :param model: :class:`Model` to push
         :return: same pushed :class:`Model`
         """
-        return client.Ebonite(self._meta, self._art).push_model(model, self)
+        model = client.Ebonite(self._meta, self._art).push_model(model, self)
+        self._models.add(model)
+        return model
+
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Task, self).bind_meta_repo(repo)
+        for model in self._models.values():
+            model.bind_meta_repo(repo)
+
+    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
+        super(Task, self).bind_artifact_repo(repo)
+        for model in self._models.values():
+            model.bind_artifact_repo(repo)
 
 
 @make_string('id', 'name')
