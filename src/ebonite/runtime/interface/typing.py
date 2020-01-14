@@ -2,7 +2,6 @@ from abc import abstractmethod
 from typing import Union
 
 from pyjackson.core import ArgList, Field
-from pyjackson.decorators import as_list
 from pyjackson.generics import Serializer
 
 
@@ -35,13 +34,10 @@ class ListTypeWithSpec(TypeWithSpec):
         return NotImplementedError
 
 
-@as_list
 class SizedTypedListType(ListTypeWithSpec):
     """
     Subclass of :class:`ListTypeWithSpec` which specifies size of internal `list`
     """
-
-    real_type = list
 
     def __init__(self, size: Union[int, None], dtype: type):
         self.dtype = dtype
