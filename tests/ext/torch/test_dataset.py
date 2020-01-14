@@ -46,7 +46,7 @@ def test_torch__tensors_list(tdt_list, first_tensor, second_tensor):
     assert tdt_list.items[1].dtype == 'float32'
     assert type_to_schema(tdt_list) == {
         'properties': {
-            0: {
+            '0': {
                 'items': {
                     'items': {'type': 'integer'},
                     'maxItems': 5,
@@ -55,7 +55,7 @@ def test_torch__tensors_list(tdt_list, first_tensor, second_tensor):
                 },
                 'type': 'array'
             },
-            1: {
+            '1': {
                 'items': {
                     'items': {'type': 'number'},
                     'maxItems': 10,
@@ -65,7 +65,7 @@ def test_torch__tensors_list(tdt_list, first_tensor, second_tensor):
                 'type': 'array'
             }
         },
-        'required': [0, 1],
+        'required': ['0', '1'],
         'type': 'object'
     }
 
