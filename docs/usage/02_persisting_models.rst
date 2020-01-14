@@ -56,6 +56,7 @@ Let's create local ebonite client
    :linenos:
    :language: python
    :lines: 25
+   :dedent: 4
 ..
 
 Now, create project and task for our model
@@ -65,6 +66,7 @@ Now, create project and task for our model
    :linenos:
    :language: python
    :lines: 28
+   :dedent: 4
 ..
 
 And push model into it
@@ -74,6 +76,7 @@ And push model into it
    :linenos:
    :language: python
    :lines: 32
+   :dedent: 4
 ..
 
 Now, if you take a look at ``.ebonite`` directory, you'll find a
