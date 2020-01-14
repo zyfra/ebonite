@@ -72,9 +72,6 @@ setup_args = dict(
         #   ':python_version=="2.6"': ['argparse'],
         'testing': get_requirements('test.requirements.txt')
     },
-    dependency_links=[
-        'https://download.pytorch.org/whl/torch_stable.html'
-    ],
     setup_requires=[
         'pytest-runner',
     ],
