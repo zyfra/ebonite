@@ -9,7 +9,7 @@ Model support
 
 For models, you need to implement :class:`~ebonite.core.analyzer.model.ModelHook` and :class:`~ebonite.core.objects.wrapper.ModelWrapper`.
 :class:`~ebonite.core.analyzer.model.ModelHook` should check an object if it is the object that you want to add support for (for example, check it's base module to be the library you providing support for). Result of :meth:`~ebonite.core.analyzer.model.ModelHook.process` must be an instance of :class:`~ebonite.core.objects.wrapper.ModelWrapper` implementation you provided.
-In :class:`~ebonite.core.objects.wrapper.ModelWrapper` you must implement methods :meth:`~ebonite.core.objects.wrapper.ModelWrapper.dump`, :meth:`~ebonite.core.objects.wrapper.ModelWrapper.load` and :meth:`~ebonite.core.objects.wrapper.ModelWrapper.predict`.
+In :class:`~ebonite.core.objects.wrapper.ModelWrapper` you must implement methods :meth:`~ebonite.core.objects.wrapper.ModelWrapper._dump`, :meth:`~ebonite.core.objects.wrapper.ModelWrapper._load` and :meth:`~ebonite.core.objects.wrapper.ModelWrapper._exposed_methods_mapping`.
 
 Data type support
 -----------------

@@ -8,7 +8,7 @@ from ebonite.core.objects.dataset_type import (PRIMITIVES, DatasetType, DictData
 
 class DatasetHook(Hook):
     """
-    Base hook type for :py:class:`DatasetAnalyzer`.
+    Base hook type for :class:`DatasetAnalyzer`.
     Analysis result is an instance of :class:`~ebonite.core.objects.DatasetType`
     """
     @abstractmethod
