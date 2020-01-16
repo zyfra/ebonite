@@ -26,8 +26,8 @@ if os.getenv('SPELLCHECK'):
 source_suffix = '.rst'
 master_doc = 'index'
 project = 'Ebonite'
-year = '2019'
-author = 'Mikhail Sveshnikov'
+year = '2019 - 2020'
+author = 'Zyfra'
 copyright = '{0}, {1}'.format(year, author)
 version = release = '0.3.3'
 
@@ -63,11 +63,12 @@ apidoc_output_dir = 'reference'
 apidoc_excluded_paths = [
     '*/base.py',
     '*/helpers.py',
-    'core/objects/artifacts',
-    'core/objects/core',
-    'core/objects/dataset_type',
-    'core/objects/requirements',
-    'core/objects/wrapper',
+    'core/objects/artifacts.py',
+    'core/objects/core.py',
+    'core/objects/dataset_type.py',
+    'core/objects/requirements.py',
+    'core/objects/wrapper.py',
+    'ext/flask/uwsgi.py'
 ]
 
 apidoc_toc_file = False
