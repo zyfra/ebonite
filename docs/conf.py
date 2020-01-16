@@ -76,3 +76,5 @@ apidoc_separate_modules = True
 apidoc_extra_args = ['-d 2']
 
 autodoc_member_order = 'bysource'
+
+suppress_warnings = ['ref.python']
