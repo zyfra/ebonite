@@ -63,11 +63,6 @@ apidoc_output_dir = 'reference'
 apidoc_excluded_paths = [
     '*/base.py',
     '*/helpers.py',
-    'core/objects/artifacts.py',
-    'core/objects/core.py',
-    'core/objects/dataset_type.py',
-    'core/objects/requirements.py',
-    'core/objects/wrapper.py',
     'ext/flask/uwsgi.py'
 ]
 
