@@ -29,7 +29,7 @@ project = 'Ebonite'
 year = '2019'
 author = 'Mikhail Sveshnikov'
 copyright = '{0}, {1}'.format(year, author)
-version = release = '0.2.0'
+version = release = '0.3.3'
 
 pygments_style = 'trac'
 templates_path = ['.']
@@ -63,7 +63,6 @@ apidoc_output_dir = 'reference'
 apidoc_excluded_paths = [
     '*/base.py',
     '*/helpers.py',
-    'build/provider/*',
     'core/objects/artifacts',
     'core/objects/core',
     'core/objects/dataset_type',

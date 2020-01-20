@@ -6,11 +6,8 @@ Contents
    :maxdepth: 1
 
    installation
-   readme
+   readme/index
    usage/index
-   core
-   build
-   runtime
    reference/ebonite
    contributing
    authors

@@ -2,11 +2,12 @@ import os
 from typing import List
 
 from pyjackson import read
+from pyjackson.core import Field, Signature
 
 from ebonite.build.provider.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
 from ebonite.build.provider.ml_model_multi import MODELS_META_PATH
 from ebonite.core.objects import core
-from ebonite.runtime.interface import Interface, expose
+from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceLoader
 from ebonite.runtime.interface.utils import merge
 from ebonite.utils.log import rlogger
@@ -14,7 +15,7 @@ from ebonite.utils.log import rlogger
 
 def model_interface(model_meta: 'core.Model'):
     """
-    Creates an interface from given model with the only `predict` method.
+    Creates an interface from given model with `predict` and (if available) `predict_proba` methods.
     Methods signature is determined via metadata associated with given model.
 
     :param model_meta: model to create interface for
@@ -22,19 +23,33 @@ def model_interface(model_meta: 'core.Model'):
     """
 
     rlogger.debug('Creating interface for model %s', model_meta)
-    input_type = model_meta.input_meta
-    output_type = model_meta.output_meta
 
     class MLModelInterface(Interface):
         def __init__(self, model):
             self.model = model
 
-        @expose
-        def predict(self, vector: input_type) -> output_type:
-            rlogger.debug('predicting given %s', vector)
-            predict = self.model.predict(vector)
-            rlogger.debug('prediction: %s', predict)
-            return output_type.serialize(predict)
+            exposed = {**self.exposed}
+            executors = {**self.executors}
+
+            for name in self.model.exposed_methods:
+                in_type, out_type = self.model.method_signature(name)
+                exposed[name] = Signature([Field("vector", in_type, False)], Field(None, out_type, False))
+                executors[name] = self._exec_factory(name, out_type)
+
+            self.exposed = exposed
+            self.executors = executors
+
+        def _exec_factory(self, name, out_type):
+            model = self.model
+
+            def _exec(**kwargs):
+                input_data = kwargs['vector']
+                rlogger.debug('calling %s given %s', name, input_data)
+                output_data = model.call_method(name, input_data)
+                rlogger.debug('%s returned: %s', name, output_data)
+                return out_type.serialize(output_data)
+
+            return _exec
 
     return MLModelInterface(model_meta.wrapper)
 

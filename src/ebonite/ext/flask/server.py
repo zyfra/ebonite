@@ -3,8 +3,9 @@ import uuid
 
 import flask
 from flasgger import Swagger, swag_from, validate
-from flask import jsonify, request, send_file
+from flask import jsonify, redirect, request, send_file
 from pyjackson import deserialize
+from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.config import Config, Core, Param
 from ebonite.runtime.interface import ExecutionError, Interface
@@ -51,6 +52,8 @@ def _extract_request_data(method_args):
             request_data = {k: deserialize(v, args[k].type) for k, v in request_data.items()}
         except KeyError:
             raise WrongArgumentsError(args.keys(), request_data.keys())
+        except DeserializationError as e:
+            raise FlaskServerError(*e.args)
     else:
         request_data = dict(itertools.chain(request.form.items(), request.files.items()))
     rlogger.debug('Got request[%s] with data %s', flask.g.ebonite_id, request_data)
@@ -79,7 +82,7 @@ def create_executor_function(interface: Interface, method: str, spec: dict):
             if VALIDATE:
                 validate(response, specs=spec, definition='response_{}'.format(method))
             return jsonify(response)
-        except ExecutionError as e:
+        except (ExecutionError, SerializationError) as e:
             raise FlaskServerError(*e.args)
 
     ef.__name__ = method
@@ -155,6 +158,10 @@ class FlaskServer(Server):
         @app.route('/health')
         def health():
             return 'OK'
+
+        @app.route('/')
+        def root():
+            return redirect('/apidocs')
 
         @app.before_request
         def log_request_info():

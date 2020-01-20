@@ -2,7 +2,8 @@ from abc import abstractmethod
 
 from ebonite.core.analyzer.base import Hook, analyzer_class
 from ebonite.core.objects.dataset_type import (PRIMITIVES, DatasetType, DictDatasetType, FilelikeDatasetType,
-                                               ListDatasetType, PrimitiveDatasetType)
+                                               ListDatasetType, PrimitiveDatasetType, TupleDatasetType,
+                                               TupleLikeListDatasetType)
 
 
 class DatasetHook(Hook):
@@ -11,7 +12,14 @@ class DatasetHook(Hook):
     Analysis result is an instance of :class:`~ebonite.core.objects.DatasetType`
     """
     @abstractmethod
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
+        """
+        Analyzes obj and returns result. Result type is determined by specific Hook class sub-hierarchy
+
+        :param obj: object to analyze
+        :param kwargs: additional information to be used for analysis
+        :return: analysis result
+        """
         pass
 
 
@@ -29,22 +37,33 @@ class PrimitivesHook(DatasetHook):
     def must_process(self, obj):
         return False
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return PrimitiveDatasetType(type(obj).__name__)
 
 
-class ListHookDelegator(DatasetHook):
+class OrderedCollectionHookDelegator(DatasetHook):
     """
-    Hook for list data
+    Hook for list/tuple data
     """
     def can_process(self, obj) -> bool:
-        return isinstance(obj, list)
+        return isinstance(obj, (list, tuple))
 
     def must_process(self, obj) -> bool:
         return False
 
-    def process(self, obj) -> DatasetType:
-        return ListDatasetType([DatasetAnalyzer.analyze(o) for o in obj])
+    def process(self, obj, **kwargs) -> DatasetType:
+        if isinstance(obj, tuple):
+            return TupleDatasetType([DatasetAnalyzer.analyze(o) for o in obj])
+
+        py_types = {type(o) for o in obj}
+        if len(obj) <= 1 or len(py_types) > 1:
+            return TupleLikeListDatasetType([DatasetAnalyzer.analyze(o) for o in obj])
+
+        if not py_types.intersection(PRIMITIVES):  # py_types is guaranteed to be singleton set here
+            return TupleLikeListDatasetType([DatasetAnalyzer.analyze(o) for o in obj])
+
+        # optimization for large lists of same primitive type elements
+        return ListDatasetType(DatasetAnalyzer.analyze(obj[0]), len(obj))
 
 
 class DictHookDelegator(DatasetHook):
@@ -57,7 +76,7 @@ class DictHookDelegator(DatasetHook):
     def must_process(self, obj) -> bool:
         return False
 
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         try:
             items = {k: DatasetAnalyzer.analyze(o) for k, o in obj.items()}
         except ValueError:
@@ -69,7 +88,7 @@ class FilelikeDatasetHook(DatasetHook):
     """
     Hook for file-like objects
     """
-    def process(self, obj) -> DatasetType:
+    def process(self, obj, **kwargs) -> DatasetType:
         return FilelikeDatasetType()
 
     def can_process(self, obj) -> bool:
