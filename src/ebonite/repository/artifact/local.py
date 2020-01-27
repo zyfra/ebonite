@@ -14,7 +14,7 @@ class LocalArtifactRepository(ArtifactRepository):
     :class:`.ArtifactRepository` implementation which stores artifacts in a local file system as directory
 
     :param: path: path to directory where artifacts are to be stored,
-    if `None` "local_storage" directory in Ebonite distribution is used
+      if `None` "local_storage" directory in Ebonite distribution is used
     """
     type = 'local'
 

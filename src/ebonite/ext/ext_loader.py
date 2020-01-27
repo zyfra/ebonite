@@ -81,7 +81,7 @@ class ExtensionLoader:
         """
         Add import hook to sys.meta_path that will load extensions when their dependencies are imported
 
-        :param extensions: list of :class:`Extension`
+        :param extensions: list of :class:`.Extension`
         """
         if len(extensions) == 0:
             return
@@ -119,7 +119,7 @@ class ExtensionLoader:
         """
         Load single extension
 
-        :param extension: str of :class:`Extension` instance to load
+        :param extension: str of :class:`.Extension` instance to load
         """
         if isinstance(extension, str):
             extension = Extension(extension, [], force=True)
@@ -132,7 +132,7 @@ class _ImportLoadExtInterceptor(importlib.abc.Loader):
     """
     Import hook implementation to load extensions on dependency import
 
-    :param module_to_extension: dict requirement -> :class:`Extension`
+    :param module_to_extension: dict requirement -> :class:`.Extension`
     """
 
     def __init__(self, module_to_extension: Dict[str, Extension]):
@@ -160,6 +160,7 @@ class _ImportLoadExtInterceptor(importlib.abc.Loader):
 def load_extensions(*exts: str):
     """
     Load extensions
+
     :param exts: list of extension main modules
     """
     for ext in exts:

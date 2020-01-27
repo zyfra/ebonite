@@ -13,8 +13,8 @@ class BaseClient:
     """
     Base class for clients of Ebonite runtime.
 
-    User method calls are transparently proxied to :class:`ebonite.runtime.interface.base.Interface` deployed on
-    :class:`ebonite.runtime.server.base.Server`.
+    User method calls are transparently proxied to :class:`~ebonite.runtime.interface.base.Interface` deployed on
+    :class:`~ebonite.runtime.server.base.Server`.
     PyJackson is always used for serialization of inputs and deserialization of outputs.
     """
 
@@ -35,7 +35,7 @@ class BaseClient:
         Takes interface deployed on server to validate method calls at client side and
         correctly (de)serialize inputs/outputs via PyJackson
 
-        :return: :class:`InterfaceDescriptor` describing supported methods
+        :return: :class:`.InterfaceDescriptor` describing supported methods
         """
 
         pass

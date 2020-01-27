@@ -8,7 +8,7 @@ Ebonite can be used to reproduce arbitrary machine learning model in different e
     Don't forget to install requirements for this example: ``pip install pandas scikit-learn flask flasgger``
 
 For instance, you can train sklearn model
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L13>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L13>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
@@ -17,7 +17,7 @@ For instance, you can train sklearn model
    :dedent: 4
 
 To use ebonite you need to create Ebonite client
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L25>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L25>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
@@ -27,7 +27,7 @@ To use ebonite you need to create Ebonite client
 ..
 
 Now you need to create task to push your model into
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L28>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L28>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
@@ -37,7 +37,7 @@ Now you need to create task to push your model into
 ..
 
 Great, now you can reproduce this model in different environment using this code
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/start_service.py#L9>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/start_service.py#L9>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
@@ -47,7 +47,7 @@ Great, now you can reproduce this model in different environment using this code
 ..
 
 And start a server that processes inference request like this
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/start_service.py#L12>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/start_service.py#L12>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/start_service.py
    :linenos:
@@ -57,7 +57,7 @@ And start a server that processes inference request like this
 ..
 
 Or create and start a docker container like this
-(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_create_image.py#L18>`_):
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_create_image.py#L18>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_create_image.py
    :linenos:
@@ -67,4 +67,4 @@ Or create and start a docker container like this
 ..
 
 Full code can be found in
-`examples/sklearn_model <https://github.com/zyfra/ebonite/tree/master/examples/sklearn_model>`_.
+`examples/sklearn_model <https://github.com/zyfra/ebonite/tree/master/examples/sklearn_model>`__.

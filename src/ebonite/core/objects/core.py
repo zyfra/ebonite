@@ -296,9 +296,6 @@ class Model(EboniteObject):
     :param name: model name
     :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
-    :param input_meta: :class:`~ebonite.core.objects.DatasetType` instance for model input
-    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict`)
-    :param output_proba_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict_proba`)
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
     :param id: model id
     :param task_id: parent task_id

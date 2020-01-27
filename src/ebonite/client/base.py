@@ -144,7 +144,7 @@ class Ebonite:
         Read and create Ebonite instance from config file
 
         :param filepath: path to read config from
-        :return: :class:`~ebontie.Ebonite` instance
+        :return: :class:`~ebonite.Ebonite` instance
         """
         return read(filepath, Ebonite)
 
