@@ -356,10 +356,10 @@ class Model(EboniteObject):
         return self._wrapper_meta
 
     @wrapper_meta.setter
-    def wrapper_meta(self, json: dict):
+    def wrapper_meta(self, meta: dict):
         if self._wrapper is not None:
             raise ValueError("'wrapper_meta' could be provided for models with no 'wrapper' specified only")
-        self._wrapper_meta = json
+        self._wrapper_meta = meta
 
     # this property is needed for pyjackson to serialize model, it is coupled with __init__
     @property
