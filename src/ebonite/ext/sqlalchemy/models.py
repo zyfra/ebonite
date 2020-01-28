@@ -10,7 +10,6 @@ from sqlalchemy.orm import relationship
 from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.core import Model, Project, Task
 from ebonite.core.objects.requirements import Requirements
-from ebonite.core.objects.wrapper import ModelWrapper
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
 
@@ -151,11 +150,11 @@ class SModel(Base, Attaching):
         model = Model(name=self.name,
                       author=self.author,
                       creation_date=self.creation_date,
-                      wrapper=safe_loads(self.wrapper, ModelWrapper),
                       artifact=safe_loads(self.artifact, ArtifactCollection),
                       requirements=safe_loads(self.requirements, Requirements),
                       id=tostr(self.id),
                       task_id=tostr(self.task_id))
+        model.wrapper_meta = self.wrapper
         return self.attach(model)
 
     @classmethod
@@ -164,7 +163,7 @@ class SModel(Base, Attaching):
                     name=model.name,
                     author=model.author,
                     creation_date=model.creation_date,
-                    wrapper=dumps(model.wrapper),
+                    wrapper=model.wrapper_meta,
                     artifact=dumps(model.artifact),
                     requirements=dumps(model.requirements),
                     task_id=model.task_id)
