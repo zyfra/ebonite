@@ -345,7 +345,7 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
 
     task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_json', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -601,7 +601,7 @@ def test_update_model(meta: MetadataRepository, project: Project, task: Task, mo
     id = model.id
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_json', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
     model = meta.update_model(model)
 
     assert id == model.id
@@ -621,7 +621,7 @@ def test_update_model_source_is_changed(meta: MetadataRepository, project: Proje
     id = saved_model.id
 
     saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                               'wrapper_json', 'task_id'])
+                                                               'wrapper_meta', 'task_id'])
     saved_model = meta.update_model(saved_model)
 
     assert id == saved_model.id
@@ -699,7 +699,7 @@ def test_save_updated_existing_model(meta: MetadataRepository, project: Project,
     model = meta.create_model(model)
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_json', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
 
     saved_model = meta.save_model(model)
     assert saved_model == model

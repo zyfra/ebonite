@@ -312,7 +312,7 @@ class Model(EboniteObject):
         super().__init__(id, name, author, creation_date)
 
         self._wrapper = wrapper
-        self._wrapper_json = None
+        self._wrapper_meta = None
 
         self.requirements = requirements
         self.transformer = None
@@ -338,28 +338,28 @@ class Model(EboniteObject):
     @property
     def wrapper(self) -> 'ModelWrapper':
         if self._wrapper is None:
-            if self._wrapper_json is None:
-                raise ValueError("Either 'wrapper' or 'wrapper_json' should be provided")
-            self._wrapper = loads(self._wrapper_json, ModelWrapper)
+            if self._wrapper_meta is None:
+                raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
+            self._wrapper = loads(self._wrapper_meta, ModelWrapper)
         return self._wrapper
 
     @property
-    def wrapper_json(self) -> dict:
+    def wrapper_meta(self) -> dict:
         """
         :return: pyjackson representation of :class:`~ebonite.core.objects.wrapper.ModelWrapper` for this model: e.g.,
           this provides possibility to move a model between repositories without its dependencies being installed
         """
-        if self._wrapper_json is None:
+        if self._wrapper_meta is None:
             if self._wrapper is None:
-                raise ValueError("Either 'wrapper' or 'wrapper_json' should be provided")
-            self._wrapper_json = dumps(self._wrapper)
-        return self._wrapper_json
+                raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
+            self._wrapper_meta = dumps(self._wrapper)
+        return self._wrapper_meta
 
-    @wrapper_json.setter
-    def wrapper_json(self, json: dict):
+    @wrapper_meta.setter
+    def wrapper_meta(self, json: dict):
         if self._wrapper is not None:
-            raise ValueError("'wrapper_json' could be provided for models with no 'wrapper' specified only")
-        self._wrapper_json = json
+            raise ValueError("'wrapper_meta' could be provided for models with no 'wrapper' specified only")
+        self._wrapper_meta = json
 
     # this property is needed for pyjackson to serialize model, it is coupled with __init__
     @property

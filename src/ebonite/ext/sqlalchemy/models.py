@@ -154,7 +154,7 @@ class SModel(Base, Attaching):
                       requirements=safe_loads(self.requirements, Requirements),
                       id=tostr(self.id),
                       task_id=tostr(self.task_id))
-        model.wrapper_json = self.wrapper
+        model.wrapper_meta = self.wrapper
         return self.attach(model)
 
     @classmethod
@@ -163,7 +163,7 @@ class SModel(Base, Attaching):
                     name=model.name,
                     author=model.author,
                     creation_date=model.creation_date,
-                    wrapper=model.wrapper_json,
+                    wrapper=model.wrapper_meta,
                     artifact=dumps(model.artifact),
                     requirements=dumps(model.requirements),
                     task_id=model.task_id)
