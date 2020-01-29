@@ -7,6 +7,8 @@ Current release candidate
 * Fixed bug with deleting models from tasks
 * Support working with model meta without requiring installation of all model dependencies
 * Added region argument for s3 repository
+* Support for delete_model in Ebonite client
+* Support for force flag in delete_model which deletes model even if artifacts could not be deleted
 
 0.3.3 (2020-01-10)
 ------------------
