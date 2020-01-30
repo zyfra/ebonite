@@ -1,0 +1,25 @@
+{
+  "name": "ebonite-ui",
+  "version": "0.1.0",
+  "description": "UI for Ebonite, model lifecycle framework",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ebonite",
+    "ml",
+    "ai"
+  ],
+  "author": "Ivan Andrianov",
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@babel/core": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "@babel/preset-react": "^7.8.3",
+    "webpack": "^4.41.5",
+    "webpack-cli": "^3.3.10",
+    "babel-loader": "^8.0.6"
+  }
+}
