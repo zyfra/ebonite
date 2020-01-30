@@ -5,6 +5,7 @@ Current release candidate
 -------------------------
 
 * Fixed bug with deleting models from tasks
+* Added region argument for s3 repository
 
 0.3.3 (2020-01-10)
 ------------------
