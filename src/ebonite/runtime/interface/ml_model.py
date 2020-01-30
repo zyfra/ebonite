@@ -56,7 +56,7 @@ def model_interface(model_meta: 'core.Model'):
 
 class ModelLoader(InterfaceLoader):
     """
-    Implementation of :class:`InterfaceLoader` which loads a model via PyJackson and wraps it into an interface
+    Implementation of :class:`.InterfaceLoader` which loads a model via PyJackson and wraps it into an interface
     """
 
     def load(self) -> Interface:
@@ -67,7 +67,7 @@ class ModelLoader(InterfaceLoader):
 
 class MultiModelLoader(InterfaceLoader):
     """
-    Implementation of :class:`InterfaceLoader` which loads a collection of models via PyJackson
+    Implementation of :class:`.InterfaceLoader` which loads a collection of models via PyJackson
     and wraps them into a single interface
     """
 

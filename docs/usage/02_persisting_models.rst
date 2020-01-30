@@ -49,28 +49,34 @@ Available implementations:
 * s3 - :class:`~ebonite.ext.s3.artifact.S3ArtifactRepository`
 
 
-Let's create local ebonite client:
+Let's create local ebonite client
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L25>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
    :language: python
    :lines: 25
+   :dedent: 4
 ..
 
-Now, create project and task for our model:
+Now, create project and task for our model
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L28>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
    :language: python
    :lines: 28
+   :dedent: 4
 ..
 
-And push model into it:
+And push model into it
+(`code <https://github.com/zyfra/ebonite/blob/master/examples/sklearn_model/model_train.py#L32>`__):
 
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
    :language: python
    :lines: 32
+   :dedent: 4
 ..
 
 Now, if you take a look at ``.ebonite`` directory, you'll find a
@@ -78,5 +84,5 @@ Now, if you take a look at ``.ebonite`` directory, you'll find a
 
 Congratulations, you persisted your model. This process is absolutely
 the same if you choose other repository implementations. Take a look at
-`examples/remote_example <https://github.com/zyfra/ebonite/tree/master/examples/remote_example>`_
+`examples/remote_example <https://github.com/zyfra/ebonite/tree/master/examples/remote_example>`__
 for an example with remote repositories.

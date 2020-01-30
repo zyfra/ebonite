@@ -95,6 +95,7 @@ class ModelWrapper(EboniteParams):
     def unbind(self):
         """
         Unbind model object from this wrapper
+
         :return: self
         """
         self.model = None
@@ -215,7 +216,7 @@ class WrapperArtifactCollection(ArtifactCollection, Unserializable):
         """
         Calls :meth:`~ebonite.core.objects.wrapper.ModelWrapper.dump` to get model artifacts blob dict
 
-        :return: dict artifact name -> :class:`~ebonite.core.objects.artifact.Blob`
+        :return: dict artifact name -> :class:`~ebonite.core.objects.artifacts.Blob`
         """
         with self.wrapper.dump() as art, art.blob_dict() as blobs:
             yield blobs
