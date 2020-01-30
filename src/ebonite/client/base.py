@@ -70,9 +70,9 @@ class Ebonite:
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
-            except Exception as e:  # noqa
+            except:  # noqa
                 if ignore_artifact_failure:
-                    logger.warn(f"Unable to delete artifacts associated with model: '{model}'", e)
+                    logger.warning("Unable to delete artifacts associated with model: '%s'", model, exc_info=1)
                 else:
                     raise
 
