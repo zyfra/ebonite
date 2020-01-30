@@ -6,7 +6,7 @@ Current release candidate
 
 * Fixed bug with deleting models from tasks
 * Support working with model meta without requiring installation of all model dependencies
-
+* Added region argument for s3 repository
 
 0.3.3 (2020-01-10)
 ------------------

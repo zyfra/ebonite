@@ -19,9 +19,10 @@ class S3Config(Config):
 
 
 class _WithS3Client:
-    def __init__(self, bucket_name: str, endpoint: str = None):
+    def __init__(self, bucket_name: str, endpoint: str = None, region: str = None):
         self.bucket_name = bucket_name
         self.endpoint = endpoint
+        self.region = region
 
     @cached_property
     def _s3(self):
@@ -29,7 +30,8 @@ class _WithS3Client:
         return boto3.client('s3',
                             endpoint_url=self.endpoint,
                             aws_access_key_id=S3Config.ACCESS_KEY,
-                            aws_secret_access_key=S3Config.SECRET_KEY)
+                            aws_secret_access_key=S3Config.SECRET_KEY,
+                            region_name=self.region)
 
     @cached_property
     def _s3_res(self):
@@ -37,7 +39,8 @@ class _WithS3Client:
         return boto3.resource('s3',
                               endpoint_url=self.endpoint,
                               aws_access_key_id=S3Config.ACCESS_KEY,
-                              aws_secret_access_key=S3Config.SECRET_KEY)
+                              aws_secret_access_key=S3Config.SECRET_KEY,
+                              region_name=self.region)
 
 
 class S3Blob(Blob, _WithS3Client):
@@ -79,7 +82,8 @@ class S3ArtifactRepository(ArtifactRepository, _WithS3Client):
     type = 's3'
 
     def _ensure_bucket(self):
-        self._s3.create_bucket(Bucket=self.bucket_name)
+        if not self._bucket_exists():
+            self._s3.create_bucket(Bucket=self.bucket_name)
 
     def _bucket_exists(self):
         try:
