@@ -60,18 +60,18 @@ class Ebonite:
         model = self.meta_repo.save_model(model)
         return model
 
-    def delete_model(self, model: 'core.Model', ignore_artifact_failure=False):
+    def delete_model(self, model: 'core.Model', force=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
 
         :param model: model instance to delete
-        :param ignore_artifact_failure: whether model artifacts' deletion errors should be ignored, default is false
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
         """
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
             except:  # noqa
-                if ignore_artifact_failure:
+                if force:
                     logger.warning("Unable to delete artifacts associated with model: '%s'", model, exc_info=1)
                 else:
                     raise

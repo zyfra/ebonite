@@ -233,18 +233,18 @@ class Task(EboniteObject):
             self.add_model(m)
 
     @_with_meta
-    def delete_model(self, model: 'Model', ignore_artifact_failure=False):
+    def delete_model(self, model: 'Model', force=False):
         """
         Remove model from this task and delete it from meta repo
 
         :param model: model to delete
-        :param ignore_artifact_failure: whether model artifacts' deletion errors should be ignored, default is false
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
         """
         model_id = model.id
         if model_id not in self._models:
             raise errors.NonExistingModelError(model)
 
-        client.Ebonite(self._meta, self._art).delete_model(model, ignore_artifact_failure)
+        client.Ebonite(self._meta, self._art).delete_model(model, force)
         del self._models[model_id]
 
     #  ##########API############
