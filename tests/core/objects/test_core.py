@@ -162,7 +162,7 @@ def test_task__delete_model__nonexistent(task_factory, model):
 
     task = task_factory(True)
     with pytest.raises(NonExistingModelError):
-        task.delete_model(task)
+        task.delete_model(model)
 
 
 def test_task__serde(task_b: Task):

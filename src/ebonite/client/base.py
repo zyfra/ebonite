@@ -12,6 +12,7 @@ from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
+from ebonite.utils.log import logger
 
 
 class Ebonite:
@@ -58,6 +59,25 @@ class Ebonite:
 
         model = self.meta_repo.save_model(model)
         return model
+
+    def delete_model(self, model: 'core.Model', force=False):
+        """
+        Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
+
+        :param model: model instance to delete
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
+        """
+        if model.artifact is not None:
+            try:
+                self.artifact_repo.delete_artifact(model)
+            except:  # noqa
+                if force:
+                    logger.warning("Unable to delete artifacts associated with model: '%s'", model, exc_info=1)
+                else:
+                    raise
+
+        self.meta_repo.delete_model(model)
+        model.task_id = None
 
     def get_or_create_task(self, project_name, task_name) -> 'core.Task':
         """
