@@ -4,6 +4,9 @@ Changelog
 Current release candidate
 -------------------------
 
+0.3.4 (2020-01-31)
+------------------
+
 * Fixed bug with deleting models from tasks
 * Support working with model meta without requiring installation of all model dependencies
 * Added region argument for s3 repository
