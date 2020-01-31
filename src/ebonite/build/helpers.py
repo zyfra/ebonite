@@ -18,7 +18,7 @@ def build_model_docker(image_name: str, model: 'core.Model', server: Server = No
     :param image_tag: docker image tag
     :param force_overwrite: force overwrite image if it exists
     :param debug: run server in debug mode
-    :param kwargs: same as in DockerBuilder.__init__
+    :param kwargs: same as in :meth:`~ebonite.build.builder.docker_builder.DockerBuilder.__init__`
     """
     if server is None:
         from ebonite.ext.flask import FlaskServer

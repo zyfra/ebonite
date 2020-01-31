@@ -5,6 +5,7 @@ from copy import copy
 from functools import wraps
 from typing import Callable, List, Optional
 
+from pyjackson import dumps, loads
 from pyjackson.core import Comparable
 from pyjackson.decorators import make_string
 
@@ -15,7 +16,6 @@ from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
-from ebonite.repository.artifact import NoSuchArtifactError
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_object_requirements
 
@@ -163,6 +163,16 @@ class Project(EboniteObject):
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
 
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Project, self).bind_meta_repo(repo)
+        for task in self._tasks.values():
+            task.bind_meta_repo(repo)
+
+    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
+        super(Project, self).bind_artifact_repo(repo)
+        for task in self._tasks.values():
+            task.bind_artifact_repo(repo)
+
 
 @make_string('id', 'name')
 class Task(EboniteObject):
@@ -223,23 +233,19 @@ class Task(EboniteObject):
             self.add_model(m)
 
     @_with_meta
-    def delete_model(self, model: 'Model'):
+    def delete_model(self, model: 'Model', force=False):
         """
         Remove model from this task and delete it from meta repo
 
         :param model: model to delete
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
         """
-        if model.id not in self._models:
+        model_id = model.id
+        if model_id not in self._models:
             raise errors.NonExistingModelError(model)
 
-        del self._models[model.id]
-        self._meta.delete_model(model)
-        if self.has_artifact_repo:
-            try:
-                self._art.delete_artifact(model)
-            except NoSuchArtifactError:
-                pass
-        model.task_id = None
+        client.Ebonite(self._meta, self._art).delete_model(model, force)
+        del self._models[model_id]
 
     #  ##########API############
     @_with_meta
@@ -266,7 +272,19 @@ class Task(EboniteObject):
         :param model: :class:`Model` to push
         :return: same pushed :class:`Model`
         """
-        return client.Ebonite(self._meta, self._art).push_model(model, self)
+        model = client.Ebonite(self._meta, self._art).push_model(model, self)
+        self._models.add(model)
+        return model
+
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Task, self).bind_meta_repo(repo)
+        for model in self._models.values():
+            model.bind_meta_repo(repo)
+
+    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
+        super(Task, self).bind_artifact_repo(repo)
+        for model in self._models.values():
+            model.bind_artifact_repo(repo)
 
 
 @make_string('id', 'name')
@@ -277,9 +295,6 @@ class Model(EboniteObject):
     :param name: model name
     :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
-    :param input_meta: :class:`~ebonite.core.objects.DatasetType` instance for model input
-    :param output_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict`)
-    :param output_proba_meta: :class:`~ebonite.core.objects.DatasetType` instance for model output (`predict_proba`)
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
     :param id: model id
     :param task_id: parent task_id
@@ -287,13 +302,15 @@ class Model(EboniteObject):
     :param creation_date: date when this model was created
     """
 
-    def __init__(self, name: str, wrapper: ModelWrapper,
+    def __init__(self, name: str, wrapper: Optional[ModelWrapper] = None,
                  artifact: 'ArtifactCollection' = None,
                  requirements: Requirements = None, id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
-        self.wrapper = wrapper
+
+        self._wrapper = wrapper
+        self._wrapper_meta = None
 
         self.requirements = requirements
         self.transformer = None
@@ -315,6 +332,32 @@ class Model(EboniteObject):
         """
         if self.wrapper.model is None:
             self.load()
+
+    @property
+    def wrapper(self) -> 'ModelWrapper':
+        if self._wrapper is None:
+            if self._wrapper_meta is None:
+                raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
+            self._wrapper = loads(self._wrapper_meta, ModelWrapper)
+        return self._wrapper
+
+    @property
+    def wrapper_meta(self) -> dict:
+        """
+        :return: pyjackson representation of :class:`~ebonite.core.objects.wrapper.ModelWrapper` for this model: e.g.,
+          this provides possibility to move a model between repositories without its dependencies being installed
+        """
+        if self._wrapper_meta is None:
+            if self._wrapper is None:
+                raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
+            self._wrapper_meta = dumps(self._wrapper)
+        return self._wrapper_meta
+
+    @wrapper_meta.setter
+    def wrapper_meta(self, meta: dict):
+        if self._wrapper is not None:
+            raise ValueError("'wrapper_meta' could be provided for models with no 'wrapper' specified only")
+        self._wrapper_meta = meta
 
     # this property is needed for pyjackson to serialize model, it is coupled with __init__
     @property

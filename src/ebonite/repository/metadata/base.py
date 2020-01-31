@@ -42,7 +42,7 @@ def bind_to_self(method):
 @type_field('type')
 class MetadataRepository:
     """
-    Abstract base class for persistent repositories of metadata (:class:`core.Project`, :class:`core.Task`, etc)
+    Abstract base class for persistent repositories of metadata (:class:`.core.Project`, :class:`.core.Task`, etc)
     """
 
     type = None
@@ -83,7 +83,7 @@ class MetadataRepository:
 
         :param project: project to create
         :return: created project
-        :exception: :exc:`errors.ExistingProjectError` if given project has the same name as existing one.
+        :exception: :exc:`.errors.ExistingProjectError` if given project has the same name as existing one.
         """
         pass
 
@@ -94,7 +94,7 @@ class MetadataRepository:
 
         :param project: project to update
         :return: updated project
-        :exception: :exc:`errors.NonExistingProjectError` if given project doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingProjectError` if given project doesn't exist in the repository
         """
         pass
 
@@ -105,7 +105,7 @@ class MetadataRepository:
 
         :param project: project to delete
         :return: nothing
-        :exception: :exc:`errors.NonExistingProjectError` if given project doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingProjectError` if given project doesn't exist in the repository
         """
         pass
 
@@ -115,7 +115,7 @@ class MetadataRepository:
 
         :param project: project to save
         :return: saved project
-        :exception: :exc:`errors.ExistingProjectError` if given project has the same name as existing one.
+        :exception: :exc:`.errors.ExistingProjectError` if given project has the same name as existing one.
         """
         existing_project = self.get_project_by_name(project.name)
         if project.id is None and existing_project is None:
@@ -195,7 +195,7 @@ class MetadataRepository:
 
         :param task: task to create
         :return: created task
-        :exception: :class:`errors.ExistingTaskError` if given task has the same name and project as existing one
+        :exception: :class:`.errors.ExistingTaskError` if given task has the same name and project as existing one
         """
 
         pass
@@ -207,7 +207,7 @@ class MetadataRepository:
 
         :param task: task to update
         :return: updated task
-        :exception: :exc: `errors.NonExistingTaskError` if given tasks doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingTaskError` if given tasks doesn't exist in the repository
         """
 
         pass
@@ -219,7 +219,7 @@ class MetadataRepository:
 
         :param task: task to delete
         :return: nothing
-        :exception: :exc: `errors.NonExistingTaskError` if given tasks doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingTaskError` if given tasks doesn't exist in the repository
         """
 
         pass
@@ -230,7 +230,7 @@ class MetadataRepository:
 
         :param task: task
         :return: saved task
-        :exception: :class:`errors.ExistingTaskError` if given task has the same name and project as existing one
+        :exception: :class:`.errors.ExistingTaskError` if given task has the same name and project as existing one
         """
 
         if task.project_id is None:
@@ -287,7 +287,7 @@ class MetadataRepository:
 
         :param model: model to create
         :return: created model
-        :exception: :exc:`errors.ExistingModelError` if given model has the same name and task as existing one
+        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
         """
         pass
 
@@ -298,7 +298,7 @@ class MetadataRepository:
 
         :param model: model to update
         :return: updated model
-        :exception: :exc:`errors.NonExistingModelError` if given model doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
         """
 
         pass
@@ -310,7 +310,7 @@ class MetadataRepository:
 
         :param model: model to delete
         :return: nothing
-        :exception: :exc:`errors.NonExistingModelError` if given model doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
         """
 
         pass
@@ -321,7 +321,7 @@ class MetadataRepository:
 
         :param model: model to save
         :return: saved model
-        :exception: :exc:`errors.ExistingModelError` if given model has the same name and task as existing one
+        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
         """
 
         if model.task_id is None:

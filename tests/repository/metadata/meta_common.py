@@ -345,7 +345,7 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
 
     task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'transformer', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -601,7 +601,7 @@ def test_update_model(meta: MetadataRepository, project: Project, task: Task, mo
     id = model.id
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'transformer', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
     model = meta.update_model(model)
 
     assert id == model.id
@@ -621,7 +621,7 @@ def test_update_model_source_is_changed(meta: MetadataRepository, project: Proje
     id = saved_model.id
 
     saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                               'transformer', 'task_id'])
+                                                               'wrapper_meta', 'task_id'])
     saved_model = meta.update_model(saved_model)
 
     assert id == saved_model.id
@@ -699,7 +699,7 @@ def test_save_updated_existing_model(meta: MetadataRepository, project: Project,
     model = meta.create_model(model)
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'transformer', 'task_id'])
+                                                         'wrapper_meta', 'task_id'])
 
     saved_model = meta.save_model(model)
     assert saved_model == model
@@ -755,3 +755,21 @@ def test_delete_model(meta: MetadataRepository, project: Project, task: Task, mo
 def test_delete_not_existing_model(meta: MetadataRepository, model: Model):
     with pytest.raises(NonExistingModelError):
         meta.delete_model(model)
+
+
+def test_inner_objects_binded(meta: MetadataRepository, project: Project, task: Task, model: Model):
+    task.project = meta.create_project(project)
+    meta.create_task(task)
+
+    model.task_id = task.id
+    model = meta.create_model(model)
+
+    new_project = meta.get_project_by_name(project.name)
+    assert new_project.id is not None
+    assert new_project.has_meta_repo
+    new_task = new_project.tasks(task.name)
+    assert new_task.id is not None
+    assert new_task.has_meta_repo
+    new_model = new_task.models(model.name)
+    assert new_model.id is not None
+    assert new_model.has_meta_repo
