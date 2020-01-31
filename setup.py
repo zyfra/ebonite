@@ -29,7 +29,7 @@ def get_requirements(file_name):
 
 setup_args = dict(
     name='ebonite',
-    version='0.3.4',
+    version='0.3.5',
     license='Apache-2.0',
     description='Machine Learning Lifecycle Framework',
     long_description='%s\n%s' % (
