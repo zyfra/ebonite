@@ -5,7 +5,7 @@ from copy import copy
 from functools import wraps
 from typing import Callable, List, Optional
 
-from pyjackson import dumps, loads
+from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
 from pyjackson.decorators import make_string
 
@@ -302,15 +302,19 @@ class Model(EboniteObject):
     :param creation_date: date when this model was created
     """
 
-    def __init__(self, name: str, wrapper: Optional[ModelWrapper] = None,
+    def __init__(self, name: str, wrapper_meta: Optional[dict] = None,
                  artifact: 'ArtifactCollection' = None,
                  requirements: Requirements = None, id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
 
-        self._wrapper = wrapper
+        self._wrapper = None
         self._wrapper_meta = None
+        if isinstance(wrapper_meta, ModelWrapper):
+            self._wrapper = wrapper_meta
+        elif isinstance(wrapper_meta, dict):
+            self._wrapper_meta = wrapper_meta
 
         self.requirements = requirements
         self.transformer = None
@@ -338,8 +342,24 @@ class Model(EboniteObject):
         if self._wrapper is None:
             if self._wrapper_meta is None:
                 raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
-            self._wrapper = loads(self._wrapper_meta, ModelWrapper)
+            self._wrapper = deserialize(self._wrapper_meta, ModelWrapper)
         return self._wrapper
+
+    @wrapper.setter
+    def wrapper(self, wrapper: ModelWrapper):
+        if self._wrapper_meta is not None:
+            raise ValueError("'wrapper' could be provided for models with no 'wrapper_meta' specified only")
+        self._wrapper = wrapper
+
+    def with_wrapper(self, wrapper: ModelWrapper):
+        """
+        Bind wrapper instance to this Model
+
+        :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance
+        :return: self
+        """
+        self.wrapper = wrapper
+        return self
 
     @property
     def wrapper_meta(self) -> dict:
@@ -350,7 +370,7 @@ class Model(EboniteObject):
         if self._wrapper_meta is None:
             if self._wrapper is None:
                 raise ValueError("Either 'wrapper' or 'wrapper_meta' should be provided")
-            self._wrapper_meta = dumps(self._wrapper)
+            self._wrapper_meta = serialize(self._wrapper)
         return self._wrapper_meta
 
     @wrapper_meta.setter
@@ -358,6 +378,16 @@ class Model(EboniteObject):
         if self._wrapper is not None:
             raise ValueError("'wrapper_meta' could be provided for models with no 'wrapper' specified only")
         self._wrapper_meta = meta
+
+    def with_wrapper_meta(self, wrapper_meta: dict):
+        """
+        Bind wrapper_meta dict to this Model
+
+        :param wrapper_meta: dict with serialized :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance
+        :return: self
+        """
+        self.wrapper_meta = wrapper_meta
+        return self
 
     # this property is needed for pyjackson to serialize model, it is coupled with __init__
     @property
