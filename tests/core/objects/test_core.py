@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from ebonite.core.errors import MetadataError, NonExistingModelError, NonExistingTaskError, UnboundObjectError
+from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model, Project, Task
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
@@ -227,6 +228,15 @@ def test_create_model_with_additional_artifact(artifact, sklearn_model_obj, pand
 
 
 def test_model_serde(model):
+    serde_and_compare(model, Model)
+    assert isinstance(model.wrapper, ModelWrapper)
+
+
+def test_model_with_wrapper_meta_serde(model):
+    model._wrapper = None
+    model._wrapper_meta = {'a': 'b'}
+    model.wrapper_obj = model._wrapper_meta
+
     serde_and_compare(model, Model)
 
 

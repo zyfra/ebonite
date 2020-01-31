@@ -48,9 +48,9 @@
     :alt: ODS slack channel
     :target: https://app.slack.com/client/T040HKJE3/CR1K8N2KA
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.3.3.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.3.4.svg
     :alt: Commits since latest release
-    :target: https://github.com/zyfra/ebonite/compare/v0.3.3...master
+    :target: https://github.com/zyfra/ebonite/compare/v0.3.4...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/ebonite.svg
     :alt: PyPI Wheel

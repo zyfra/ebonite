@@ -148,13 +148,13 @@ class SModel(Base, Attaching):
 
     def to_obj(self) -> Model:
         model = Model(name=self.name,
+                      wrapper_meta=safe_loads(self.wrapper, dict),
                       author=self.author,
                       creation_date=self.creation_date,
                       artifact=safe_loads(self.artifact, ArtifactCollection),
                       requirements=safe_loads(self.requirements, Requirements),
                       id=tostr(self.id),
                       task_id=tostr(self.task_id))
-        model.wrapper_meta = self.wrapper
         return self.attach(model)
 
     @classmethod
@@ -163,7 +163,7 @@ class SModel(Base, Attaching):
                     name=model.name,
                     author=model.author,
                     creation_date=model.creation_date,
-                    wrapper=model.wrapper_meta,
+                    wrapper=dumps(model.wrapper_meta),
                     artifact=dumps(model.artifact),
                     requirements=dumps(model.requirements),
                     task_id=model.task_id)
