@@ -17,6 +17,11 @@ def meta():
 
 
 @pytest.fixture
+def artifact_repo():
+    return InMemoryArtifactRepository()
+
+
+@pytest.fixture
 def project_factory(meta: MetadataRepository):
     counter = 0
 

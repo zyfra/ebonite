@@ -10,8 +10,8 @@ from tests.repository.artifact.conftest import create_artifact_hooks
 
 ACCESS_KEY = 'eboniteAccessKey'
 BUCKET_NAME = 'testbucket'
-ENDPOINT = 'http://localhost:8000'
-PORT = 8000
+ENDPOINT = 'http://localhost:9000'
+PORT = 9000
 SECRET_KEY = 'eboniteSecretKey'
 
 
@@ -30,9 +30,10 @@ def delete_bucket(repo: S3ArtifactRepository):
 def s3server():
     # `s3server` was renamed to `cloudserver`
     # image is described as being unmaintained but no `cloudserver` image is available for now
-    with DockerContainer('scality/s3server:mem-latest') \
-            .with_env('SCALITY_ACCESS_KEY_ID', ACCESS_KEY) \
-            .with_env('SCALITY_SECRET_ACCESS_KEY', SECRET_KEY) \
+    with DockerContainer('minio/minio') \
+            .with_command('server /data') \
+            .with_env('MINIO_ACCESS_KEY', ACCESS_KEY) \
+            .with_env('MINIO_SECRET_KEY', SECRET_KEY) \
             .with_bind_ports(PORT, PORT):
         sleep(5)  # wait to ensure that s3server has enough time to properly start
         yield

@@ -39,12 +39,15 @@ class ArtifactRepository:
     type = None
 
     def get_model_id(self, model: 'core.Model') -> str:
-        return model.id
+        model_id = model.id
+        if model_id is None:
+            raise ValueError('model_id cannot be "None"')
+        return model_id
 
     def push_artifacts(self, model: 'core.Model'):
         """
         Helper method which handles the most common model artifacts workflow.
-        Based on :meth:`ArtifactRepository.push_artifact` and :meth:`core.Model.persist_artifacts` methods.
+        Based on :meth:`.ArtifactRepository.push_artifact` and :meth:`.core.Model.persist_artifacts` methods.
 
         :param model: model to store artifacts in the repository for
         :return: nothing
@@ -61,7 +64,7 @@ class ArtifactRepository:
         :param model: model to associate artifacts with
         :param blobs: artifacts to store in the repository
         :return: :class:`.ArtifactCollection` object containing stored artifacts
-        :exception: :exc:`ArtifactExistsError` if there are already artifacts stored for this model
+        :exception: :exc:`.ArtifactExistsError` if there are already artifacts stored for this model
         """
         return self._push_artifact(self.get_model_id(model), blobs)
 
@@ -71,7 +74,7 @@ class ArtifactRepository:
 
         :param model: model to get artifacts for
         :return: :class:`.ArtifactCollection` object containing stored artifacts
-        :exception: :exc:`NoSuchArtifactError` if no artifacts were associated with given model
+        :exception: :exc:`.NoSuchArtifactError` if no artifacts were associated with given model
         """
         return self._get_artifact(self.get_model_id(model))
 
@@ -81,7 +84,7 @@ class ArtifactRepository:
 
         :param model: model to delete artifacts for
         :return: nothing
-        :exception: :exc:`NoSuchArtifactError` if no artifacts were associated with given model
+        :exception: :exc:`.NoSuchArtifactError` if no artifacts were associated with given model
         """
         self._delete_artifact(self.get_model_id(model))
 
