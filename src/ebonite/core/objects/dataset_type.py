@@ -41,7 +41,7 @@ class PrimitiveDatasetType(DatasetType):
     def from_object(cls, obj):
         if type(obj) not in PRIMITIVES:
             raise ValueError('{} type is not primitive')
-        return PrimitiveDatasetType[str(type(obj))]
+        return PrimitiveDatasetType(str(type(obj)))
 
     @property
     def to_type(self):
@@ -53,7 +53,7 @@ class PrimitiveDatasetType(DatasetType):
     def deserialize(self, obj):
         try:
             return self.to_type(obj)
-        except ValueError:
+        except (ValueError, TypeError):
             raise DeserializationError(f'given object: {obj} could not be converted to {self.to_type}')
 
     def serialize(self, instance):

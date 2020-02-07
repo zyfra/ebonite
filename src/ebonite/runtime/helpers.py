@@ -16,7 +16,10 @@ def run_model_server(model: 'core.Model', server: Server = None):
     """
 
     if server is None:
-        if module_importable('flask') and module_importable('flasgger'):
+        if module_importable('aiohttp') and module_importable('aiohttp_swagger'):
+            from ebonite.ext.aiohttp import AIOHTTPServer
+            server = AIOHTTPServer()
+        elif module_importable('flask') and module_importable('flasgger'):
             from ebonite.ext.flask import FlaskServer
             server = FlaskServer()
         else:
