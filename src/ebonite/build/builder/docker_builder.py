@@ -119,7 +119,7 @@ class DockerBuilder(PythonBuilder):
                 except errors.ImageNotFound:
                     pass
             try:
-                _, logs = client.images.build(path=context_dir, tag=tag)
+                _, logs = client.images.build(path=context_dir, tag=tag, rm=True)
                 logger.info('Build successful')
                 _print_docker_logs(logs)
             except errors.BuildError as e:
