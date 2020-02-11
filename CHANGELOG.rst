@@ -5,6 +5,7 @@ Current release candidate
 -------------------------
 
 * Implemented asyncio-based server via aiohttp library
+* Implemented support for Tensorflow 2.x models
 
 0.3.5 (2020-01-31)
 ------------------

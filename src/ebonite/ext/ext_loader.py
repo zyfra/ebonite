@@ -16,12 +16,14 @@ class Extension:
     :param module: main extenstion module
     :param reqs: list of extension dependencies
     :param force: if True, disable lazy loading for this extension
+    :param validator: boolean predicate which should evaluate to True for this extension to be loaded
     """
 
-    def __init__(self, module, reqs: List[str], force=True):
+    def __init__(self, module, reqs: List[str], force=True, validator=None):
         self.force = force
         self.reqs = reqs
         self.module = module
+        self.validator = validator
 
     def __str__(self):
         return f'<Extension {self.module}>'
@@ -47,6 +49,11 @@ class ExtensionDict(dict):
             self[e.module] = e
 
 
+def __tensorflow_major_version():
+    import tensorflow as tf
+    return tf.__version__.split('.')[0]
+
+
 class ExtensionLoader:
     """
     Class that tracks and loads extensions.
@@ -56,7 +63,8 @@ class ExtensionLoader:
         Extension('ebonite.ext.numpy', ['numpy'], False),
         Extension('ebonite.ext.pandas', ['pandas'], False),
         Extension('ebonite.ext.sklearn', ['sklearn'], False),
-        Extension('ebonite.ext.tensorflow', ['tensorflow'], False),
+        Extension('ebonite.ext.tensorflow', ['tensorflow'], False, lambda: __tensorflow_major_version() == '1'),
+        Extension('ebonite.ext.tensorflow_v2', ['tensorflow'], False, lambda: __tensorflow_major_version() == '2'),
         Extension('ebonite.ext.torch', ['torch'], False),
         Extension('ebonite.ext.catboost', ['catboost'], False),
         Extension('ebonite.ext.aiohttp', ['aiohttp', 'aiohttp_swagger']),
@@ -124,7 +132,8 @@ class ExtensionLoader:
         """
         if isinstance(extension, str):
             extension = Extension(extension, [], force=True)
-        if extension not in cls._loaded_extensions and not module_imported(extension.module):
+        if extension not in cls._loaded_extensions and not module_imported(extension.module) and \
+                (extension.validator is None or extension.validator()):
             logger.debug('Importing extension module %s', extension.module)
             cls._loaded_extensions[extension] = import_module(extension.module)
 

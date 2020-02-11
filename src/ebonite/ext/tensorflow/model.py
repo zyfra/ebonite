@@ -6,7 +6,6 @@ from typing import Dict, List
 
 import tensorflow as tf
 from pyjackson.decorators import make_string
-from tensorflow.python.ops import variables
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
 from ebonite.core.analyzer.model import ModelHook
@@ -145,7 +144,7 @@ def is_graph_frozen() -> bool:
 
     :return: `True` or `False`
     """
-    return not bool(variables._all_saveable_objects())
+    return not bool(tf.python.ops.variables._all_saveable_objects())
 
 
 @make_string(include_name=True)
