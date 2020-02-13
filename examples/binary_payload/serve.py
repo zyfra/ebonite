@@ -1,6 +1,8 @@
 """This example shows how to create a model, that consumes binary object (image file).
 This is useful for DL models."""
 
+import os
+
 import numpy as np
 import scipy.stats
 from imageio import imread
@@ -23,7 +25,7 @@ def add_alpha(img):
 
 
 #  This is the overlay we will put on top of provided image
-OVERLAY = imread('ebaklya.png')
+OVERLAY = imread(os.path.join(os.path.dirname(__file__), 'ebaklya.png'))
 OVERLAY = add_alpha(OVERLAY)
 
 
@@ -61,7 +63,7 @@ def overlay_model(im):
 
 def main():
     # create model from function and file-like object as sample data
-    with open('ebaklya.png', 'rb') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'ebaklya.png'), 'rb') as f:
         model = ebonite.create_model(overlay_model, f)
 
     # run flask service with this model
