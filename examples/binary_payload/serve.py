@@ -23,7 +23,7 @@ def add_alpha(img):
 
 
 #  This is the overlay we will put on top of provided image
-OVERLAY = imread('examples/binary_payload/ebaklya.png')
+OVERLAY = imread('ebaklya.png')
 OVERLAY = add_alpha(OVERLAY)
 
 
@@ -61,7 +61,7 @@ def overlay_model(im):
 
 def main():
     # create model from function and file-like object as sample data
-    with open('examples/binary_payload/ebaklya.png', 'rb') as f:
+    with open('ebaklya.png', 'rb') as f:
         model = ebonite.create_model(overlay_model, f)
 
     # run flask service with this model
