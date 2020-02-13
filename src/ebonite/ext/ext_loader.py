@@ -54,6 +54,9 @@ def __tensorflow_major_version():
     return tf.__version__.split('.')[0]
 
 
+is_tf_v1, is_tf_v2 = lambda: __tensorflow_major_version() == '1', lambda: __tensorflow_major_version() == '2'
+
+
 class ExtensionLoader:
     """
     Class that tracks and loads extensions.
@@ -63,8 +66,8 @@ class ExtensionLoader:
         Extension('ebonite.ext.numpy', ['numpy'], False),
         Extension('ebonite.ext.pandas', ['pandas'], False),
         Extension('ebonite.ext.sklearn', ['sklearn'], False),
-        Extension('ebonite.ext.tensorflow', ['tensorflow'], False, lambda: __tensorflow_major_version() == '1'),
-        Extension('ebonite.ext.tensorflow_v2', ['tensorflow'], False, lambda: __tensorflow_major_version() == '2'),
+        Extension('ebonite.ext.tensorflow', ['tensorflow'], False, is_tf_v1),
+        Extension('ebonite.ext.tensorflow_v2', ['tensorflow'], False, is_tf_v2),
         Extension('ebonite.ext.torch', ['torch'], False),
         Extension('ebonite.ext.catboost', ['catboost'], False),
         Extension('ebonite.ext.aiohttp', ['aiohttp', 'aiohttp_swagger']),
