@@ -170,6 +170,8 @@ Supported libraries and repositories
 
   * Flask
 
+  * aiohttp
+
 
 
 Contributing
