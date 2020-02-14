@@ -1,6 +1,6 @@
 import uuid
 from abc import abstractmethod
-from typing import Optional, Type, TypeVar, Dict, Any
+from typing import Any, Dict, Optional, Type, TypeVar
 
 from pyjackson import dumps, loads
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text

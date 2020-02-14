@@ -3,7 +3,7 @@ import getpass
 import tempfile
 from copy import copy
 from functools import wraps
-from typing import Callable, List, Optional, Dict, Any
+from typing import Any, Callable, Dict, List, Optional
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable

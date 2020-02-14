@@ -40,7 +40,7 @@ def container_name():
 
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def     test_build_model_docker(model, server, img_name, container_name):
+def test_build_model_docker(model, server, img_name, container_name):
     with use_local_installation():
         build_model_flask_docker(img_name, model, force_overwrite=True)
     run_docker_img(container_name, img_name, detach=True)
