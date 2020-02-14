@@ -14,6 +14,7 @@ from ebonite.build.provider.ml_model_multi import MLModelMultiProvider
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.requirements import InstallableRequirement, Requirements
+from ebonite.ext.aiohttp import AIOHTTPServer
 from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
@@ -60,8 +61,13 @@ def python_builder_mock() -> PythonBuilder:
 
 
 @pytest.fixture
-def python_builder(created_model) -> PythonBuilder:
+def python_builder_sync(created_model) -> PythonBuilder:
     return PythonBuilder(MLModelProvider(created_model, FlaskServer()))
+
+
+@pytest.fixture
+def python_builder_async(created_model) -> PythonBuilder:
+    return PythonBuilder(MLModelProvider(created_model, AIOHTTPServer()))
 
 
 @pytest.fixture
@@ -119,7 +125,9 @@ def _check_contents(base_dir, name, contents):
             assert file_contents == contents
 
 
-def test_python_builder__distr_loadable(tmpdir, python_builder: PythonBuilder, created_model, pandas_data):
+@pytest.mark.parametrize("python_builder", ["python_builder_sync", "python_builder_async"])
+def test_python_builder__distr_loadable(tmpdir, python_builder, created_model, pandas_data, request):
+    python_builder: PythonBuilder = request.getfixturevalue(python_builder)
     prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
@@ -157,12 +165,16 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
     assert server_output.decode('utf8').strip() == SECRET
 
 
-def test_python_builder_flask_distr_runnable(tmpdir, python_builder: PythonBuilder, pandas_data):
+@pytest.mark.parametrize(("python_builder", "server_reqs"), [
+    ("python_builder_sync", {'flasgger==0.9.3'}),
+    ("python_builder_async", {'aiohttp_swagger'})
+])
+def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data, server_reqs, request):
+    python_builder: PythonBuilder = request.getfixturevalue(python_builder)
     args, env = _prepare_distribution(tmpdir, python_builder)
 
     from setup import setup_args
-    _check_requirements(tmpdir, {*setup_args['install_requires'],
-                                 'flasgger==0.9.3',  # server reqs
+    _check_requirements(tmpdir, {*setup_args['install_requires'], *server_reqs,
                                  'pandas==0.25.1', 'scikit-learn==0.22', 'numpy==1.17.3'})  # model reqs
 
     # TODO make ModelLoader.load cwd-independent

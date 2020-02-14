@@ -4,6 +4,8 @@ Changelog
 Current release candidate
 -------------------------
 
+* Implemented asyncio-based server via aiohttp library
+
 0.3.5 (2020-01-31)
 ------------------
 

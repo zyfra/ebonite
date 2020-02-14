@@ -2,100 +2,52 @@ import itertools
 import uuid
 
 import flask
-from flasgger import Swagger, swag_from, validate
+from flasgger import Swagger, swag_from
 from flask import jsonify, redirect, request, send_file
-from pyjackson import deserialize
-from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.config import Config, Core, Param
-from ebonite.runtime.interface import ExecutionError, Interface
+from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceDescriptor
 from ebonite.runtime.openapi.spec import create_spec
-from ebonite.runtime.server import Server
+from ebonite.runtime.server import BaseHTTPServer, HTTPServerConfig, MalformedHTTPRequestException
 from ebonite.utils.fs import current_module_path
 from ebonite.utils.log import rlogger
 
-VALIDATE = False
 current_app = None
 
 
-class FlaskServerError(Exception):
-    def code(self):
-        return 400
-
-    def error(self):
-        return self.args[0]
-
-    def to_response(self):
-        return jsonify({'ok': False, 'error': self.error()}), self.code()
-
-
-class WrongArgumentsError(FlaskServerError):
-    def __init__(self, expected, actual):
-        self.expected = expected
-        self.actual = actual
-
-    def error(self):
-        return 'Invalid request: arguments are [{}], got [{}]'.format(', '.join(self.actual), ', '.join(self.expected))
-
-
-def _extract_request_data(method_args):
-    """
-
-    :param method_args:
-    :return:
-    """
-    args = {a.name: a for a in method_args}
-    if request.content_type == 'application/json':
-        request_data = request.json
-        try:
-            request_data = {k: deserialize(v, args[k].type) for k, v in request_data.items()}
-        except KeyError:
-            raise WrongArgumentsError(args.keys(), request_data.keys())
-        except DeserializationError as e:
-            raise FlaskServerError(*e.args)
-    else:
-        request_data = dict(itertools.chain(request.form.items(), request.files.items()))
-    rlogger.debug('Got request[%s] with data %s', flask.g.ebonite_id, request_data)
-    return request_data
-
-
-def create_executor_function(interface: Interface, method: str, spec: dict):
+def create_executor_function(interface: Interface, method: str):
     """
     Creates a view function for specific interface method
 
     :param interface: :class:`.Interface` instance
     :param method: method name
-    :param spec: openapi spec for this instance
     :return: callable view function
     """
 
     def ef():
-        data = _extract_request_data(interface.exposed_method_args(method))
         try:
-            result = interface.execute(method, data)
+            if request.content_type == 'application/json':
+                request_data = BaseHTTPServer._deserialize_json(interface, method, request.json)
+            else:
+                request_data = dict(itertools.chain(request.form.items(), request.files.items()))
+
+            result = BaseHTTPServer._execute_method(interface, method, request_data, flask.g.ebonite_id)
+
             if hasattr(result, 'read'):
-                rlogger.debug('Got response for [%s]: <binary content>', flask.g.ebonite_id)
                 return send_file(result, attachment_filename=getattr(result, 'name', None))
-            response = {'ok': True, 'data': result}
-            rlogger.debug('Got response for [%s]: %s', flask.g.ebonite_id, response)
-            if VALIDATE:
-                validate(response, specs=spec, definition='response_{}'.format(method))
-            return jsonify(response)
-        except (ExecutionError, SerializationError) as e:
-            raise FlaskServerError(*e.args)
+            return jsonify(result)
+        except MalformedHTTPRequestException as e:
+            return jsonify(e.response_body()), e.code()
 
     ef.__name__ = method
+
     return ef
 
 
 def _register_method(app, interface, method_name, signature):
-    spec = create_spec(method_name, signature)
-
-    executor_function = create_executor_function(interface, method_name, spec)
-    swag = swag_from(spec, validation=VALIDATE)
-    executor_function = swag(executor_function)
-
+    swag = swag_from(create_spec(method_name, signature))
+    executor_function = swag(create_executor_function(interface, method_name))
     app.add_url_rule('/' + method_name, method_name, executor_function, methods=['POST'])
 
 
@@ -113,8 +65,6 @@ def create_schema_route(app, interface: Interface):
 
 
 class FlaskConfig(Config):
-    host = Param('host', default='0.0.0.0', parser=str)
-    port = Param('port', default='9000', parser=int)
     run_flask = Param('run_flask', default='true', parser=bool)
 
 
@@ -122,19 +72,11 @@ if Core.DEBUG:
     FlaskConfig.log_params()
 
 
-class FlaskServer(Server):
+class FlaskServer(BaseHTTPServer):
     """
-    HTTP-based Ebonite runtime server.
-
-    Interface definition is exposed for clients via HTTP GET call to `/interface.json`,
-    method calls - via HTTP POST calls to `/<name>`,
-    server health check - via HTTP GET call to `/health`.
-
-    Host to which server binds is configured via `EBONITE_HOST` environment variable:
-    default is `0.0.0.0` which means any local or remote, for rejecting remote connections use `localhost` instead.
-
-    Port to which server binds to is configured via `EBONITE_PORT` environment variable: default is 9000.
+    Flask- and Flasgger-based :class:`.BaseHTTPServer` implementation
     """
+
     additional_sources = [
         current_module_path('build_templates', 'flask-site-nginx.conf'),
         current_module_path('build_templates', 'nginx.conf'),
@@ -149,11 +91,11 @@ class FlaskServer(Server):
 
     def _create_app(self):
         app = flask.Flask(__name__)
+        app.config['SWAGGER'] = {
+            'uiversion': 3,
+            'openapi': '3.0.2'
+        }
         Swagger(app)
-
-        @app.errorhandler(FlaskServerError)
-        def handle_bad_request(e: FlaskServerError):
-            return e.to_response()
 
         @app.route('/health')
         def health():
@@ -187,7 +129,7 @@ class FlaskServer(Server):
 
         current_app = app
         if FlaskConfig.run_flask:
-            rlogger.debug('Running flask on %s:%s', FlaskConfig.host, FlaskConfig.port)
-            app.run(FlaskConfig.host, FlaskConfig.port)
+            rlogger.debug('Running flask on %s:%s', HTTPServerConfig.host, HTTPServerConfig.port)
+            app.run(HTTPServerConfig.host, HTTPServerConfig.port)
         else:
             rlogger.debug('Skipping direct flask application run')

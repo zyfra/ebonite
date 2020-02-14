@@ -160,32 +160,25 @@ def test_create_spec__no_file():
     spec = create_spec('mymethod', Signature([field], field))
 
     assert spec == {
-        'definitions': {
-            'error': {
-                'type': 'object',
-                'properties': {
-                    'error': {'type': 'string'},
-                    'ok': {'type': 'boolean'}}
-            },
-            'request_mymethod': {
-                'type': 'object',
-                'properties': {'field': {'type': 'integer'}}
-            },
-            'response_mymethod': {
-                'type': 'object',
-                'properties': {'data': {'type': 'integer'},
-                               'ok': {'type': 'boolean'}}
-            }
-        },
-        'parameters': [{'in': 'body',
-                        'name': 'body',
-                        'required': True,
-                        'schema': {'$ref': '#/definitions/request_mymethod'}}],
-        'responses': {'200': {'description': 'resp descr',
-                              'schema': {'$ref': '#/definitions/response_mymethod'}},
-                      '400': {'description': 'resp descr',
-                              'schema': {'$ref': '#/definitions/error'}}},
-        'summary': 'mymethod'
+        "summary": "Calls 'mymethod' method on model",
+        'requestBody': {'required': True,
+                        "content": {"application/json": {'schema': {
+                            'type': 'object',
+                            'properties': {'field': {'type': 'integer'}}
+                        }}}},
+        'responses': {'200': {'description': 'successful response',
+                              "content": {"application/json": {'schema': {
+                                  'type': 'object',
+                                  'properties': {'data': {'type': 'integer'},
+                                                 'ok': {'type': 'boolean'}}
+                              }}}},
+                      '400': {'description': 'incorrect request',
+                              "content": {"application/json": {'schema': {
+                                  'type': 'object',
+                                  'properties': {
+                                      'error': {'type': 'string'},
+                                      'ok': {'type': 'boolean'}}
+                              }}}}}
     }
 
 
@@ -194,25 +187,24 @@ def test_create_spec__with_file():
     spec = create_spec('mymethod', Signature([field], field))
 
     assert spec == {
-        'definitions': {
-            'error': {
-                'type': 'object',
-                'properties': {
-                    'error': {'type': 'string'},
-                    'ok': {'type': 'boolean'}}
-            }
-        },
-        'parameters': [{'description': 'field',
-                        'in': 'formData',
-                        'name': 'field',
-                        'required': True,
-                        'type': 'file'}],
-        'responses': {'200': {"description": "resp descr",
-                              'content': {'*/*': {
+        "summary": "Calls 'mymethod' method on model",
+        'requestBody': {'required': True,
+                        'content': {'multipart/form-data': {'schema': {
+                            'type': 'object',
+                            'properties': {'field': {
+                                'type': 'string',
+                                'format': 'binary'}}
+                        }}}},
+        'responses': {'200': {"description": "successful response",
+                              'content': {'multipart/form-data': {
                                   'type': 'string',
                                   'format': 'binary'
                               }}},
-                      '400': {'description': 'resp descr',
-                              'schema': {'$ref': '#/definitions/error'}}},
-        'summary': 'mymethod'
+                      '400': {'description': 'incorrect request',
+                              "content": {"application/json": {'schema': {
+                                  'type': 'object',
+                                  'properties': {
+                                      'error': {'type': 'string'},
+                                      'ok': {'type': 'boolean'}}
+                              }}}}}
     }

@@ -12,7 +12,8 @@ def main():
         print(f'Usage: {sys.argv[0]} [image url]')
         return
 
-    r = requests.post('http://localhost:9000/predict', files={'vector': urlopen(img)})
+    r = requests.post('http://localhost:9000/predict', files={
+        'vector': ('vector', urlopen(img), 'application/octet-stream')})
     r.raise_for_status()
 
     _, ext = os.path.splitext(img)

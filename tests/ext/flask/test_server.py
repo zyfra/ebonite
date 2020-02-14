@@ -6,7 +6,7 @@ import pytest
 from pyjackson.core import ArgList, Field
 
 from ebonite.core.objects import DatasetType
-from ebonite.ext.flask.server import FlaskServer, WrongArgumentsError
+from ebonite.ext.flask.server import FlaskServer
 from ebonite.runtime import Interface
 from ebonite.runtime.interface import ExecutionError, expose
 
@@ -73,7 +73,7 @@ def test_errors(client):
                     content_type='application/json')
     assert r.status_code == 400
     resp = r.get_json()
-    assert resp == {'ok': False, 'error': WrongArgumentsError(['argument'], ['nonexisting']).error()}
+    assert resp == {'ok': False, 'error': "Invalid request: arguments are {'argument'}, got {'nonexisting'}"}
 
     r = client.post('/method',
                     data=json.dumps({'argument': 'a'}),

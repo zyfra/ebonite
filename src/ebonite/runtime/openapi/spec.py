@@ -3,7 +3,7 @@ from typing import Dict, List, Type
 from pyjackson.utils import (Field, Signature, get_class_fields, get_collection_internal_type, get_mapping_types,
                              is_collection, is_generic, is_mapping)
 
-from ebonite.core.objects.dataset_type import FilelikeDatasetType
+from ebonite.core.objects.dataset_type import FilelikeDatasetType, PrimitiveDatasetType
 from ebonite.runtime.interface.typing import TypeWithSpec
 
 BUILTIN_TYPES: Dict[Type, str] = {
@@ -79,7 +79,6 @@ def type_to_schema(field_type, has_default=False, default=None):
     :param default: specifies default value for given type
     :return: dict with OpenAPI schema definition
     """
-
     if field_type in BUILTIN_TYPES:
         result = {'type': BUILTIN_TYPES[field_type]}
         if has_default:
@@ -94,7 +93,11 @@ def type_to_schema(field_type, has_default=False, default=None):
             if kt != str:
                 raise ValueError('Only string keys supported')
             return make_object(arbitrary_properties_type=vt, has_default=has_default, default=default)
+
     elif issubclass(field_type, TypeWithSpec):
+        if issubclass(field_type, PrimitiveDatasetType):
+            return type_to_schema(field_type.to_type, has_default, default)
+
         # noinspection PyArgumentList
         spec = field_type.get_spec()
         # noinspection PyArgumentList
@@ -133,14 +136,9 @@ def create_spec(method_name: str, signature: Signature):
     value_args = [a for a in signature.args if not issubclass(a.type, FilelikeDatasetType)]
     file_args = [a for a in signature.args if issubclass(a.type, FilelikeDatasetType)]
 
-    parameters = []
-    definitions = {
-        'error': error_def
-    }
-
     if issubclass(signature.output.type, FilelikeDatasetType):
-        good_response = {"description": "resp descr",
-                         'content': {'*/*': {
+        good_response = {"description": "successful response",
+                         'content': {"multipart/form-data": {
                              'type': 'string',
                              'format': 'binary'
                          }}}
@@ -152,37 +150,39 @@ def create_spec(method_name: str, signature: Signature):
                 'data': type_to_schema(signature.output.type, False, None)
             }
         }
-        definitions["response_{}".format(method_name)] = response_def
-        good_response = {"description": "resp descr",
-                         "schema": {"$ref": "#/definitions/response_{}".format(method_name)}}
+        good_response = {"description": "successful response",
+                         "content": {"application/json": {"schema": response_def}}}
 
-    if len(value_args) > 0:
-        request_parameter = {'name': 'body', 'in': 'body', 'required': True,
-                             'schema': {"$ref": "#/definitions/request_{}".format(method_name)}}
-        parameters.append(request_parameter)
-        request_param_def = {
+    if value_args and file_args:
+        raise ValueError('Both JSON and file data at the same time is not supported')
+
+    if value_args:
+        json_body_def = {
             'type': 'object',
             'properties': {
                 a.name: _field_to_schema(a) for a in value_args
             }
         }
-        definitions['request_{}'.format(method_name)] = request_param_def
+        request_body = {'required': True,
+                        "content": {"application/json": {'schema': json_body_def}}}
+    elif file_args:
+        files_body_def = {
+            'type': 'object',
+            'properties': {
+                a.name: {'type': 'string', 'format': 'binary'} for a in file_args
+            }
+        }
+        request_body = {'required': True,
+                        "content": {"multipart/form-data": {'schema': files_body_def}}}
+    else:
+        request_body = {'required': False}
 
-    parameters.extend([{
-        'in': 'formData',
-        'name': a.name,
-        'type': 'file',
-        'required': not a.has_default,
-        'description': a.name}
-        for a in file_args
-    ])
-
-    bad_response = {"description": "resp descr", "schema": {"$ref": "#/definitions/error"}}
+    bad_response = {"description": "incorrect request",
+                    "content": {"application/json": {"schema": error_def}}}
 
     return {
-        "summary": method_name,
-        'parameters': parameters,
-        "definitions": definitions,
+        "summary": f"Calls '{method_name}' method on model",
+        "requestBody": request_body,
         "responses": {
             "200": good_response,
             "400": bad_response
