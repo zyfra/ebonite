@@ -70,3 +70,10 @@ class MLModelProvider(PythonProvider):
                 Blobs({os.path.basename(f): LocalFileBlob(f) for f in self.server.additional_binaries})
             ])
         return artifacts
+
+    def get_python_version(self):
+        """
+        :return: version of python that produced model
+        """
+        version = self.model.params.get(core.Model.PYTHON_VERSION)
+        return version or super(MLModelProvider, self).get_python_version()
