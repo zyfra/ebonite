@@ -1,4 +1,3 @@
-import sys
 from abc import abstractmethod
 from typing import Dict
 
@@ -7,6 +6,7 @@ from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.requirements import Requirements
 from ebonite.runtime.interface import InterfaceLoader
 from ebonite.runtime.server import Server
+from ebonite.utils.module import get_python_version
 
 
 class ProviderBase:
@@ -45,11 +45,9 @@ class PythonProvider(ProviderBase):
         self.server = server
         self.loader = loader
 
-    @staticmethod
-    def get_python_version():
+    def get_python_version(self):
         """Returns current python version"""
-        major, minor, *_ = sys.version_info
-        return '{}.{}'.format(major, minor)
+        return get_python_version()
 
     @abstractmethod
     def get_requirements(self) -> Requirements:

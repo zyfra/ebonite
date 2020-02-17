@@ -1,6 +1,6 @@
 import uuid
 from abc import abstractmethod
-from typing import Optional, Type, TypeVar
+from typing import Any, Dict, Optional, Type, TypeVar
 
 from pyjackson import dumps, loads
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
@@ -143,6 +143,8 @@ class SModel(Base, Attaching):
 
     artifact = Column(Text)
     requirements = Column(Text)
+    description = Column(Text)
+    params = Column(Text)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="models")
 
@@ -153,6 +155,8 @@ class SModel(Base, Attaching):
                       creation_date=self.creation_date,
                       artifact=safe_loads(self.artifact, ArtifactCollection),
                       requirements=safe_loads(self.requirements, Requirements),
+                      description=self.description,
+                      params=safe_loads(self.params, Dict[str, Any]),
                       id=tostr(self.id),
                       task_id=tostr(self.task_id))
         return self.attach(model)
@@ -166,4 +170,6 @@ class SModel(Base, Attaching):
                     wrapper=dumps(model.wrapper_meta),
                     artifact=dumps(model.artifact),
                     requirements=dumps(model.requirements),
+                    description=model.description,
+                    params=dumps(model.params),
                     task_id=model.task_id)

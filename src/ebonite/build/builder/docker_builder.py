@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from contextlib import contextmanager
@@ -13,6 +14,7 @@ from jinja2 import Environment, FileSystemLoader
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.provider.base import PythonProvider
 from ebonite.utils.log import logger
+from ebonite.utils.module import get_python_version
 
 TEMPLATE_FILE = 'dockerfile.j2'
 
@@ -53,12 +55,12 @@ def create_docker_client(docker_host: str = '') -> docker.DockerClient:
         client.close()
 
 
-def _print_docker_logs(logs):
+def _print_docker_logs(logs, level=logging.DEBUG):
     for l in logs:
         if 'stream' in l:
-            logger.debug(l['stream'])
+            logger.log(level, l['stream'])
         else:
-            logger.debug(l)
+            logger.log(level, l)
 
 
 class DockerBuilder(PythonBuilder):
@@ -86,6 +88,7 @@ class DockerBuilder(PythonBuilder):
         self.name = name
         self.tag = tag
         self.force_overwrite = force_overwrite
+        kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
     def build(self):
@@ -119,11 +122,11 @@ class DockerBuilder(PythonBuilder):
                 except errors.ImageNotFound:
                     pass
             try:
-                _, logs = client.images.build(path=context_dir, tag=tag)
+                _, logs = client.images.build(path=context_dir, tag=tag, rm=True)
                 logger.info('Build successful')
                 _print_docker_logs(logs)
             except errors.BuildError as e:
-                _print_docker_logs(e.build_log)
+                _print_docker_logs(e.build_log, logging.ERROR)
                 raise
 
 
@@ -141,8 +144,8 @@ class _DockerfileGenerator:
     """
 
     def __init__(self, base_image=None, python_version=None, templates_dir=None, run_cmd='sh run.sh'):
-        self.python_version = python_version or PythonProvider.get_python_version()
-        self.base_image = base_image or f'python:{self.python_version}'
+        self.python_version = python_version or get_python_version()
+        self.base_image = base_image or f'python:{self.python_version}-slim'
         self.templates_dir = templates_dir or os.path.join(os.getcwd(), 'docker_templates')
         self.run_cmd = run_cmd
 

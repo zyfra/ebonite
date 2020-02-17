@@ -138,7 +138,7 @@ Supported libraries and repositories
 
   * scikit-learn
 
-  * TensorFlow < 2
+  * TensorFlow (1.x and 2.x)
 
   * XGBoost
 
@@ -169,6 +169,8 @@ Supported libraries and repositories
 * Serving
 
   * Flask
+
+  * aiohttp
 
 
 

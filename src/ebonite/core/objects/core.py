@@ -3,7 +3,7 @@ import getpass
 import tempfile
 from copy import copy
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
@@ -17,7 +17,7 @@ from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifact
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
-from ebonite.utils.module import get_object_requirements
+from ebonite.utils.module import get_object_requirements, get_python_version
 
 
 def _get_current_user():
@@ -302,13 +302,20 @@ class Model(EboniteObject):
     :param creation_date: date when this model was created
     """
 
+    PYTHON_VERSION = 'python_version'
+
     def __init__(self, name: str, wrapper_meta: Optional[dict] = None,
                  artifact: 'ArtifactCollection' = None,
-                 requirements: Requirements = None, id: str = None,
+                 requirements: Requirements = None,
+                 params: Dict[str, Any] = None,
+                 description: str = None,
+                 id: str = None,
                  task_id: str = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
 
+        self.description = description
+        self.params = params or {}
         self._wrapper = None
         self._wrapper_meta = None
         if isinstance(wrapper_meta, ModelWrapper):
@@ -490,7 +497,7 @@ class Model(EboniteObject):
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, requirements)
+        model = Model(name, wrapper, None, requirements, {cls.PYTHON_VERSION: get_python_version()})
         model._unpersisted_artifacts = artifact
         return model
 

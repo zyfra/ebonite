@@ -62,7 +62,7 @@ COPY . ./
 CMD sh run.sh
 '''
 
-    kwargs = {'python_version': '3.6-slim'}
+    kwargs = {'python_version': '3.6'}
     assert _generate_dockerfile(**kwargs) == dockerfile
 
 

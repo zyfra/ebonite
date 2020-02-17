@@ -216,10 +216,6 @@ def is_builtin_module(mod: ModuleType):
     :return: boolean flag
     """
     return ISortModuleFinder.is_stdlib(mod.__name__)
-    # if mod.__name__ == 'builtins':
-    #     return True
-    # return not hasattr(mod, '__file__') or (
-    #         mod.__file__.startswith(PYTHON_BASE) and 'site-packages' not in mod.__file__)
 
 
 def is_local_module(mod: ModuleType):
@@ -258,6 +254,14 @@ def get_module_version(mod: ModuleType):
             if m:
                 return m.group(1)
         return None
+
+
+def get_python_version():
+    """
+    :return: Current python version in 'major.minor.micro' format
+    """
+    major, minor, micro, *_ = sys.version_info
+    return f'{major}.{minor}.{micro}'
 
 
 def get_package_name(mod: ModuleType) -> str:
@@ -385,7 +389,7 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
         self._add_requirement(obj)
         try:
             return super(EbonitePickler, self).save(obj, save_persistent_id)
-        except (TypeError, PicklingError) as e:
+        except (ValueError, TypeError, PicklingError) as e:
             # if object cannot be serialized, it's probably a C object and we don't need to go deeper
             logger.debug('Skipping dependency analysis for %s because of %s: %s', obj, type(e).__name__, e)
 

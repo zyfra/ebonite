@@ -13,6 +13,7 @@ def filelike_image_input(f):
     """
     @wraps(f)
     def inner(filelike):
+        filelike.seek(0)
         im = imread(filelike)
         return f(im)
 
