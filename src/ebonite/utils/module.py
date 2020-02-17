@@ -216,10 +216,6 @@ def is_builtin_module(mod: ModuleType):
     :return: boolean flag
     """
     return ISortModuleFinder.is_stdlib(mod.__name__)
-    # if mod.__name__ == 'builtins':
-    #     return True
-    # return not hasattr(mod, '__file__') or (
-    #         mod.__file__.startswith(PYTHON_BASE) and 'site-packages' not in mod.__file__)
 
 
 def is_local_module(mod: ModuleType):
@@ -258,6 +254,14 @@ def get_module_version(mod: ModuleType):
             if m:
                 return m.group(1)
         return None
+
+
+def get_python_version():
+    """
+    :return: Current python version in 'major.minor.micro' format
+    """
+    major, minor, micro, *_ = sys.version_info
+    return f'{major}.{minor}.{micro}'
 
 
 def get_package_name(mod: ModuleType) -> str:

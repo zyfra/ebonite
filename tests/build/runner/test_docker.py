@@ -26,8 +26,9 @@ BROKEN_TAG_NAME = f'{REGISTRY_HOST}/{REPOSITORY_NAME}/{BROKEN_IMAGE_NAME}'
 
 
 @pytest.fixture
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def runner():
+def runner(pytestconfig):
+    if not has_docker() or 'not docker' in pytestconfig.getoption('markexpr'):
+        pytest.skip('skipping docker tests')
     args = []
 
     def _runner(host: TargetHost, img: DockerImage, container_name: str):
@@ -43,8 +44,9 @@ def runner():
 
 # fixture that ensures that Docker registry is up between tests
 @pytest.fixture(scope='module')
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def registry(tmpdir_factory):
+def registry(tmpdir_factory, pytestconfig):
+    if not has_docker() or 'not docker' in pytestconfig.getoption('markexpr'):
+        pytest.skip('skipping docker tests')
     with DockerContainer('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
         client = DockerClient()
 

@@ -45,12 +45,12 @@ def task2():
 
 @pytest.fixture
 def model(mock_model_wrapper):
-    return Model("Test Model", mock_model_wrapper)
+    return Model("Test Model", mock_model_wrapper, description='')
 
 
 @pytest.fixture
 def model2(mock_model_wrapper):
-    return Model("Test Model2", mock_model_wrapper)
+    return Model("Test Model2", mock_model_wrapper, description='')
 
 
 create_metadata_hooks = interface_hook_creator('tests/repository/metadata/', 'meta_common.py', 'meta')
