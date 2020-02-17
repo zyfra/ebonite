@@ -4,8 +4,14 @@ Changelog
 Current release candidate
 -------------------------
 
+0.3.6 (2020-02-17)
+------------------
+
 * Implemented asyncio-based server via aiohttp library
 * Implemented support for Tensorflow 2.x models
+* Changed default type of base python docker image to "slim"
+* Added 'description' and 'params' fields to Model. 'description' is a text field and 'params' is a dict with arbitrary keys
+* Fixed bug with building docker image with different python version that the Model was created with
 
 0.3.5 (2020-01-31)
 ------------------
