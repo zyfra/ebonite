@@ -138,7 +138,7 @@ Supported libraries and repositories
 
   * scikit-learn
 
-  * TensorFlow < 2
+  * TensorFlow (1.x and 2.x)
 
   * XGBoost
 
