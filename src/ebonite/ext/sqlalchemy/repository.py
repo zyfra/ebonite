@@ -5,14 +5,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.core.errors import (ExistingModelError, ExistingProjectError, ExistingTaskError, NonExistingModelError,
-                                 NonExistingProjectError, NonExistingTaskError)
-from ebonite.core.objects.core import EboniteObject, Model, Project, Task
+from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 NonExistingImageError, NonExistingModelError, NonExistingProjectError,
+                                 NonExistingTaskError)
+from ebonite.core.objects.core import EboniteObject, Image, Model, Project, Task
 from ebonite.repository.metadata import MetadataRepository
-from ebonite.repository.metadata.base import ProjectVar, TaskVar, bind_to_self
+from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
-from .models import Attaching, Base, SModel, SProject, STask, update_attrs
+from .models import Attaching, Base, SImage, SModel, SProject, STask, update_attrs
 
 T = TypeVar('T', bound=EboniteObject)
 
@@ -29,6 +30,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     projects: Type[SProject] = SProject
     tasks: Type[STask] = STask
     models: Type[SModel] = SModel
+    images: Type[SImage] = SImage
 
     def __init__(self, db_uri: str):
         self.db_uri = db_uri
@@ -224,3 +226,37 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     def delete_model(self, model: Model):
         self._delete_object(self.models, model, NonExistingModelError)
         model.unbind_meta_repo()
+
+    @bind_to_self
+    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List[Image]:
+        model = self._resolve_model(model, task, project)
+        return self._get_objects(self.images, self.images.model_id == model.id)
+
+    @bind_to_self
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional[Image]:
+        model = self._resolve_model(model, task, project)
+        if model is None:
+            return None
+        return self._get_object_by_name(self.images, image_name, self.models.id == model.id)
+
+    @bind_to_self
+    def get_image_by_id(self, id: str) -> Optional[Image]:
+        return self._get_object_by_id(self.images, id)
+
+    @bind_to_self
+    def create_image(self, image: Image) -> Image:
+        self._validate_image(image)
+        return self._create_object(self.images, image, ExistingImageError)
+
+    def update_image(self, image: Image) -> Image:
+        with self._session(False) as s:
+            i = self._get_sql_object_by_id(self.images, image.id)
+            if i is None:
+                raise NonExistingImageError(image)
+            update_attrs(i, **SImage.get_kwargs(image))
+            s.commit()
+            return image
+
+    def delete_image(self, image: Image):
+        self._delete_object(self.images, image, NonExistingImageError)
+        image.unbind_meta_repo()

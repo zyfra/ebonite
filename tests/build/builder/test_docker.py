@@ -6,6 +6,7 @@ import pytest
 import tempfile
 from ebonite.build.builder.base import use_local_installation
 from ebonite.build.builder.docker_builder import _DockerfileGenerator, DockerBuilder, create_docker_client
+from ebonite.build.docker_objects import DockerImage
 
 from tests.build.conftest import has_docker
 from tests.build.builder.test_base import ProviderMock, SECRET
@@ -20,7 +21,7 @@ no_docker = pytest.mark.skipif(not has_docker(), reason='docker is unavailable o
 @pytest.fixture
 def docker_builder():
     with use_local_installation():
-        yield DockerBuilder(ProviderMock(), IMAGE_NAME)
+        yield DockerBuilder(ProviderMock(), DockerImage(IMAGE_NAME))
 
 
 @contextlib.contextmanager

@@ -107,9 +107,17 @@ class Ebonite:
             model.load()
         return model
 
-    @abstractmethod
-    def build_service(self, name: str, model: 'core.Model', **kwargs):
-        pass
+    def build_service(self, name: str, model: 'core.Model', **kwargs) -> 'core.Image':
+        """
+        Builds image of model service and stores it to repository
+
+        :param name: name of image to build
+        :param model: model to wrap into service
+        :return: :class:`~ebonite.core.objects.Image` instance representing built image
+        """
+        from ebonite.build import build_model_docker, DockerImage
+        image = build_model_docker(DockerImage(name), model, **kwargs)
+        return self.meta_repo.create_image(image)
 
     @abstractmethod
     def run_service(self, name: str, ports_mapping, detach: bool = True):

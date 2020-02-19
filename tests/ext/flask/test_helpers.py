@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from ebonite.build import run_docker_img
+from ebonite.build import DockerImage, run_docker_img
 from ebonite.build.builder.base import use_local_installation
 from ebonite.core.objects import Model
 from ebonite.ext.flask import FlaskServer
@@ -42,6 +42,6 @@ def container_name():
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_build_model_docker(model, server, img_name, container_name):
     with use_local_installation():
-        build_model_flask_docker(img_name, model, force_overwrite=True)
+        build_model_flask_docker(DockerImage(img_name), model, force_overwrite=True)
     run_docker_img(container_name, img_name, detach=True)
     assert is_container_running(container_name)

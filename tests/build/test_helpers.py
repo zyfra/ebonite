@@ -1,6 +1,7 @@
 import pytest
-from ebonite.build.builder.base import use_local_installation
 
+from ebonite.build.builder.base import use_local_installation
+from ebonite.build.docker_objects import DockerImage
 from ebonite.build.helpers import build_model_docker, run_docker_img, create_service_from_model
 from ebonite.ext.flask import FlaskServer
 
@@ -40,7 +41,7 @@ def service_name():
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_build_model_docker(model, server, img_name):
     with use_local_installation():
-        build_model_docker(img_name, model, server)
+        build_model_docker(DockerImage(img_name), model, server)
     assert has_local_image(img_name)
 
 

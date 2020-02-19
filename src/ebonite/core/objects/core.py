@@ -329,6 +329,9 @@ class Model(EboniteObject):
         self._persisted_artifacts = artifact
         self._unpersisted_artifacts: Optional[ArtifactCollection] = None
 
+        self._images: IndexDict[Image] = IndexDict('id', 'name')
+        self.images: IndexDictAccessor[Image] = IndexDictAccessor(self._images)
+
     def load(self):
         """
         Load model artifacts into wrapper
@@ -515,6 +518,48 @@ class Model(EboniteObject):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
 
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Model, self).bind_meta_repo(repo)
+        for image in self._images.values():
+            image.bind_meta_repo(repo)
+
+    @_with_meta
+    def add_image(self, image: 'Image'):
+        """
+        Add image for model and save it to meta repo
+
+        :param image: image to add
+        """
+        if image.model_id is not None and image.model_id != self.id:
+            raise errors.MetadataError('Image is already in model {}. Delete it first'.format(image.model_id))
+
+        image.model_id = self.id
+        self._meta.save_image(image)
+        self._images.add(image)
+
+    @_with_meta
+    def add_images(self, images: List['Image']):
+        """
+        Add multiple images for model and save them to meta repo
+
+        :param images: images to add
+        """
+        for image in images:
+            self.add_image(image)
+
+    @_with_meta
+    def delete_image(self, image: 'Image'):
+        """
+        Remove image from this model and delete it from meta repo
+
+        :param image: image to delete
+        """
+        if image.id not in self._images:
+            raise errors.NonExistingImageError(image)
+        del self._images[image.id]
+        self._meta.delete_image(image)
+        image.model_id = None
+
 
 def _generate_model_name(wrapper: ModelWrapper):
     """
@@ -525,3 +570,23 @@ def _generate_model_name(wrapper: ModelWrapper):
     """
     now = datetime.datetime.now()
     return '{}_model_{}'.format(wrapper.type, now.strftime('%Y%m%d_%H_%M_%S'))
+
+
+@make_string('id', 'name')
+class Image(EboniteObject):
+    def __init__(self, name: str, id: str = None,
+                 model_id: str = None, params: Dict[str, Any] = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.model_id = model_id
+        self.params = params or {}
+
+    @property
+    def model(self) -> Model:
+        raise AttributeError('Can\'t access model of unbound image')
+
+    @model.setter
+    def model(self, model: Model):
+        if not isinstance(model, Model):
+            raise ValueError('{} is not Model'.format(model))
+        self.model_id = model.id

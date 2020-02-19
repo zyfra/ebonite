@@ -2,9 +2,9 @@ import os
 
 import pytest
 
+from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.base import LocalTargetHost, TargetHost
-from ebonite.build.runner.simple_docker import DefaultDockerRegistry, DockerImage, DockerRunnerException, \
-    DockerServiceInstance, RemoteDockerRegistry, SimpleDockerRunner
+from ebonite.build.runner.simple_docker import DockerRunnerException, DockerServiceInstance, SimpleDockerRunner
 
 from docker import DockerClient
 from requests.exceptions import HTTPError
@@ -72,7 +72,7 @@ def registry(tmpdir_factory, pytestconfig):
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_run_default_registry(runner):
     img_registry = DefaultDockerRegistry()
-    img = DockerImage(IMAGE_NAME, docker_registry=img_registry)
+    img = DockerImage(IMAGE_NAME, registry=img_registry)
 
     host = LocalTargetHost()
 
@@ -91,7 +91,7 @@ def test_run_default_registry(runner):
 def test_run_remote_registry(runner, registry):
     img = DockerImage(IMAGE_NAME,
                       repository=REPOSITORY_NAME,
-                      docker_registry=registry)
+                      registry=registry)
     host = LocalTargetHost()
     instance = DockerServiceInstance(CONTAINER_NAME, img, host)
 
@@ -107,7 +107,7 @@ def test_run_remote_registry(runner, registry):
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_run_local_image_name_that_will_never_exist(runner):
     img_registry = DefaultDockerRegistry()
-    img = DockerImage('ebonite_image_name_that_will_never_exist', docker_registry=img_registry)
+    img = DockerImage('ebonite_image_name_that_will_never_exist', registry=img_registry)
 
     host = LocalTargetHost()
 
@@ -126,7 +126,7 @@ def test_run_local_image_name_that_will_never_exist(runner):
 def test_run_local_fail_inside_container(runner, registry):
     img = DockerImage(BROKEN_IMAGE_NAME,
                       repository=REPOSITORY_NAME,
-                      docker_registry=registry)
+                      registry=registry)
     host = LocalTargetHost()
     instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
 
@@ -143,7 +143,7 @@ def test_run_local_fail_inside_container(runner, registry):
 def test_run_local_fail_inside_container_attached(runner, registry):
     img = DockerImage(BROKEN_IMAGE_NAME,
                       repository=REPOSITORY_NAME,
-                      docker_registry=registry)
+                      registry=registry)
     host = LocalTargetHost()
     instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
 

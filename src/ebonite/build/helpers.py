@@ -7,18 +7,18 @@ from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
 
 
-def build_model_docker(image_name: str, model: 'core.Model', server: Server = None,
-                       image_tag='latest', force_overwrite=False, debug=False, **kwargs):
+def build_model_docker(image_params: DockerImage, model: 'core.Model', server: Server = None,
+                       force_overwrite=False, debug=False, **kwargs) -> 'core.Image':
     """
     Builds docker image from Model instance
 
-    :param image_name: docker image name to create
+    :param image_params: params for docker image to be built
     :param model: model to create image
     :param server: server instance to wrap model
-    :param image_tag: docker image tag
     :param force_overwrite: force overwrite image if it exists
     :param debug: run server in debug mode
     :param kwargs: same as in :meth:`~ebonite.build.builder.docker_builder.DockerBuilder.__init__`
+    :return built image
     """
     if server is None:
         from ebonite.ext.flask import FlaskServer
@@ -34,8 +34,10 @@ def build_model_docker(image_name: str, model: 'core.Model', server: Server = No
         raise RuntimeError("Docker is unavailable")
 
     provider = MLModelProvider(model, server, debug)
-    builder = DockerBuilder(provider, image_name, image_tag, force_overwrite, **kwargs)
-    builder.build()
+    builder = DockerBuilder(provider, image_params, force_overwrite, **kwargs)
+    image = builder.build()
+    image.model = model
+    return image
 
 
 def run_docker_img(container_name: str, image_name: str, port_mapping=None, detach=False):
@@ -67,7 +69,7 @@ def create_service_from_model(model_name: str, model_object, model_input, *,
     t = ebnt.get_or_create_task(project_name, task_name)
     model = t.create_and_push_model(model_object, model_input, model_name)
 
-    build_model_docker(service_name, model)
+    ebnt.build_service(service_name, model)
 
     if run_service:
         run_docker_img(service_name, service_name, detach=True)

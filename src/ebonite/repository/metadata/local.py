@@ -5,25 +5,29 @@ from typing import Dict, List, Optional, Tuple
 
 import pyjackson
 
-from ebonite.core.errors import (ExistingModelError, ExistingProjectError, ExistingTaskError, ModelNotInTaskError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError)
-from ebonite.core.objects.core import Model, Project, Task
-from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
+from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 NonExistingImageError, NonExistingModelError, NonExistingProjectError,
+                                 NonExistingTaskError)
+from ebonite.core.objects.core import Image, Model, Project, Task
+from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
 _Projects = Dict[str, Project]
 _Tasks = Dict[str, Task]
 _Models = Dict[str, Model]
+_Images = Dict[str, Image]
 
 
 class _LocalContainer:
-    def __init__(self, projects: _Projects, tasks: _Tasks, models: _Models):
+    def __init__(self, projects: _Projects, tasks: _Tasks, models: _Models, images: _Images):
         self.projects: _Projects = {}
         self.project_name_index: Dict[str, str] = {}
         self.tasks: _Tasks = {}
         self.task_name_index: Dict[Tuple[str, str], str] = {}
         self.models: _Models = {}
         self.model_name_index: Dict[Tuple[str, str], str] = {}
+        self.images: _Images = {}
+        self.image_name_index: Dict[Tuple[str, str], str] = {}
 
         for p in projects.values():
             self.add_project(p)
@@ -33,6 +37,9 @@ class _LocalContainer:
 
         for m in models.values():
             self.add_model(m)
+
+        for i in images.values():
+            self.add_image(i)
 
     def add_project(self, project: Project):
         assert project.id is not None
@@ -90,6 +97,23 @@ class _LocalContainer:
         self.model_name_index.pop((model.task_id, model.name), None)
         return model
 
+    def add_image(self, image: Image):
+        assert image.id is not None
+        self.images[image.id] = image
+        self.image_name_index[(image.model_id, image.name)] = image.id
+        self.models[image.model_id]._images.add(image)
+
+    def get_image_by_id(self, image_id):
+        return self.images.get(image_id, None)
+
+    def get_image_by_name(self, model_id: str, name: str):
+        return self.get_image_by_id(self.image_name_index.get((model_id, name), None))
+
+    def remove_image(self, image_id):
+        image = self.images.pop(image_id, None)
+        self.image_name_index.pop((image.model_id, image.name), None)
+        return image
+
 
 class LocalMetadataRepository(MetadataRepository):
     """
@@ -108,7 +132,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.path is not None:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)
 
-        self.data: _LocalContainer = _LocalContainer({}, {}, {})
+        self.data: _LocalContainer = _LocalContainer({}, {}, {}, {})
         self.load()
         self.save()
 
@@ -118,7 +142,7 @@ class LocalMetadataRepository(MetadataRepository):
                 logger.debug('Loading metadata from %s', self.path)
                 self.data = pyjackson.load(f, _LocalContainer)
         else:
-            self.data = _LocalContainer({}, {}, {})
+            self.data = _LocalContainer({}, {}, {}, {})
 
     def save(self):
         if self.path is None:
@@ -198,7 +222,6 @@ class LocalMetadataRepository(MetadataRepository):
             raise ExistingTaskError(task)
 
         task._id = str(uuid.uuid4())
-        existing_project._tasks.add(task)
         self.data.add_task(copy.deepcopy(task))
         self.save()
         return task
@@ -255,14 +278,12 @@ class LocalMetadataRepository(MetadataRepository):
             raise ExistingModelError(model)
 
         model._id = str(uuid.uuid4())
-        existing_task._models.add(model)
         self.data.add_model(copy.deepcopy(model))
         self.save()
         return model
 
     def update_model(self, model: Model) -> Model:
-        if model.task_id is None:
-            raise ModelNotInTaskError(model)
+        self._validate_model(model)
 
         task = self.get_task_by_id(model.task_id)
         if task is None:
@@ -284,3 +305,58 @@ class LocalMetadataRepository(MetadataRepository):
         self.data.remove_model(model.id)
         self.save()
         model.unbind_meta_repo()
+
+    @bind_to_self
+    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List[Image]:
+        model = self._resolve_model(model, task, project)
+        return copy.deepcopy(list(model.images.values()))
+
+    @bind_to_self
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional[Image]:
+        model = self._resolve_model(model, task, project)
+        if model is None:
+            return None
+        return copy.deepcopy(self.data.get_image_by_name(model.id, image_name))
+
+    @bind_to_self
+    def get_image_by_id(self, id: str) -> Optional[Image]:
+        return copy.deepcopy(self.data.get_image_by_id(id))
+
+    @bind_to_self
+    def create_image(self, image: Image) -> Image:
+        self._validate_image(image)
+
+        existing_model = self.get_model_by_id(image.model_id)
+        if existing_model is None:
+            raise NonExistingModelError(image.model_id)
+
+        if self.get_image_by_name(image.name, existing_model) is not None:
+            raise ExistingImageError(image)
+
+        image._id = str(uuid.uuid4())
+        self.data.add_image(copy.deepcopy(image))
+        self.save()
+        return image
+
+    def update_image(self, image: Image) -> Image:
+        self._validate_image(image)
+
+        existing_model = self.get_model_by_id(image.model_id)
+        if existing_model is None:
+            raise NonExistingModelError(image.model_id)
+
+        existing_image = self.get_image_by_id(image.id)
+        if existing_image is None:
+            raise NonExistingImageError(image)
+
+        self.data.remove_image(image.id)
+        self.data.add_image(copy.deepcopy(image))
+        self.save()
+        return image
+
+    def delete_image(self, image: Image):
+        if image.id is None:
+            raise NonExistingImageError(image)
+        self.data.remove_image(image.id)
+        self.save()
+        image.unbind_meta_repo()
