@@ -4,10 +4,11 @@ from typing import List
 import pytest
 from pyjackson.utils import get_class_fields
 
-from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageNotInModelError, ModelNotInTaskError, NonExistingImageError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError,
-                                 TaskNotInProjectError)
+from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
+                                 ExistingModelError, ExistingProjectError, ExistingTaskError, ImageNotInModelError,
+                                 ModelNotInTaskError, NonExistingEnvironmentError, NonExistingImageError,
+                                 NonExistingInstanceError, NonExistingModelError, NonExistingProjectError,
+                                 NonExistingTaskError, TaskNotInProjectError)
 from ebonite.core.objects.core import Model, Project, Task
 from ebonite.repository.metadata import MetadataRepository
 
@@ -850,6 +851,206 @@ def test_save_image__other_id(meta: MetadataRepository, created_image):
 
     with pytest.raises(ExistingImageError):
         meta.save_image(created_image)
+
+
+def test_get_environments__empty(meta: MetadataRepository):
+    assert meta.get_environments() == []
+
+
+def test_get_environments__full(meta: MetadataRepository, created_environment):
+    assert meta.get_environments() == [created_environment]
+
+
+def test_get_environment_by_id__empty(meta: MetadataRepository):
+    assert meta.get_environment_by_id('qwerty') is None
+
+
+def test_get_environment_by_id__full(meta: MetadataRepository, created_environment):
+    assert meta.get_environment_by_id(created_environment.id) == created_environment
+
+
+def test_get_environment_by_name__empty(meta: MetadataRepository):
+    assert meta.get_environment_by_name('qwerty') is None
+
+
+def test_get_environment_by_name__full(meta: MetadataRepository, created_environment):
+    assert meta.get_environment_by_name(created_environment.name) == created_environment
+
+
+def test_create_environment__ok(meta: MetadataRepository, environment, created_environment):
+    assert environment.id is None
+    assert not environment.has_meta_repo
+
+    assert created_environment.id is not None
+    assert created_environment.has_meta_repo
+
+    assert created_environment.name == environment.name
+    assert created_environment.host == environment.host
+    assert created_environment.port == environment.port
+
+
+def test_create_environment__saved(meta: MetadataRepository, created_environment):
+    with pytest.raises(ExistingEnvironmentError):
+        meta.create_environment(created_environment)
+
+
+def test_update_environment__ok(meta: MetadataRepository, created_environment):
+    assert created_environment.host is not None
+    assert created_environment.port is not None
+
+    created_environment.host = None
+    created_environment.port = None
+    environment = meta.update_environment(created_environment)
+
+    assert environment.host is None
+    assert environment.port is None
+
+
+def test_update_environment__not_existing(meta: MetadataRepository, environment):
+    with pytest.raises(NonExistingEnvironmentError):
+        meta.update_environment(environment)
+
+
+def test_delete_environment__ok(meta: MetadataRepository, created_environment):
+    assert meta.get_environments() == [created_environment]
+
+    meta.delete_environment(created_environment)
+
+    assert meta.get_environments() == []
+
+
+def test_delete_environment__not_existing(meta: MetadataRepository, environment):
+    with pytest.raises(NonExistingEnvironmentError):
+        meta.delete_environment(environment)
+
+
+def test_save_environment__ok_existing(meta: MetadataRepository, created_environment):
+    assert created_environment.host is not None
+    assert created_environment.port is not None
+
+    created_environment.host = None
+    created_environment.port = None
+    environment = meta.save_environment(created_environment)
+
+    assert environment.host is None
+    assert environment.port is None
+
+
+def test_save_environment__ok_not_existing(meta: MetadataRepository, environment):
+    assert environment.id is None
+    assert not environment.has_meta_repo
+
+    created_environment = meta.save_environment(environment)
+
+    assert created_environment.id is not None
+    assert created_environment.has_meta_repo
+
+    assert created_environment.name == environment.name
+    assert created_environment.host == environment.host
+    assert created_environment.port == environment.port
+
+
+def test_save_environment__other_id(meta: MetadataRepository, created_environment):
+    created_environment._id = 'qwerty'
+
+    with pytest.raises(ExistingEnvironmentError):
+        meta.save_environment(created_environment)
+
+
+def test_get_instances__empty(meta: MetadataRepository, created_image, created_environment):
+    assert meta.get_instances(created_image, created_environment) == []
+
+
+def test_get_instances__full(meta: MetadataRepository, created_image, created_environment, created_instance):
+    assert meta.get_instances(created_image, created_environment) == [created_instance]
+
+
+def test_get_instance_by_name__empty(meta: MetadataRepository, created_image, created_environment):
+    assert meta.get_instance_by_name('qwerty', created_image, created_environment) is None
+
+
+def test_get_instance_by_name__full(meta: MetadataRepository, created_image, created_environment, created_instance):
+    assert meta.get_instance_by_name(created_instance.name, created_image, created_environment) == created_instance
+
+
+def test_get_instance_by_id__empty(meta: MetadataRepository):
+    assert meta.get_instance_by_id('qwerty') is None
+
+
+def test_get_instance_by_id__full(meta: MetadataRepository, created_instance):
+    assert meta.get_instance_by_id(created_instance.id) == created_instance
+
+
+def test_create_instance__ok(meta: MetadataRepository, instance, created_instance):
+    assert instance.id is None
+    assert not instance.has_meta_repo
+
+    assert created_instance.id is not None
+    assert created_instance.has_meta_repo
+
+    assert created_instance.name == instance.name
+    assert created_instance.params == instance.params
+
+
+def test_created_instance__existing(meta: MetadataRepository, created_instance):
+    with pytest.raises(ExistingInstanceError):
+        meta.create_instance(created_instance)
+
+
+def test_update_instance__ok(meta: MetadataRepository, created_instance):
+    assert 'key' not in created_instance.params
+
+    created_instance.params['key'] = 2
+    instance = meta.update_instance(created_instance)
+
+    assert 'key' in instance.params
+    assert instance.params['key'] == 2
+
+
+def test_update_instance__not_existing(meta: MetadataRepository, created_instance):
+    created_instance._id = 'qwerty'
+
+    with pytest.raises(NonExistingInstanceError):
+        meta.update_instance(created_instance)
+
+
+def test_delete_instance__ok(meta: MetadataRepository, created_instance):
+    image, environment = created_instance.image_id, created_instance.environment_id
+    assert meta.get_instances(image, environment) == [created_instance]
+
+    meta.delete_instance(created_instance)
+
+    assert meta.get_instances(image, environment) == []
+
+
+def test_delete_instance__not_existing(meta: MetadataRepository, instance):
+    with pytest.raises(NonExistingInstanceError):
+        meta.delete_instance(instance)
+
+
+def test_save_instance__ok_existing(meta: MetadataRepository, created_instance):
+    assert 'key' not in created_instance.params
+
+    created_instance.params['key'] = 2
+    instance = meta.update_instance(created_instance)
+
+    assert 'key' in instance.params
+    assert instance.params['key'] == 2
+
+
+def test_save_instance__ok_not_existing(meta: MetadataRepository, created_image, created_environment, instance):
+    assert instance.id is None
+    assert not instance.has_meta_repo
+
+    instance.image = created_image
+    instance.environment = created_environment
+    created_instance = meta.save_instance(instance)
+
+    assert created_instance.id is not None
+    assert created_instance.has_meta_repo
+
+    assert created_instance.name == instance.name
+    assert created_instance.params == instance.params
 
 
 def test_inner_objects_binded(meta: MetadataRepository, project: Project, task: Task, model: Model):

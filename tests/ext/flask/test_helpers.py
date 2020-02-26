@@ -7,7 +7,8 @@ from ebonite.build.builder.base import use_local_installation
 from ebonite.core.objects import Model
 from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.helpers import build_model_flask_docker
-from tests.build.conftest import has_docker, is_container_running, rm_container, rm_image
+from tests.build.conftest import has_docker, rm_container, rm_image
+from tests.build.test_helpers import _assert_docker_container_running
 from tests.client.test_func import func
 
 
@@ -44,4 +45,4 @@ def test_build_model_docker(model, server, img_name, container_name):
     with use_local_installation():
         build_model_flask_docker(img_name, model, force_overwrite=True)
     run_docker_img(container_name, img_name, detach=True)
-    assert is_container_running(container_name)
+    _assert_docker_container_running(container_name)

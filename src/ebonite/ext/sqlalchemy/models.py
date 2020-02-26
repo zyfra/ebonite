@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 from ebonite.core.objects.artifacts import ArtifactCollection
-from ebonite.core.objects.core import Image, Model, Project, Task
+from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.core.objects.requirements import Requirements
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
@@ -207,3 +207,71 @@ class SImage(Base, Attaching):
                     creation_date=image.creation_date,
                     model_id=image.model_id,
                     params=dumps(image.params))
+
+
+class SRuntimeEnvironment(Base, Attaching):
+    __tablename__ = 'environments'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    name = Column(String, unique=True, nullable=False)
+    author = Column(String, unique=False, nullable=False)
+    creation_date = Column(DateTime, unique=False, nullable=False)
+
+    host = Column(String)
+    port = Column(Integer)
+
+    def to_obj(self) -> RuntimeEnvironment:
+        environment = RuntimeEnvironment(
+            name=self.name,
+            author=self.author,
+            creation_date=self.creation_date,
+            id=tostr(self.id),
+            host=self.host,
+            port=self.port)
+        return self.attach(environment)
+
+    @classmethod
+    def get_kwargs(cls, environment: RuntimeEnvironment) -> dict:
+        return dict(id=environment.id,
+                    name=environment.name,
+                    author=environment.author,
+                    creation_date=environment.creation_date,
+                    host=environment.host,
+                    port=environment.port)
+
+
+class SRuntimeInstance(Base, Attaching):
+    __tablename__ = 'instances'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    name = Column(String, unique=True, nullable=False)
+    author = Column(String, unique=False, nullable=False)
+    creation_date = Column(DateTime, unique=False, nullable=False)
+
+    image_id = Column(Integer, ForeignKey('images.id'), nullable=False)
+    environment_id = Column(Integer, ForeignKey('environments.id'), nullable=False)
+
+    params = Column(Text)
+
+    def to_obj(self) -> RuntimeInstance:
+        instance = RuntimeInstance(
+            name=self.name,
+            author=self.author,
+            creation_date=self.creation_date,
+            id=tostr(self.id),
+            image_id=tostr(self.image_id),
+            environment_id=tostr(self.environment_id),
+            params=safe_loads(self.params, Dict[str, Any]))
+        return self.attach(instance)
+
+    @classmethod
+    def get_kwargs(cls, instance: RuntimeInstance) -> dict:
+        return dict(id=instance.id,
+                    name=instance.name,
+                    author=instance.author,
+                    creation_date=instance.creation_date,
+                    image_id=instance.image_id,
+                    environment_id=instance.environment_id,
+                    params=dumps(instance.params))

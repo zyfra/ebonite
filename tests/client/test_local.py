@@ -9,7 +9,7 @@ from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Model
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import is_container_running, rm_container, rm_image, train_model
+from tests.build.conftest import rm_container, rm_image, train_model
 from tests.client.test_func import func
 
 LOCAL_REPO_PATH = os.path.dirname(__file__)
@@ -159,5 +159,6 @@ def test_build_and_run_service(ebnt, container_name):
 
     task = ebnt.get_or_create_task("Test Project", "Test Task")
     model = task.create_and_push_model(reg, data, "Test Model")
-    ebnt.build_and_run_service(container_name, model, detach=True)
-    assert is_container_running(container_name)
+    instance = ebnt.build_and_run_service(container_name, model)
+    time.sleep(.1)
+    assert ebnt.is_service_running(instance)

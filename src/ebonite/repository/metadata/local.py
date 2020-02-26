@@ -1,14 +1,15 @@
 import copy
 import os
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import pyjackson
 
-from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 NonExistingImageError, NonExistingModelError, NonExistingProjectError,
-                                 NonExistingTaskError)
-from ebonite.core.objects.core import Image, Model, Project, Task
+from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
+                                 ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
+                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError)
+from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
@@ -16,10 +17,13 @@ _Projects = Dict[str, Project]
 _Tasks = Dict[str, Task]
 _Models = Dict[str, Model]
 _Images = Dict[str, Image]
+_Environments = Dict[str, RuntimeEnvironment]
+_Instances = Dict[str, RuntimeInstance]
 
 
 class _LocalContainer:
-    def __init__(self, projects: _Projects, tasks: _Tasks, models: _Models, images: _Images):
+    def __init__(self, projects: _Projects, tasks: _Tasks, models: _Models, images: _Images,
+                 environments: _Environments, instances: _Instances):
         self.projects: _Projects = {}
         self.project_name_index: Dict[str, str] = {}
         self.tasks: _Tasks = {}
@@ -28,6 +32,11 @@ class _LocalContainer:
         self.model_name_index: Dict[Tuple[str, str], str] = {}
         self.images: _Images = {}
         self.image_name_index: Dict[Tuple[str, str], str] = {}
+        self.environments: _Environments = {}
+        self.environment_name_index: Dict[Tuple[str, str], str] = {}
+        self.instances: _Instances = {}
+        self.instance_name_index: Dict[Tuple[str, str, str], str] = {}
+        self.instance_index: Dict[Tuple[str, str], Set[str]] = {}
 
         for p in projects.values():
             self.add_project(p)
@@ -40,6 +49,12 @@ class _LocalContainer:
 
         for i in images.values():
             self.add_image(i)
+
+        for e in environments.values():
+            self.add_environment(e)
+
+        for i in instances.values():
+            self.add_instance(i)
 
     def add_project(self, project: Project):
         assert project.id is not None
@@ -114,6 +129,43 @@ class _LocalContainer:
         self.image_name_index.pop((image.model_id, image.name), None)
         return image
 
+    def add_environment(self, environment: RuntimeEnvironment):
+        assert environment.id is not None
+        self.environments[environment.id] = environment
+        self.environment_name_index[environment.name] = environment.id
+
+    def get_environment_by_id(self, environment_id):
+        return self.environments.get(environment_id)
+
+    def get_environment_by_name(self, name: str):
+        return self.get_environment_by_id(self.environment_name_index.get(name, None))
+
+    def remove_environment(self, environment_id):
+        environment = self.environments.pop(environment_id, None)
+        del self.environment_name_index[environment.name]
+        return environment
+
+    def add_instance(self, instance: RuntimeInstance):
+        assert instance.id is not None
+        self.instances[instance.id] = instance
+        self.instance_name_index[(instance.environment_id, instance.image_id, instance.name)] = instance.id
+        self.instance_index.setdefault((instance.environment_id, instance.image_id), set()).add(instance.id)
+
+    def get_instance_by_id(self, instance_id: str):
+        return self.instances.get(instance_id, None)
+
+    def get_instance_by_name(self, environment_id: str, image_id: str, name: str):
+        return self.get_instance_by_id(self.instance_name_index.get((environment_id, image_id, name), None))
+
+    def get_instances(self, environment_id: str, image_id: str):
+        return [self.get_instance_by_id(iid) for iid in self.instance_index.get((environment_id, image_id), set())]
+
+    def remove_instance(self, instance_id: str):
+        instance = self.instances.pop(instance_id, None)
+        self.instance_name_index.pop((instance.environment_id, instance.image_id, instance.name), None)
+        self.instance_index[(instance.environment_id, instance.image_id)].discard(instance_id)
+        return instance
+
 
 class LocalMetadataRepository(MetadataRepository):
     """
@@ -132,7 +184,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.path is not None:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)
 
-        self.data: _LocalContainer = _LocalContainer({}, {}, {}, {})
+        self.data: _LocalContainer = _LocalContainer({}, {}, {}, {}, {}, {})
         self.load()
         self.save()
 
@@ -142,7 +194,7 @@ class LocalMetadataRepository(MetadataRepository):
                 logger.debug('Loading metadata from %s', self.path)
                 self.data = pyjackson.load(f, _LocalContainer)
         else:
-            self.data = _LocalContainer({}, {}, {}, {})
+            self.data = _LocalContainer({}, {}, {}, {}, {}, {})
 
     def save(self):
         if self.path is None:
@@ -360,3 +412,104 @@ class LocalMetadataRepository(MetadataRepository):
         self.data.remove_image(image.id)
         self.save()
         image.unbind_meta_repo()
+
+    @bind_to_self
+    def get_environments(self) -> List[RuntimeEnvironment]:
+        return copy.deepcopy([self.data.get_environment_by_id(e) for e in self.data.environments.keys()])
+
+    @bind_to_self
+    def get_environment_by_name(self, name) -> Optional[RuntimeEnvironment]:
+        return copy.deepcopy(self.data.get_environment_by_name(name))
+
+    @bind_to_self
+    def get_environment_by_id(self, id: str) -> Optional[RuntimeEnvironment]:
+        return copy.deepcopy(self.data.get_environment_by_id(id))
+
+    @bind_to_self
+    def create_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
+        self._validate_environment(environment)
+
+        if self.get_environment_by_name(environment.name) is not None:
+            raise ExistingEnvironmentError(environment)
+        environment._id = str(uuid.uuid4())
+        self.data.add_environment(copy.deepcopy(environment))
+        self.save()
+        return environment
+
+    def update_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
+        self._validate_environment(environment)
+
+        existing_environment = self.get_environment_by_id(environment.id)
+        if existing_environment is None:
+            raise NonExistingEnvironmentError(environment)
+
+        self.data.remove_environment(environment.id)
+        self.data.add_environment(copy.deepcopy(environment))
+        self.save()
+        return environment
+
+    def delete_environment(self, environment: RuntimeEnvironment):
+        try:
+            self.data.remove_environment(environment.id)
+            self.save()
+            environment.unbind_meta_repo()
+        except (KeyError, AttributeError):
+            raise NonExistingEnvironmentError(environment)
+
+    @bind_to_self
+    def get_instances(self, image: Union[str, Image], environment: Union[str, RuntimeEnvironment]) \
+            -> List[RuntimeInstance]:
+        image = image.id if isinstance(image, Image) else image
+        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+        return self.data.get_instances(environment, image)
+
+    @bind_to_self
+    def get_instance_by_name(self, instance_name, image: Union[str, Image],
+                             environment: Union[str, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
+        image = image.id if isinstance(image, Image) else image
+        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+        return self.data.get_instance_by_name(environment, image, instance_name)
+
+    @bind_to_self
+    def get_instance_by_id(self, id: str) -> Optional[RuntimeInstance]:
+        return self.data.get_instance_by_id(id)
+
+    @bind_to_self
+    def create_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
+        self._validate_instance(instance)
+
+        image = self.get_image_by_id(instance.image_id)
+        if image is None:
+            raise NonExistingImageError(instance.image_id)
+
+        environment = self.get_environment_by_id(instance.environment_id)
+        if environment is None:
+            raise NonExistingEnvironmentError(instance.environment_id)
+
+        if self.get_instance_by_name(instance.name, image, environment) is not None:
+            raise ExistingInstanceError(instance)
+
+        instance._id = str(uuid.uuid4())
+        self.data.add_instance(copy.deepcopy(instance))
+        self.save()
+        return instance
+
+    def update_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
+        self._validate_instance(instance)
+
+        existing_instance = self.get_instance_by_id(instance.id)
+        if existing_instance is None:
+            raise NonExistingInstanceError(instance)
+
+        self.data.remove_instance(instance.id)
+        self.data.add_instance(copy.deepcopy(instance))
+        self.save()
+        return instance
+
+    def delete_instance(self, instance: RuntimeInstance):
+        try:
+            self.data.remove_instance(instance.id)
+            self.save()
+            instance.unbind_meta_repo()
+        except (KeyError, AttributeError):
+            raise NonExistingInstanceError(instance)

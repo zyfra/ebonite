@@ -69,6 +69,30 @@ class NonExistingImageError(MetadataError):
         super(NonExistingImageError, self).__init__('Image with name "{}" does not exist'.format(image))
 
 
+class ExistingEnvironmentError(MetadataError):
+    def __init__(self, environment: 'core.RuntimeEnvironment'):
+        environment = environment.name if isinstance(environment, core.RuntimeEnvironment) else environment
+        super(ExistingEnvironmentError, self).__init__('Environment with name "{}" already exists'.format(environment))
+
+
+class NonExistingEnvironmentError(MetadataError):
+    def __init__(self, environment: 'core.RuntimeEnvironment'):
+        environment = environment.name if isinstance(environment, core.RuntimeEnvironment) else environment
+        super(NonExistingEnvironmentError, self).__init__('Environment with name "{}" does not exist'.format(environment))
+
+
+class ExistingInstanceError(MetadataError):
+    def __init__(self, instance: 'core.RuntimeInstance'):
+        instance = instance.name if isinstance(instance, core.RuntimeInstance) else instance
+        super(ExistingInstanceError, self).__init__('Instance with name "{}" already exists'.format(instance))
+
+
+class NonExistingInstanceError(MetadataError):
+    def __init__(self, instance: 'core.RuntimeInstance'):
+        instance = instance.name if isinstance(instance, core.RuntimeInstance) else instance
+        super(NonExistingInstanceError, self).__init__('Instance with name "{}" does not exist'.format(instance))
+
+
 class TaskNotInProjectError(MetadataError):
     def __init__(self, task: 'core.Task'):
         super(TaskNotInProjectError, self).__init__("Can't save task {} without project".format(task.name))
@@ -82,6 +106,16 @@ class ModelNotInTaskError(MetadataError):
 class ImageNotInModelError(MetadataError):
     def __init__(self, image: 'core.Image'):
         super(ImageNotInModelError, self).__init__("Can't save image {} without model".format(image.name))
+
+
+class InstanceNotInImageError(MetadataError):
+    def __init__(self, instance: 'core.RuntimeInstance'):
+        super(InstanceNotInImageError, self).__init__(f"Can't save instance {instance.name} without image")
+
+
+class InstanceNotInEnvironmentError(MetadataError):
+    def __init__(self, instance: 'core.RuntimeInstance'):
+        super(InstanceNotInEnvironmentError, self).__init__(f"Can't save instance {instance.name} without environment")
 
 
 class ModelWithoutIdError(MetadataError):

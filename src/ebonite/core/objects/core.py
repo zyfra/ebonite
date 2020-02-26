@@ -590,3 +590,45 @@ class Image(EboniteObject):
         if not isinstance(model, Model):
             raise ValueError('{} is not Model'.format(model))
         self.model_id = model.id
+
+
+class RuntimeEnvironment(EboniteObject):
+    def __init__(self, name: str, id: str = None,
+                 host: str = None, port: int = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.host = host
+        self.port = port
+
+    def get_uri(self) -> str:
+        return f'{self.host}:{self.port}' if self.host else ''
+
+
+class RuntimeInstance(EboniteObject):
+    def __init__(self, name: str, id: str = None,
+                 image_id: str = None, environment_id: str = None, params: Dict[str, Any] = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.image_id = image_id
+        self.environment_id = environment_id
+        self.params = params or {}
+
+    @property
+    def image(self) -> Image:
+        raise AttributeError('Can\'t access image of unbound instance')
+
+    @image.setter
+    def image(self, image: Image):
+        if not isinstance(image, Image):
+            raise ValueError(f'{image} is not Image')
+        self.image_id = image.id
+
+    @property
+    def environment(self) -> RuntimeEnvironment:
+        raise AttributeError('Can\'t access environment of unbound instance')
+
+    @environment.setter
+    def environment(self, environment: RuntimeEnvironment):
+        if not isinstance(environment, RuntimeEnvironment):
+            raise ValueError(f'{environment} is not RuntimeEnvironment')
+        self.environment_id = environment.id

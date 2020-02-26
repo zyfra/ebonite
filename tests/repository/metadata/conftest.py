@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from ebonite.core.objects.core import Image, Model, Project, Task
+from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from tests.conftest import interface_hook_creator
 
 
@@ -73,6 +73,30 @@ def created_image(meta, created_model, image):
     image = deepcopy(image)
     image.model = created_model
     return meta.create_image(image)
+
+
+@pytest.fixture
+def environment():
+    return RuntimeEnvironment("Test Environment", host='168.132.157.0', port=8558)
+
+
+@pytest.fixture
+def created_environment(meta, environment):
+    environment = deepcopy(environment)
+    return meta.create_environment(environment)
+
+
+@pytest.fixture
+def instance():
+    return RuntimeInstance("Test Instance", params={'test': 123})
+
+
+@pytest.fixture
+def created_instance(meta, created_image, created_environment, instance):
+    instance = deepcopy(instance)
+    instance.image = created_image
+    instance.environment = created_environment
+    return meta.create_instance(instance)
 
 
 create_metadata_hooks = interface_hook_creator('tests/repository/metadata/', 'meta_common.py', 'meta')

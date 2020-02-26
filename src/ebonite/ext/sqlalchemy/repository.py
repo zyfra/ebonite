@@ -1,19 +1,21 @@
 import contextlib
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional, Type, TypeVar, Union
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 NonExistingImageError, NonExistingModelError, NonExistingProjectError,
-                                 NonExistingTaskError)
-from ebonite.core.objects.core import EboniteObject, Image, Model, Project, Task
+from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
+                                 ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
+                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError)
+from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
-from .models import Attaching, Base, SImage, SModel, SProject, STask, update_attrs
+from .models import (Attaching, Base, SImage, SModel, SProject, SRuntimeEnvironment, SRuntimeInstance, STask,
+                     update_attrs)
 
 T = TypeVar('T', bound=EboniteObject)
 
@@ -31,6 +33,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     tasks: Type[STask] = STask
     models: Type[SModel] = SModel
     images: Type[SImage] = SImage
+    environments: Type[SRuntimeEnvironment] = SRuntimeEnvironment
+    instances: Type[SRuntimeInstance] = SRuntimeInstance
 
     def __init__(self, db_uri: str):
         self.db_uri = db_uri
@@ -260,3 +264,70 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     def delete_image(self, image: Image):
         self._delete_object(self.images, image, NonExistingImageError)
         image.unbind_meta_repo()
+
+    @bind_to_self
+    def get_environments(self) -> List[RuntimeEnvironment]:
+        return self._get_objects(self.environments)
+
+    @bind_to_self
+    def get_environment_by_name(self, name) -> Optional[RuntimeEnvironment]:
+        return self._get_object_by_name(self.environments, name)
+
+    @bind_to_self
+    def get_environment_by_id(self, id: str) -> Optional[RuntimeEnvironment]:
+        return self._get_object_by_id(self.environments, id)
+
+    @bind_to_self
+    def create_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
+        self._validate_environment(environment)
+        return self._create_object(self.environments, environment, ExistingEnvironmentError)
+
+    def update_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
+        with self._session(False) as s:
+            i = self._get_sql_object_by_id(self.environments, environment.id)
+            if i is None:
+                raise NonExistingEnvironmentError(environment)
+            update_attrs(i, **SRuntimeEnvironment.get_kwargs(environment))
+            s.commit()
+            return environment
+
+    def delete_environment(self, environment: RuntimeEnvironment):
+        self._delete_object(self.environments, environment, NonExistingEnvironmentError)
+        environment.unbind_meta_repo()
+
+    @bind_to_self
+    def get_instances(self, image: Union[str, Image], environment: Union[str, RuntimeEnvironment]) \
+            -> List[RuntimeInstance]:
+        image = image.id if isinstance(image, Image) else image
+        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+        return self._get_objects(self.instances, self.images.id == image and self.environments.id == environment)
+
+    @bind_to_self
+    def get_instance_by_name(self, instance_name, image: Union[str, Image],
+                             environment: Union[str, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
+        image = image.id if isinstance(image, Image) else image
+        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+        return self._get_object_by_name(self.instances, instance_name,
+                                        self.images.id == image and self.environments.id == environment)
+
+    @bind_to_self
+    def get_instance_by_id(self, id: str) -> Optional[RuntimeInstance]:
+        return self._get_object_by_id(self.instances, id)
+
+    @bind_to_self
+    def create_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
+        self._validate_instance(instance)
+        return self._create_object(self.instances, instance, ExistingInstanceError)
+
+    def update_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
+        with self._session(False) as s:
+            i = self._get_sql_object_by_id(self.instances, instance.id)
+            if i is None:
+                raise NonExistingInstanceError(instance)
+            update_attrs(i, **SRuntimeInstance.get_kwargs(instance))
+            s.commit()
+            return instance
+
+    def delete_instance(self, instance: RuntimeInstance):
+        self._delete_object(self.instances, instance, NonExistingInstanceError)
+        instance.unbind_meta_repo()

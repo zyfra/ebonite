@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from functools import wraps
 from typing import Union
 
@@ -124,13 +123,109 @@ class Ebonite:
             image = build_model_docker(name, model, **kwargs)
         return self.meta_repo.create_image(image)
 
-    @abstractmethod
-    def run_service(self, name: str, ports_mapping, detach: bool = True):
-        pass
+    def get_image(self, name: str, model: 'core.Model') -> 'core.Image':
+        """
+        Load image from repository
 
-    def build_and_run_service(self, name: str, model: 'core.Model', ports_mapping=None, detach: bool = True, **kwargs):
-        self.build_service(name, model, **kwargs)
-        self.run_service(name, ports_mapping, detach)
+        :param name: image name to load
+        :param model: :py:class:`~ebonite.core.objects.Model` instance to load image from
+        :return: loaded :py:class:`~ebonite.core.objects.Image` instance
+        """
+        return self.meta_repo.get_image_by_name(name, model)
+
+    def push_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+        """
+        Pushes runtime environment to repository
+
+        :param environment: environment to push
+        :return: same environment bound to repository
+        """
+        return self.meta_repo.create_environment(environment)
+
+    def get_environment(self, name: str) -> 'core.RuntimeEnvironment':
+        """
+        Load runtime environment from repository
+
+        :param name: name of environment to load
+        :return: loaded :py:class:`~ebonite.core.objects.RuntimeEnvironment` instance
+        """
+        return self.meta_repo.get_environment_by_name(name)
+
+    def run_service(self, name: str, image: 'core.Image', environment: 'core.RuntimeEnvironment' = None,
+                    **kwargs) -> 'core.RuntimeInstance':
+        """
+        Runs model service and stores it to repository
+
+        :param name: name of instance to run
+        :param image: image to run instance from
+        :param environment: environment to run instance in, if no given `localhost` is used
+        :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
+        """
+        env_name = 'localhost'
+        if environment is None:
+            environment = self.get_environment(env_name)
+        if environment is None:
+            environment = self.push_environment(core.RuntimeEnvironment(env_name))
+
+        params = {k: v for k, v in kwargs.items() if k in {'ports_mapping'}}
+
+        instance = core.RuntimeInstance(name, params=params)
+        instance.image = image
+        instance.environment = environment
+        instance = self.meta_repo.create_instance(instance)
+
+        from ebonite.build import run_docker_img, DockerImage
+        run_docker_img(name, DockerImage.from_core_image(image), environment.get_uri(),
+                       detach=kwargs.get('detach', True), **params)
+
+        return instance
+
+    def build_and_run_service(self, name: str, model: 'core.Model', environment: 'core.RuntimeEnvironment' = None,
+                              **kwargs) -> 'core.RuntimeInstance':
+        """
+        Builds image of model service, immediately runs service and stores both image and instance to repository
+
+        :param name: name of image and instance to be built and run respectively
+        :param model: model to wrap into service
+        :param environment: environment to run instance in, if no given `localhost` is used
+        :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
+        """
+        image = self.build_service(name, model, **kwargs)
+        return self.run_service(name, image, environment, **kwargs)
+
+    def get_instance(self, name: str, image: 'core.Image', environment: 'core.RuntimeEnvironment') \
+            -> 'core.RuntimeInstance':
+        """
+        Loads service instance from repository
+
+        :param name: name of instance to load
+        :param image: image of instance to load
+        :param environment: environment of instance to load
+        :return: loaded :class:`~ebonite.core.objects.RuntimeInstance` instance
+        """
+        return self.meta_repo.get_instance_by_name(name, image, environment)
+
+    def is_service_running(self, instance: 'core.RuntimeInstance') -> bool:
+        """
+        Checks whether instance is running
+
+        :param instance: instance to check
+        :return: "is running" flag
+        """
+        from ebonite.build import is_docker_container_running
+        return is_docker_container_running(instance.name, instance.environment.get_uri())
+
+    def stop_service(self, instance: 'core.RuntimeInstance'):
+        """
+        Stops instance of model service and deletes it from repository
+
+        :param instance: instance to stop
+        :return: nothing
+        """
+        from ebonite.build import stop_docker_container
+        stop_docker_container(instance.name, instance.environment.get_uri())
+
+        self.meta_repo.delete_instance(instance)
 
     @classmethod
     def local(cls, path=None, clear=False):

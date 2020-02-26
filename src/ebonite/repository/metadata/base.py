@@ -17,6 +17,7 @@ NameOrIdOrObject = Union[str, T]
 ProjectVar = NameOrIdOrObject['core.Project']
 TaskVar = NameOrIdOrObject['core.Task']
 ModelVar = NameOrIdOrObject['core.Model']
+EnvironmentVar = NameOrIdOrObject['core.RuntimeEnvironment']
 
 
 def bind_to_self(method):
@@ -430,6 +431,188 @@ class MetadataRepository:
                 raise errors.ExistingImageError(image)
         return self.update_image(image)
 
+    @abstractmethod
+    def get_environments(self) -> List['core.RuntimeEnvironment']:
+        """
+        Gets a list of runtime environments
+
+        :return: found runtime environments
+        """
+
+        pass
+
+    @abstractmethod
+    def get_environment_by_name(self, name) -> Optional['core.RuntimeEnvironment']:
+        """
+        Finds runtime environment by name.
+
+        :param name: expected runtime environment name
+        :return: found runtime environment if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def get_environment_by_id(self, id: str) -> Optional['core.RuntimeEnvironment']:
+        """
+        Finds runtime environment by identifier.
+
+        :param id: expected runtime environment id
+        :return: found runtime environment if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def create_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+        """
+        Creates runtime environment in the repository
+
+        :param environment: runtime environment to create
+        :return: created runtime environment
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        """
+
+        pass
+
+    @abstractmethod
+    def update_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+        """
+        Updates runtime environment in the repository
+
+        :param environment: runtime environment to update
+        :return: updated runtime environment
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        """
+
+        pass
+
+    @abstractmethod
+    def delete_environment(self, environment: 'core.RuntimeEnvironment'):
+        """
+        Deletes runtime environment from the repository
+
+        :param environment: runtime environment to delete
+        :return: nothing
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        """
+
+        pass
+
+    def save_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+        """
+        Saves runtime environment in the repository
+
+        :param environment: runtime environment to save
+        :return: saved runtime environment
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        """
+        self._validate_environment(environment)
+
+        existing_environment = self.get_environment_by_name(environment.name)
+
+        if environment.id is None and existing_environment is None:
+            return self.create_environment(environment)
+        elif existing_environment is not None:
+            if environment.id is None or existing_environment.id != environment.id:
+                raise errors.ExistingEnvironmentError(environment)
+        return self.update_environment(environment)
+
+    @abstractmethod
+    def get_instances(self, image: Union[str, 'core.Image'], environment: Union[str, 'core.RuntimeEnvironment']) \
+            -> List['core.RuntimeInstance']:
+        """
+        Gets a list of instances in given image or environment
+
+        :param image: image (or id) to search for instances in
+        :param environment: environment (or id) to search for instances in
+        :return: found instances
+        """
+
+        pass
+
+    @abstractmethod
+    def get_instance_by_name(self, instance_name, image: Union[str, 'core.Image'],
+                             environment: Union[str, 'core.RuntimeEnvironment']) -> Optional['core.RuntimeInstance']:
+        """
+        Finds instance by name in given image and environment.
+
+        :param instance_name: expected instance name
+        :param image: image (or id) to search for instance in
+        :param environment: environment (or id) to search for instance in
+        :return: found instance if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def get_instance_by_id(self, id: str) -> Optional['core.RuntimeInstance']:
+        """
+        Finds instance by identifier.
+
+        :param id: expected instance id
+        :return: found instance if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def create_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
+        """
+        Creates instance in the repository
+
+        :param instance: instance to create
+        :return: created instance
+        :exception: :exc:`.errors.ExistingInstanceError` if given instance has the same name, image and environment
+            as existing one
+        """
+
+        pass
+
+    @abstractmethod
+    def update_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
+        """
+        Updates instance in the repository
+
+        :param instance: instance to update
+        :return: updated instance
+        :exception: :exc:`.errors.NonExistingInstanceError` if given instance doesn't exist in the repository
+        """
+
+        pass
+
+    @abstractmethod
+    def delete_instance(self, instance: 'core.RuntimeInstance'):
+        """
+        Deletes instance from the repository
+
+        :param instance: instance to delete
+        :return: nothing
+        :exception: :exc:`.errors.NonExistingInstanceError` if given instance doesn't exist in the repository
+        """
+
+        pass
+
+    def save_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
+        """
+        Saves instance in the repository
+
+        :param instance: instance to save
+        :return: saved instance
+        :exception: :exc:`.errors.ExistingInstanceError` if given image has the same name, image and environment
+            as existing one
+        """
+        self._validate_instance(instance)
+
+        existing_instance = self.get_instance_by_name(instance.name, instance.image_id, instance.environment_id)
+
+        if instance.id is None and existing_instance is None:
+            return self.create_instance(instance)
+        elif existing_instance is not None:
+            if instance.id is None or existing_instance.id != instance.id:
+                raise errors.ExistingInstanceError(instance)
+        return self.update_instance(instance)
+
     def _resolve_project(self, project: ProjectVar) -> Optional['core.Project']:
         if isinstance(project, core.Project):
             project = project.id or project.name
@@ -459,6 +642,11 @@ class MetadataRepository:
                 raise ValueError('Cannot resolve model without task')
             return self.get_model_by_name(model, task, project)
 
+    def _resolve_environment(self, environment: EnvironmentVar) -> Optional['core.RuntimeEnvironment']:
+        if isinstance(environment, core.RuntimeEnvironment):
+            environment = environment.id or environment.name
+        return self.get_environment_by_id(environment) or self.get_environment_by_name(environment)
+
     def _validate_project(self, project: Project):
         pass
 
@@ -473,3 +661,12 @@ class MetadataRepository:
     def _validate_image(self, image: Image):
         if image.model_id is None:
             raise errors.ImageNotInModelError(image)
+
+    def _validate_environment(self, environment: 'core.RuntimeEnvironment'):
+        pass
+
+    def _validate_instance(self, instance: 'core.RuntimeInstance'):
+        if instance.image_id is None:
+            raise errors.InstanceNotInImageError(instance)
+        if instance.environment_id is None:
+            raise errors.InstanceNotInEnvironmentError(instance)
