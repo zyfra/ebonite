@@ -115,8 +115,13 @@ class Ebonite:
         :param model: model to wrap into service
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
-        from ebonite.build import build_model_docker
-        image = build_model_docker(name, model, **kwargs)
+        if 'server' not in kwargs:  # by default we use uwsgi flask server
+            from ebonite.ext.flask.helpers import build_model_flask_docker
+            kwargs = {k: v for k, v in kwargs.items() if k in {'force_overwrite', 'debug'}}
+            image = build_model_flask_docker(name, model, **kwargs)
+        else:
+            from ebonite.build import build_model_docker
+            image = build_model_docker(name, model, **kwargs)
         return self.meta_repo.create_image(image)
 
     @abstractmethod
