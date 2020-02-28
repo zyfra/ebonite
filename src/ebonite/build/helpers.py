@@ -1,3 +1,5 @@
+from typing import Union
+
 import ebonite
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.build.runner.base import LocalTargetHost
@@ -7,12 +9,12 @@ from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
 
 
-def build_model_docker(image_params: DockerImage, model: 'core.Model', server: Server = None,
+def build_model_docker(image_params: Union[str, DockerImage], model: 'core.Model', server: Server = None,
                        force_overwrite=False, debug=False, **kwargs) -> 'core.Image':
     """
     Builds docker image from Model instance
 
-    :param image_params: params for docker image to be built
+    :param image_params: params (or simply name) for docker image to be built
     :param model: model to create image
     :param server: server instance to wrap model
     :param force_overwrite: force overwrite image if it exists
@@ -20,6 +22,9 @@ def build_model_docker(image_params: DockerImage, model: 'core.Model', server: S
     :param kwargs: same as in :meth:`~ebonite.build.builder.docker_builder.DockerBuilder.__init__`
     :return built image
     """
+    if isinstance(image_params, str):
+        image_params = DockerImage(image_params)
+
     if server is None:
         from ebonite.ext.flask import FlaskServer
         server = FlaskServer()

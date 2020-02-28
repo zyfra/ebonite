@@ -1,4 +1,5 @@
 import os
+from typing import Union
 
 from ebonite.build.docker_objects import DockerImage
 from ebonite.build.helpers import build_model_docker
@@ -8,12 +9,12 @@ from ebonite.ext.flask.server import FlaskServer
 TEMPLATES_DIR = 'build_templates'
 
 
-def build_model_flask_docker(image_params: DockerImage, model: 'core.Model', force_overwrite=False, debug=False) \
-        -> 'core.Image':
+def build_model_flask_docker(image_params: Union[str, DockerImage], model: 'core.Model',
+                             force_overwrite=False, debug=False) -> 'core.Image':
     """
     Builds flask docker image with nginx and uwsgi from Model instance
 
-    :param image_params: params for docker image to be built
+    :param image_params: params (or simply name) for docker image to be built
     :param model: model to create image
     :param force_overwrite: force overwrite image if it exists
     :param debug: run server in debug mode

@@ -115,8 +115,8 @@ class Ebonite:
         :param model: model to wrap into service
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
-        from ebonite.build import build_model_docker, DockerImage
-        image = build_model_docker(DockerImage(name), model, **kwargs)
+        from ebonite.build import build_model_docker
+        image = build_model_docker(name, model, **kwargs)
         return self.meta_repo.create_image(image)
 
     @abstractmethod
