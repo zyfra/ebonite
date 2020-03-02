@@ -4,7 +4,7 @@ import pytest
 
 from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.base import LocalTargetHost, TargetHost
-from ebonite.build.runner.simple_docker import DockerRunner, DockerRunnerException, DockerServiceInstance
+from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerServiceInstance
 
 from docker import DockerClient
 from requests.exceptions import HTTPError

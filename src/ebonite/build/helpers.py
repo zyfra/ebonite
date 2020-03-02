@@ -3,7 +3,7 @@ from typing import Union
 import ebonite
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.build.runner.base import LocalTargetHost
-from ebonite.build.runner.simple_docker import DockerImage, DockerRunner, DockerServiceInstance
+from ebonite.build.runner.docker import DockerImage, DockerRunner, DockerServiceInstance
 from ebonite.core.objects import core
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
