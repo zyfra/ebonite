@@ -1,5 +1,5 @@
 from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage
-from ebonite.build.runner import DockerServiceInstance, SimpleDockerRunner
+from ebonite.build.runner import DockerRunner, DockerServiceInstance
 from ebonite.build.runner.base import LocalTargetHost
 
 
@@ -11,7 +11,7 @@ def run_detached_and_remove():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     runner.run(instance, detach=True, rm=True)
 
 
@@ -23,7 +23,7 @@ def run_detached():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     runner.run(instance, detach=True, rm=False)
 
 
@@ -35,7 +35,7 @@ def run_attached_and_remove():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     runner.run(instance, detach=False, rm=True)
 
 
@@ -47,7 +47,7 @@ def run_attached():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     runner.run(instance, detach=False, rm=False)
 
 
@@ -59,7 +59,7 @@ def run_good():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     service = runner.run(instance, detach=True, rm=True)
 
     for a in runner.logs(service):
@@ -74,7 +74,7 @@ def run_good_attached():
     host = LocalTargetHost()
     instance = DockerServiceInstance(container_name, img, host, {80: 8080})
 
-    runner = SimpleDockerRunner()
+    runner = DockerRunner()
     runner.run(instance, detach=False, rm=True)
 
 

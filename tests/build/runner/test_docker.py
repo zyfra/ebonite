@@ -4,7 +4,7 @@ import pytest
 
 from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.base import LocalTargetHost, TargetHost
-from ebonite.build.runner.simple_docker import DockerRunnerException, DockerServiceInstance, SimpleDockerRunner
+from ebonite.build.runner.simple_docker import DockerRunner, DockerRunnerException, DockerServiceInstance
 
 from docker import DockerClient
 from requests.exceptions import HTTPError
@@ -33,7 +33,7 @@ def runner(pytestconfig):
 
     def _runner(host: TargetHost, img: DockerImage, container_name: str):
         args.append((host, img, container_name))
-        return SimpleDockerRunner()
+        return DockerRunner()
 
     yield _runner
 

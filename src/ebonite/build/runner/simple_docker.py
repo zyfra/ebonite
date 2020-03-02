@@ -24,7 +24,7 @@ class DockerServiceInstance(ServiceInstance):
         self.ports_mapping = ports_mapping or {}
 
 
-class SimpleDockerRunner(RunnerBase):
+class DockerRunner(RunnerBase):
 
     def run(self, service_instance: DockerServiceInstance, rm=True, detach=True):
         if not isinstance(service_instance, DockerServiceInstance):

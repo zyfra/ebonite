@@ -1,4 +1,4 @@
 from .base import RunnerBase
-from .simple_docker import DockerServiceInstance, SimpleDockerRunner
+from .simple_docker import DockerRunner, DockerServiceInstance
 
-__all__ = ['RunnerBase', 'DockerServiceInstance', 'SimpleDockerRunner']
+__all__ = ['RunnerBase', 'DockerRunner', 'DockerServiceInstance']
