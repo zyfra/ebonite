@@ -1,4 +1,4 @@
-from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage
+from ebonite.build.docker import DefaultDockerRegistry, DockerImage
 from ebonite.build.runner import DockerRunner, DockerRuntimeInstance
 
 

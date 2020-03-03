@@ -4,9 +4,11 @@ import os
 import docker.errors
 import pytest
 import tempfile
+from testcontainers.core.container import DockerContainer
+
 from ebonite.build.builder.base import use_local_installation
-from ebonite.build.builder.docker_builder import _DockerfileGenerator, DockerBuilder, create_docker_client
-from ebonite.build.docker_objects import DockerImage
+from ebonite.build.builder.docker import _DockerfileGenerator, DockerBuilder
+from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client
 
 from tests.build.conftest import has_docker
 from tests.build.builder.test_base import ProviderMock, SECRET
@@ -14,32 +16,50 @@ from tests.build.builder.test_base import ProviderMock, SECRET
 CLEAN = True
 IMAGE_NAME = 'ebonite_test_docker_builder_image'
 
+REGISTRY_PORT = 5000
+REGISTRY_HOST = f'localhost:{REGISTRY_PORT}'
 
 no_docker = pytest.mark.skipif(not has_docker(), reason='docker is unavailable or skipped')
 
 
 @pytest.fixture
-def docker_builder():
+def docker_builder_local_registry():
     with use_local_installation():
         yield DockerBuilder(ProviderMock(), DockerImage(IMAGE_NAME))
 
 
+@pytest.fixture
+def docker_builder_remote_registry():
+    with use_local_installation(), DockerContainer('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
+        yield DockerBuilder(ProviderMock(),
+                            DockerImage(IMAGE_NAME, registry=RemoteDockerRegistry(REGISTRY_HOST)))
+
+
 @contextlib.contextmanager
-def get_image_output():
+def get_image_output(image_params):
+    image_uri = image_params.get_uri()
+
     with create_docker_client() as client:
+        if isinstance(image_params.registry, RemoteDockerRegistry):
+            # remove to ensure that image was pushed to remote registry, if so following `run` call will pull it back
+            client.images.remove(image_uri)
+
         try:
-            yield client.containers.run(IMAGE_NAME, remove=True).decode('utf8').strip()
+            yield client.containers.run(image_uri, remove=True).decode('utf8').strip()
         except docker.errors.ContainerError as e:
             yield e.stderr.decode('utf8')
         finally:
-            client.images.remove(IMAGE_NAME)
+            client.images.remove(image_uri)
 
 
 @pytest.mark.docker
 @no_docker
-def test_build(docker_builder):
+@pytest.mark.parametrize('docker_builder', ['docker_builder_local_registry', 'docker_builder_remote_registry'])
+def test_build(docker_builder, request):
+    docker_builder = request.getfixturevalue(docker_builder)
+
     docker_builder.build()
-    with get_image_output() as output:
+    with get_image_output(docker_builder.params) as output:
         assert output == SECRET
 
 

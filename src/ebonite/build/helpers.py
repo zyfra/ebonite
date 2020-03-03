@@ -18,7 +18,7 @@ def build_model_docker(image_params: Union[str, DockerImage], model: 'core.Model
     :param server: server instance to wrap model
     :param force_overwrite: force overwrite image if it exists
     :param debug: run server in debug mode
-    :param kwargs: same as in :meth:`~ebonite.build.builder.docker_builder.DockerBuilder.__init__`
+    :param kwargs: same as in :meth:`~ebonite.build.builder.docker.DockerBuilder.__init__`
     :return built image
     """
     if isinstance(image_params, str):
@@ -32,7 +32,8 @@ def build_model_docker(image_params: Union[str, DockerImage], model: 'core.Model
         raise RuntimeError("Can't build docker container: docker module is not installed. Install it "
                            "with 'pip install docker'")
 
-    from ebonite.build.builder.docker_builder import DockerBuilder, is_docker_running
+    from ebonite.build.builder.docker import DockerBuilder
+    from ebonite.build.docker import is_docker_running
 
     if not is_docker_running():
         raise RuntimeError("Docker is unavailable")

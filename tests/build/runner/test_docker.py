@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
+from ebonite.build.docker import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerRuntimeInstance
 
 from docker import DockerClient
@@ -19,7 +19,7 @@ BROKEN_IMAGE_NAME = 'test-broken-image'
 CONTAINER_NAME = 'ebonite-runner-test-docker-container'
 
 REGISTRY_PORT = 5000
-REGISTRY_HOST = 'localhost:5000'
+REGISTRY_HOST = f'localhost:{REGISTRY_PORT}'
 REPOSITORY_NAME = 'ebonite'
 TAG_NAME = f'{REGISTRY_HOST}/{REPOSITORY_NAME}/{IMAGE_NAME}'
 BROKEN_TAG_NAME = f'{REGISTRY_HOST}/{REPOSITORY_NAME}/{BROKEN_IMAGE_NAME}'
@@ -39,7 +39,7 @@ def runner(pytestconfig):
 
     for h, i, c in args:
         rm_container(c, h)
-        rm_image(i.get_image_uri(), h)
+        rm_image(i.get_uri(), h)
 
 
 # fixture that ensures that Docker registry is up between tests

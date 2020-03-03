@@ -3,7 +3,7 @@ import os
 import docker.errors
 import pandas as pd
 import pytest
-from ebonite.build.builder.docker_builder import create_docker_client, is_docker_running
+from ebonite.build.docker import create_docker_client, is_docker_running
 from ebonite.core.objects.core import Model
 from sklearn.linear_model import LinearRegression
 
