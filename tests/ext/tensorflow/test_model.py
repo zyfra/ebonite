@@ -4,6 +4,7 @@ import tensorflow as tf
 from ebonite.core.analyzer.model import ModelAnalyzer
 
 
+@pytest.mark.tf_v1
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '1', reason="requires tensorflow 1.x")
 def test_tf__single_tensor(graph, tensor, tmpdir):
     with graph.as_default():
@@ -12,6 +13,7 @@ def test_tf__single_tensor(graph, tensor, tmpdir):
     _check_model_wrapper(graph, out, {tensor.name: [[1]]}, tmpdir)
 
 
+@pytest.mark.tf_v1
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '1', reason="requires tensorflow 1.x")
 def test_tf__multiple_tensors(graph, tensor, second_tensor, tmpdir):
     with graph.as_default():

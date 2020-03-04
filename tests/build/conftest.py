@@ -48,11 +48,6 @@ def train_model():
     return reg, data
 
 
-def create_test_model(name):
-    model = Model.create(func, "kek", name)
-    return model
-
-
 @pytest.fixture
 def model():
     model = Model.create(func, "kek", "Test Model")

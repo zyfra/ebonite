@@ -6,14 +6,24 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.objects.dataset_type import DatasetType
+from ebonite.runtime.openapi.spec import type_to_schema
 
 
 @pytest.fixture
 def tftt(tensor_data):
+    return _analyze(tensor_data)
+
+
+@pytest.fixture
+def tftt_3d(tensor_data):
+    return _analyze(tf.tile(tf.expand_dims(tensor_data, -1), [1, 1, 20]))
+
+
+def _analyze(tensor):
     # force loading of dataset hooks
     import ebonite.ext.tensorflow_v2  # noqa
 
-    return DatasetAnalyzer.analyze(tensor_data)
+    return DatasetAnalyzer.analyze(tensor)
 
 
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '2', reason="requires tensorflow 2.x")
@@ -56,3 +66,21 @@ def test_feed_dict_serialize_failure(tftt, obj):
 def test_feed_dict_deserialize_failure(tftt, obj):
     with pytest.raises(DeserializationError):
         tftt.deserialize(obj)
+
+
+@pytest.mark.skipif(tf.__version__.split('.')[0] != '2', reason="requires tensorflow 2.x")
+def test_feed_dict_type__openapi_schema_3d(tftt_3d):
+    assert type_to_schema(tftt_3d) == {
+        'items': {
+            'items': {
+                'items': {'type': 'number'},
+                'maxItems': 20,
+                'minItems': 20,
+                'type': 'array'
+            },
+            'maxItems': 32,
+            'minItems': 32,
+            'type': 'array'
+        },
+        'type': 'array'
+    }

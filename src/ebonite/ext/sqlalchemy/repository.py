@@ -83,7 +83,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 return
             return obj.to_obj()
 
-    def _get_sql_object_by_id(self, object_type: Type[Attaching], id: str):
+    def _get_sql_object_by_id(self, object_type: Type[Attaching], id: int):
         with self._session() as s:
             logger.debug('Getting %s[%s]', object_type.__name__, id)
             obj = s.query(object_type).filter(object_type.id == id).first()
@@ -91,7 +91,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 return
             return obj
 
-    def _get_object_by_id(self, object_type: Type[Attaching], id: str):
+    def _get_object_by_id(self, object_type: Type[Attaching], id: int):
         with self._session():
             sql_obj = self._get_sql_object_by_id(object_type, id)
             return sql_obj.to_obj() if sql_obj is not None else None
@@ -105,7 +105,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 s.commit()
             except IntegrityError:
                 raise error_type(obj)
-            obj._id = str(p.id)
+            obj._id = p.id
             return obj
 
     def _delete_object(self, object_type: Type[Attaching], obj, error_type):
@@ -125,7 +125,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._get_object_by_name(self.projects, name)
 
     @bind_to_self
-    def get_project_by_id(self, id: str) -> Optional[Project]:
+    def get_project_by_id(self, id: int) -> Optional[Project]:
         return self._get_object_by_id(self.projects, id)
 
     @bind_to_self
@@ -144,9 +144,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             update_attrs(p, **kwargs)
             s.commit()
             for t in p.tasks:
-                tid = str(t.id)
-                if tid in project.tasks:
-                    self.update_task(project.tasks.get(tid))
+                if t.id in project.tasks:
+                    self.update_task(project.tasks.get(t.id))
                 else:
                     project._tasks.add(t.to_obj())
             return project
@@ -165,10 +164,10 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         p = self._resolve_project(project)
         if p is None:
             return None
-        return self._get_object_by_name(self.tasks, task_name, self.projects.id == p.id)
+        return self._get_object_by_name(self.tasks, task_name, self.tasks.project_id == p.id)
 
     @bind_to_self
-    def get_task_by_id(self, id: str) -> Optional[Task]:
+    def get_task_by_id(self, id: int) -> Optional[Task]:
         return self._get_object_by_id(self.tasks, id)
 
     @bind_to_self
@@ -186,9 +185,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             update_attrs(t, **kwargs)
             s.commit()
             for m in t.models:
-                mid = str(m.id)
-                if mid in task.models:
-                    self.update_model(task.models.get(mid))
+                if m.id in task.models:
+                    self.update_model(task.models.get(m.id))
                 else:
                     task._models.add(m.to_obj())
             return task
@@ -207,10 +205,10 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         task = self._resolve_task(task, project)
         if task is None:
             return None
-        return self._get_object_by_name(self.models, model_name, self.tasks.id == task.id)
+        return self._get_object_by_name(self.models, model_name, self.models.task_id == task.id)
 
     @bind_to_self
-    def get_model_by_id(self, id: str) -> Optional[Model]:
+    def get_model_by_id(self, id: int) -> Optional[Model]:
         return self._get_object_by_id(self.models, id)
 
     @bind_to_self
@@ -241,10 +239,10 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         model = self._resolve_model(model, task, project)
         if model is None:
             return None
-        return self._get_object_by_name(self.images, image_name, self.models.id == model.id)
+        return self._get_object_by_name(self.images, image_name, self.images.model_id == model.id)
 
     @bind_to_self
-    def get_image_by_id(self, id: str) -> Optional[Image]:
+    def get_image_by_id(self, id: int) -> Optional[Image]:
         return self._get_object_by_id(self.images, id)
 
     @bind_to_self
@@ -274,7 +272,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._get_object_by_name(self.environments, name)
 
     @bind_to_self
-    def get_environment_by_id(self, id: str) -> Optional[RuntimeEnvironment]:
+    def get_environment_by_id(self, id: int) -> Optional[RuntimeEnvironment]:
         return self._get_object_by_id(self.environments, id)
 
     @bind_to_self
@@ -296,22 +294,24 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         environment.unbind_meta_repo()
 
     @bind_to_self
-    def get_instances(self, image: Union[str, Image], environment: Union[str, RuntimeEnvironment]) \
+    def get_instances(self, image: Union[int, Image], environment: Union[int, RuntimeEnvironment]) \
             -> List[RuntimeInstance]:
         image = image.id if isinstance(image, Image) else image
         environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
-        return self._get_objects(self.instances, self.images.id == image and self.environments.id == environment)
+        return self._get_objects(self.instances, self.instances.image_id == image and
+                                 self.instances.environment_id == environment)
 
     @bind_to_self
-    def get_instance_by_name(self, instance_name, image: Union[str, Image],
-                             environment: Union[str, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
+    def get_instance_by_name(self, instance_name, image: Union[int, Image],
+                             environment: Union[int, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
         image = image.id if isinstance(image, Image) else image
         environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
         return self._get_object_by_name(self.instances, instance_name,
-                                        self.images.id == image and self.environments.id == environment)
+                                        self.instances.image_id == image and
+                                        self.instances.environment_id == environment)
 
     @bind_to_self
-    def get_instance_by_id(self, id: str) -> Optional[RuntimeInstance]:
+    def get_instance_by_id(self, id: int) -> Optional[RuntimeInstance]:
         return self._get_object_by_id(self.instances, id)
 
     @bind_to_self

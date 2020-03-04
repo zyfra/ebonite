@@ -5,16 +5,16 @@ from typing import Generator
 class RunnerBase:
     @abstractmethod
     def run(self, instance, **kwargs):
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def is_running(self, instance) -> bool:
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def stop(self, instance):
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def logs(self, instance, **kwargs) -> Generator[str, None, None]:
-        pass
+        pass  # pragma: no cover

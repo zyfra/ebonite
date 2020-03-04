@@ -23,7 +23,7 @@ class Hook:
         :param obj: object to analyze
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def must_process(self, obj) -> bool:
@@ -34,7 +34,7 @@ class Hook:
         :param obj: object to analyze
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def process(self, obj, **kwargs):
@@ -45,7 +45,7 @@ class Hook:
         :param kwargs: additional information to be used for analysis
         :return: analysis result
         """
-        pass
+        pass  # pragma: no cover
 
     def __init_subclass__(cls, **kwargs):
         if hasattr(cls, '__init__'):
@@ -103,7 +103,7 @@ class BaseModuleHookMixin(CanIsAMustHookMixin, Hook):
         :param module_name: module name
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     def is_valid_base_module(self, base_module: ModuleType) -> bool:
         """

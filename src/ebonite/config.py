@@ -1,4 +1,5 @@
 import argparse
+from abc import abstractmethod
 from typing import Any, Callable, Dict, Type
 
 from everett import NO_VALUE
@@ -11,8 +12,9 @@ class ConfigEnv:
     register = True
     on_top = True
 
+    @abstractmethod
     def get(self, key, namespace=None):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __init_subclass__(cls: Type['ConfigEnv']):
         if cls.register:

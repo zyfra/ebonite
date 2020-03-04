@@ -22,11 +22,11 @@ class _TFDump:
 
     @abstractmethod
     def dump(self, session, path) -> FilesContextManager:
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def load(self, session, path) -> tf.Graph:
-        pass
+        pass  # pragma: no cover
 
 
 class _Saver(_TFDump):
@@ -144,7 +144,8 @@ def is_graph_frozen() -> bool:
 
     :return: `True` or `False`
     """
-    return not bool(tf.python.ops.variables._all_saveable_objects())
+    from tensorflow.python.ops import variables
+    return not bool(variables._all_saveable_objects())
 
 
 @make_string(include_name=True)

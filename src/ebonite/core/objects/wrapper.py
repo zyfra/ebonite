@@ -52,7 +52,7 @@ class ModelWrapper(EboniteParams):
         Must return context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         :return: :class:`~ebonite.core.objects.ArtifactCollection`
         """
-        pass
+        pass  # pragma: no cover
 
     def load(self, path):
         self._load(path)
@@ -65,7 +65,7 @@ class ModelWrapper(EboniteParams):
         :param path:
         :return:
         """
-        pass
+        pass  # pragma: no cover
 
     def bind_model(self, model, input_data=None, **kwargs):
         """
@@ -153,7 +153,7 @@ class ModelWrapper(EboniteParams):
         this allows to wrap existing API with your own pre/postprocessing.
         Otherwise, wrapped model object method is going to be called.
         """
-        pass
+        pass  # pragma: no cover
 
     @staticmethod
     def with_model(f):

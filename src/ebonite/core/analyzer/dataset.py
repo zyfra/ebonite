@@ -20,7 +20,7 @@ class DatasetHook(Hook):
         :param kwargs: additional information to be used for analysis
         :return: analysis result
         """
-        pass
+        pass  # pragma: no cover
 
 
 DatasetAnalyzer = analyzer_class(DatasetHook, DatasetType)

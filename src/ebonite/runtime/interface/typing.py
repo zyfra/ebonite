@@ -12,13 +12,14 @@ class TypeWithSpec(Serializer):
 
     @abstractmethod
     def get_spec(self) -> ArgList:
-        pass
+        pass  # pragma: no cover
 
     def is_list(self):
         return False
 
+    @abstractmethod
     def list_size(self):
-        pass
+        pass  # pragma: no cover
 
 
 class ListTypeWithSpec(TypeWithSpec):
@@ -31,7 +32,7 @@ class ListTypeWithSpec(TypeWithSpec):
 
     @abstractmethod
     def list_size(self):
-        return NotImplementedError
+        return NotImplementedError  # pragma: no cover
 
 
 class SizedTypedListType(ListTypeWithSpec):
@@ -49,8 +50,10 @@ class SizedTypedListType(ListTypeWithSpec):
     def list_size(self):
         return self.size
 
+    @abstractmethod
     def deserialize(self, obj):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
+    @abstractmethod
     def serialize(self, instance):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
