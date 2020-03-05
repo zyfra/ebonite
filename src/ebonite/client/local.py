@@ -29,10 +29,6 @@ class LocalClient(Ebonite):
         if os.path.exists(self.path):
             shutil.rmtree(self.path)
 
-    def build_service(self, name: str, model, **kwargs):
-        from ebonite.build import build_model_docker
-        build_model_docker(name, model, **kwargs)
-
     def run_service(self, name: str, ports_mapping=None, detach: bool = False):
         from ebonite.build import run_docker_img
         run_docker_img(name, name, ports_mapping, detach)

@@ -1,6 +1,4 @@
 from .base import RunnerBase
-from .simple_docker import DefaultDockerRegistry, DockerImage, DockerServiceInstance, RemoteDockerRegistry, \
-    SimpleDockerRunner
+from .docker import DockerRunner, DockerServiceInstance
 
-__all__ = ['RunnerBase', 'DefaultDockerRegistry', 'DockerImage', 'DockerServiceInstance',
-           'RemoteDockerRegistry', 'SimpleDockerRunner']
+__all__ = ['RunnerBase', 'DockerRunner', 'DockerServiceInstance']

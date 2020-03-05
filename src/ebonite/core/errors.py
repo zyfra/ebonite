@@ -57,6 +57,18 @@ class NonExistingModelError(MetadataError):
         super(NonExistingModelError, self).__init__('Model with name "{}" does not exist'.format(model))
 
 
+class ExistingImageError(MetadataError):
+    def __init__(self, image: 'core.Image'):
+        image = image.name if isinstance(image, core.Image) else image
+        super(ExistingImageError, self).__init__('Image with name "{}" already exists'.format(image))
+
+
+class NonExistingImageError(MetadataError):
+    def __init__(self, image: 'core.Image'):
+        image = image.name if isinstance(image, core.Image) else image
+        super(NonExistingImageError, self).__init__('Image with name "{}" does not exist'.format(image))
+
+
 class TaskNotInProjectError(MetadataError):
     def __init__(self, task: 'core.Task'):
         super(TaskNotInProjectError, self).__init__("Can't save task {} without project".format(task.name))
@@ -65,6 +77,11 @@ class TaskNotInProjectError(MetadataError):
 class ModelNotInTaskError(MetadataError):
     def __init__(self, model: 'core.Model'):
         super(ModelNotInTaskError, self).__init__("Can't save model {} without task".format(model.name))
+
+
+class ImageNotInModelError(MetadataError):
+    def __init__(self, image: 'core.Image'):
+        super(ImageNotInModelError, self).__init__("Can't save image {} without model".format(image.name))
 
 
 class ModelWithoutIdError(MetadataError):

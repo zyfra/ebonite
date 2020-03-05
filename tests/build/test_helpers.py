@@ -1,6 +1,6 @@
 import pytest
-from ebonite.build.builder.base import use_local_installation
 
+from ebonite.build.builder.base import use_local_installation
 from ebonite.build.helpers import build_model_docker, run_docker_img, create_service_from_model
 from ebonite.ext.flask import FlaskServer
 

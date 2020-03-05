@@ -4,7 +4,8 @@ from typing import List
 import pytest
 from pyjackson.utils import get_class_fields
 
-from ebonite.core.errors import (ExistingModelError, ExistingProjectError, ExistingTaskError, ModelNotInTaskError,
+from ebonite.core.errors import (ExistingImageError, ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 ImageNotInModelError, ModelNotInTaskError, NonExistingImageError,
                                  NonExistingModelError, NonExistingProjectError, NonExistingTaskError,
                                  TaskNotInProjectError)
 from ebonite.core.objects.core import Model, Project, Task
@@ -755,6 +756,100 @@ def test_delete_model(meta: MetadataRepository, project: Project, task: Task, mo
 def test_delete_not_existing_model(meta: MetadataRepository, model: Model):
     with pytest.raises(NonExistingModelError):
         meta.delete_model(model)
+
+
+def test_get_images__empty(meta: MetadataRepository, created_model):
+    assert meta.get_images(created_model) == []
+
+
+def test_get_images__full(meta: MetadataRepository, created_model, created_image):
+    assert meta.get_images(created_model) == [created_image]
+
+
+def test_get_image_by_name(meta: MetadataRepository, created_model, created_image):
+    assert meta.get_image_by_name(created_image.name, created_model) == created_image
+
+
+def test_get_image_by_id(meta: MetadataRepository, created_image):
+    assert meta.get_image_by_id(created_image.id) == created_image
+
+
+def test_create_image__ok(meta: MetadataRepository, image, created_image):
+    assert image.id is None
+    assert created_image.id is not None
+
+
+def test_create_image__no_model(meta: MetadataRepository, image):
+    with pytest.raises(ImageNotInModelError):
+        meta.create_image(image)
+
+
+def test_create_image__saved_image(meta: MetadataRepository, created_image):
+    with pytest.raises(ExistingImageError):
+        meta.create_image(created_image)
+
+
+def test_update_image__ok(meta: MetadataRepository, created_image):
+    author = 'hey'
+    assert created_image.author != author
+
+    created_image.author = author
+    i = meta.update_image(created_image)
+
+    assert i.author == author
+
+
+def test_update_image__no_model(meta: MetadataRepository, created_image):
+    created_image.model_id = None
+
+    with pytest.raises(ImageNotInModelError):
+        meta.create_image(created_image)
+
+
+def test_update_image__unsaved_image(meta: MetadataRepository, created_model, image):
+    image.model = created_model
+
+    with pytest.raises(NonExistingImageError):
+        meta.update_image(image)
+
+
+def test_delete_image__ok(meta: MetadataRepository, created_image):
+    meta.delete_image(created_image)
+
+    assert created_image.id is None
+    assert not created_image.has_meta_repo
+
+
+def test_delete_image__unsaved_image(meta: MetadataRepository, image):
+    with pytest.raises(NonExistingImageError):
+        meta.delete_image(image)
+
+
+def test_save_image_ok_unsaved(meta: MetadataRepository, created_model, image):
+    image.model = created_model
+    image = meta.save_image(image)
+
+    assert image.id is not None
+    assert image.has_meta_repo
+
+
+def test_save_image_ok_saved(meta: MetadataRepository, created_image):
+    image = meta.save_image(created_image)
+
+    assert image.id is not None
+    assert image.has_meta_repo
+
+
+def test_save_image__no_model(meta: MetadataRepository, image):
+    with pytest.raises(ImageNotInModelError):
+        meta.save_image(image)
+
+
+def test_save_image__other_id(meta: MetadataRepository, created_image):
+    created_image._id = 'my_random_identifier'
+
+    with pytest.raises(ExistingImageError):
+        meta.save_image(created_image)
 
 
 def test_inner_objects_binded(meta: MetadataRepository, project: Project, task: Task, model: Model):

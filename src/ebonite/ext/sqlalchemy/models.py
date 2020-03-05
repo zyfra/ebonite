@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 from ebonite.core.objects.artifacts import ArtifactCollection
-from ebonite.core.objects.core import Model, Project, Task
+from ebonite.core.objects.core import Image, Model, Project, Task
 from ebonite.core.objects.requirements import Requirements
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
@@ -147,6 +147,7 @@ class SModel(Base, Attaching):
     params = Column(Text)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="models")
+    images = relationship("SImage", back_populates="model")
 
     def to_obj(self) -> Model:
         model = Model(name=self.name,
@@ -173,3 +174,36 @@ class SModel(Base, Attaching):
                     description=model.description,
                     params=dumps(model.params),
                     task_id=model.task_id)
+
+
+class SImage(Base, Attaching):
+    __tablename__ = 'images'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    name = Column(String, unique=True, nullable=False)
+    author = Column(String, unique=False, nullable=False)
+    creation_date = Column(DateTime, unique=False, nullable=False)
+
+    model_id = Column(Integer, ForeignKey('models.id'), nullable=False)
+    model = relationship("SModel", back_populates="images")
+
+    params = Column(Text)
+
+    def to_obj(self) -> Image:
+        model = Image(name=self.name,
+                      author=self.author,
+                      creation_date=self.creation_date,
+                      id=tostr(self.id),
+                      model_id=tostr(self.model_id),
+                      params=safe_loads(self.params, Dict[str, Any]))
+        return self.attach(model)
+
+    @classmethod
+    def get_kwargs(cls, image: Image) -> dict:
+        return dict(id=image.id,
+                    name=image.name,
+                    author=image.author,
+                    creation_date=image.creation_date,
+                    model_id=image.model_id,
+                    params=dumps(image.params))

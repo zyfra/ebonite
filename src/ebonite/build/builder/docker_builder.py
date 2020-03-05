@@ -12,7 +12,9 @@ from docker import errors
 from jinja2 import Environment, FileSystemLoader
 
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
+from ebonite.build.docker_objects import DockerImage
 from ebonite.build.provider.base import PythonProvider
+from ebonite.core.objects import core
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
@@ -78,23 +80,21 @@ class DockerBuilder(PythonBuilder):
     - `run_cmd` - command to run in container, default: sh run.sh
 
     :param provider: PythonProvider instance
-    :param name: name for docker image
-    :param tag: tag for docker image
+    :param params: params for docker image to be built
     :param force_overwrite: if false, raise error if image already exists
     """
 
-    def __init__(self, provider: PythonProvider, name: str, tag: str = 'latest', force_overwrite=False, **kwargs):
+    def __init__(self, provider: PythonProvider, params: DockerImage, force_overwrite=False, **kwargs):
         super().__init__(provider)
-        self.name = name
-        self.tag = tag
+        self.params = params
         self.force_overwrite = force_overwrite
         kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
-    def build(self):
+    def build(self) -> 'core.Image':
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
             self._write_distribution(tempdir)
-            self._build_image(tempdir)
+            return self._build_image(tempdir)
 
     def _write_distribution(self, target_dir):
         super()._write_distribution(target_dir)
@@ -107,7 +107,7 @@ class DockerBuilder(PythonBuilder):
             df.write(dockerfile)
 
     def _build_image(self, context_dir):
-        tag = '{}:{}'.format(self.name, self.tag)
+        tag = '{}:{}'.format(self.params.name, self.params.tag)
         logger.debug('Building docker image %s from %s...', tag, context_dir)
         with create_docker_client() as client:
             if not self.force_overwrite:
@@ -125,6 +125,7 @@ class DockerBuilder(PythonBuilder):
                 _, logs = client.images.build(path=context_dir, tag=tag, rm=True)
                 logger.info('Build successful')
                 _print_docker_logs(logs)
+                return self.params.to_core_image()
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise

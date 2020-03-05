@@ -1,73 +1,15 @@
-import re
 import sys
 import time
-from abc import abstractmethod
 from typing import Dict, Generator
 
 from ebonite.build.builder.docker_builder import create_docker_client
+from ebonite.build.docker_objects import DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.base import RunnerBase, ServiceInstance, TargetHost
-from pyjackson.decorators import type_field
 from ebonite.utils.log import logger
-
-# TODO check
-VALID_HOST_REGEX = r'^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]).)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$'
 
 
 class DockerRunnerException(Exception):
     pass
-
-
-@type_field('type')
-class DockerRegistry:
-
-    @abstractmethod
-    def get_host(self) -> str:
-        pass
-
-
-class DefaultDockerRegistry(DockerRegistry):
-    """ The class represents docker registry.
-
-    The default registry contains local images and images from the default registry (docker.io).
-
-    """
-    type = 'local'
-
-    def get_host(self) -> str:
-        return ''
-
-
-class RemoteDockerRegistry(DockerRegistry):
-    type = 'remote'
-
-    def __init__(self, host: str, username: str = None, password: str = None):
-        if re.match(VALID_HOST_REGEX, host):
-            self.host = host
-        else:
-            raise ValueError('Host {} is not valid'.format(host))
-        self.username = username
-        self.password = password
-
-    def get_host(self) -> str:
-        return self.host
-
-
-@type_field('type')
-class DockerImage:
-    def __init__(self, name: str, tag: str = 'latest',
-                 repository: str = None, docker_registry: DockerRegistry = None):
-        self.name = name
-        self.tag = tag
-        self.repo = repository
-        self.registry = docker_registry or DefaultDockerRegistry()
-
-    def get_image_uri(self) -> str:
-        image = '{}:{}'.format(self.name, self.tag)
-        if self.repo is not None:
-            image = '{}/{}'.format(self.repo, image)
-        if self.registry.get_host():
-            image = '{}/{}'.format(self.registry.get_host(), image)
-        return image
 
 
 class DockerServiceInstance(ServiceInstance):
@@ -82,7 +24,7 @@ class DockerServiceInstance(ServiceInstance):
         self.ports_mapping = ports_mapping or {}
 
 
-class SimpleDockerRunner(RunnerBase):
+class DockerRunner(RunnerBase):
 
     def run(self, service_instance: DockerServiceInstance, rm=True, detach=True):
         if not isinstance(service_instance, DockerServiceInstance):

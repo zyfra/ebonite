@@ -1,7 +1,7 @@
 """This module loads created ebonite model and then creates and runs docker container made from this model"""
 
 import ebonite
-from ebonite.build import build_model_docker, run_docker_img
+from ebonite.build import run_docker_img
 from ebonite.build.builder.base import use_local_installation
 from ebonite.core.objects.core import Model, Task
 
@@ -20,7 +20,7 @@ def main():
     #  1. for developing reasons 2. we dont have ebonite on pip yet
     with use_local_installation():
         # build docker container from model
-        build_model_docker('custom_code_model_container', model, force_overwrite=True)
+        ebnt.build_service('custom_code_model_container', model, force_overwrite=True)
 
     # run docker conatainer
     run_docker_img('custom_code_model_container', 'custom_code_model_container', port_mapping={9000: 9000})

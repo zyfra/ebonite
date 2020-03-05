@@ -240,6 +240,63 @@ def test_model_with_wrapper_meta_serde(model):
     serde_and_compare(model, Model)
 
 
+def test_model__no_images(model_factory):
+    model = model_factory(True)
+
+    assert len(model.images) == 0
+
+
+def test_model__add_images(model_factory, image_factory):
+    model = model_factory(True)
+    image1 = image_factory()
+    image2 = image_factory()
+
+    assert len(model.images) == 0
+    assert image1.model_id is None
+    assert image1.id is None
+    assert image2.model_id is None
+    assert image2.id is None
+
+    model.add_images([image1, image2])
+
+    assert len(model.images) == 2
+    assert model.images[image1.id] is image1
+    assert image1.model_id is not None
+    assert image1.id is not None
+    assert model.images[image2.id] is image2
+    assert image2.model_id is not None
+    assert image2.id is not None
+
+
+def test_model__add_image__wrong_model(model_factory, image_factory):
+    model = model_factory(True)
+    image = image_factory(True)
+
+    with pytest.raises(MetadataError):
+        model.add_image(image)
+
+
+def test_model__delete_image(model_factory, image_factory):
+    model = model_factory(True)
+    image = image_factory()
+
+    assert len(model.images) == 0
+    assert image.model_id is None
+    assert image.id is None
+
+    model.add_image(image)
+
+    assert len(model.images) == 1
+    assert image.model_id is not None
+    assert image.id is not None
+
+    model.delete_image(image)
+
+    assert len(model.images) == 0
+    assert image.model_id is None
+    assert image.id is None
+
+
 # ################BASE#####################
 def test_base_author(sklearn_model_obj, pandas_data, username):
     model = Model.create(sklearn_model_obj, pandas_data)

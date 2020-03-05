@@ -10,6 +10,7 @@ from ebonite.core.objects import core
 Project = 'core.Project'
 Task = 'core.Task'
 Model = 'core.Model'
+Image = 'core.Image'
 
 T = TypeVar('T')
 NameOrIdOrObject = Union[str, T]
@@ -336,6 +337,99 @@ class MetadataRepository:
                 raise errors.ExistingModelError(model)
         return self.update_model(model)
 
+    @abstractmethod
+    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List['core.Image']:
+        """
+        Gets a list of images in given model, task and project
+
+        :param model: model to search for images in
+        :param task: task to search for images in
+        :param project: project to search for images in
+        :return: found images
+        """
+
+        pass
+
+    @abstractmethod
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional['core.Image']:
+        """
+        Finds image by name in given model, task and project.
+
+        :param image_name: expected image name
+        :param model: model to search for image in
+        :param task: task to search for image in
+        :param project: project to search for image in
+        :return: found image if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def get_image_by_id(self, id: str) -> Optional['core.Image']:
+        """
+        Finds image by identifier.
+
+        :param id: expected image id
+        :return: found image if exists or `None`
+        """
+
+        pass
+
+    @abstractmethod
+    def create_image(self, image: Image) -> Image:
+        """
+        Creates image in the repository
+
+        :param image: image to create
+        :return: created image
+        :exception: :exc:`.errors.ExistingImageError` if given image has the same name and model as existing one
+        """
+
+        pass
+
+    @abstractmethod
+    def update_image(self, image: Image) -> Image:
+        """
+        Updates image in the repository
+
+        :param image: image to update
+        :return: updated image
+        :exception: :exc:`.errors.NonExistingImageError` if given image doesn't exist in the repository
+        """
+
+        pass
+
+    @abstractmethod
+    def delete_image(self, image: Image):
+        """
+        Deletes image from the repository
+
+        :param image: image to delete
+        :return: nothing
+        :exception: :exc:`.errors.NonExistingImageError` if given image doesn't exist in the repository
+        """
+
+        pass
+
+    def save_image(self, image: Image) -> Image:
+        """
+        Saves image in the repository
+
+        :param image: image to save
+        :return: saved image
+        :exception: :exc:`.errors.ExistingImageError` if given image has the same name and model as existing one
+        """
+        self._validate_image(image)
+
+        existing_image = self.get_image_by_name(image.name, image.model_id)
+
+        if image.id is None and existing_image is None:
+            return self.create_image(image)
+        elif existing_image is not None:
+            if image.id is None or existing_image.id != image.id:
+                raise errors.ExistingImageError(image)
+        return self.update_image(image)
+
     def _resolve_project(self, project: ProjectVar) -> Optional['core.Project']:
         if isinstance(project, core.Project):
             project = project.id or project.name
@@ -354,6 +448,17 @@ class MetadataRepository:
                 raise ValueError('Cannot resolve task without project')
             return self.get_task_by_name(project, task)
 
+    def _resolve_model(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None):
+        if isinstance(model, core.Model):
+            model = model.id
+        found = self.get_model_by_id(model)
+        if found is not None:
+            return found
+        else:
+            if task is None:
+                raise ValueError('Cannot resolve model without task')
+            return self.get_model_by_name(model, task, project)
+
     def _validate_project(self, project: Project):
         pass
 
@@ -364,3 +469,7 @@ class MetadataRepository:
     def _validate_model(self, model: Model):
         if model.task_id is None:
             raise errors.ModelNotInTaskError(model)
+
+    def _validate_image(self, image: Image):
+        if image.model_id is None:
+            raise errors.ImageNotInModelError(image)
