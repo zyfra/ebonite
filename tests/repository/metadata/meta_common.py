@@ -831,6 +831,8 @@ def test_save_image_ok_unsaved(meta: MetadataRepository, created_model, image):
     image = meta.save_image(image)
 
     assert image.id is not None
+    assert image.model_id is not None
+    assert image.model == created_model
     assert image.has_meta_repo
 
 
@@ -1048,6 +1050,9 @@ def test_save_instance__ok_not_existing(meta: MetadataRepository, created_image,
 
     assert created_instance.id is not None
     assert created_instance.has_meta_repo
+
+    assert created_instance.image == created_image
+    assert created_instance.environment == created_environment
 
     assert created_instance.name == instance.name
     assert created_instance.params == instance.params
