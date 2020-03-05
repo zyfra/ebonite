@@ -213,6 +213,9 @@ class Ebonite:
         :return: "is running" flag
         """
         from ebonite.build import is_docker_container_running
+        if not instance.has_meta_repo:
+            # unbound instances could not be running: they are either not yet started or already stopped
+            return False
         return is_docker_container_running(instance.name, instance.environment.get_uri())
 
     def stop_service(self, instance: 'core.RuntimeInstance'):

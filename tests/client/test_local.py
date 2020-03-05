@@ -159,6 +159,13 @@ def test_build_and_run_service(ebnt, container_name):
 
     task = ebnt.get_or_create_task("Test Project", "Test Task")
     model = task.create_and_push_model(reg, data, "Test Model")
+
     instance = ebnt.build_and_run_service(container_name, model)
     time.sleep(.1)
+
     assert ebnt.is_service_running(instance)
+
+    ebnt.stop_service(instance)
+    time.sleep(.1)
+
+    assert not ebnt.is_service_running(instance)
