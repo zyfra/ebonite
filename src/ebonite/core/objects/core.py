@@ -1,5 +1,6 @@
 import datetime
 import getpass
+import json
 import tempfile
 from copy import copy
 from functools import wraps
@@ -293,9 +294,11 @@ class Model(EboniteObject):
     Model contains metadata for machine learning model
 
     :param name: model name
-    :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
+    :param wrapper_meta: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
+    :param params: dict with arbitrary parameters. Must be json-serializable
+    :param description: text description of this model
     :param id: model id
     :param task_id: parent task_id
     :param author: user that created that model
@@ -316,6 +319,10 @@ class Model(EboniteObject):
 
         self.description = description
         self.params = params or {}
+        try:
+            json.dumps(self.params)
+        except TypeError:
+            raise ValueError(f'"params" argument must be json-serializable')
         self._wrapper = None
         self._wrapper_meta = None
         if isinstance(wrapper_meta, ModelWrapper):
@@ -463,6 +470,7 @@ class Model(EboniteObject):
 
     @classmethod
     def create(cls, model_object, input_data, model_name: str = None,
+               params: Dict[str, Any] = None, description: str = None,
                additional_artifacts: ArtifactCollection = None, additional_requirements: AnyRequirements = None,
                custom_wrapper: ModelWrapper = None, custom_artifact: ArtifactCollection = None,
                custom_requirements: AnyRequirements = None) -> 'Model':
@@ -472,6 +480,8 @@ class Model(EboniteObject):
         :param model_object: The model object to analyze.
         :param input_data: Input data sample to determine structure of inputs and outputs for given model object.
         :param model_name: The model name.
+        :param params: dict with arbitrary parameters. Must be json-serializable
+        :param description: text description of this model
         :param additional_artifacts: Additional artifact.
         :param additional_requirements: Additional requirements.
         :param custom_wrapper: Custom model wrapper.
@@ -497,7 +507,10 @@ class Model(EboniteObject):
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, requirements, {cls.PYTHON_VERSION: get_python_version()})
+
+        params = params or {}
+        params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
+        model = Model(name, wrapper, None, requirements, params, description)
         model._unpersisted_artifacts = artifact
         return model
 
