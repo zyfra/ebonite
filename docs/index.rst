@@ -4,7 +4,7 @@ Contents
 
 .. toctree::
    :maxdepth: 1
-
+   overview
    installation
    readme/index
    usage/index
