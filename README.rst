@@ -76,7 +76,7 @@ With a view to production prediction it helps ML teams to build API services eas
 Ebonite is a library for Python and it supports any arbitrary Python function and most popular ML frameworks: scikit-learn, TensorFlow, XGBoost, LightGBM, PyTorch, CatBoost, etc. See more here `Ebonite Extensions`_
 
 Challenges of real world
-------------------------
+========================
 
 - Integrate your models into existing infrastructure
 - Wrap the model and run as a service
@@ -85,7 +85,7 @@ Challenges of real world
 - An easy way to test hypotheses
 
 You need Ebonite if
--------------------
+===================
 - Have more than 1 ML models
 - Need to new models appear
 - Need to Accelerates prototyping
