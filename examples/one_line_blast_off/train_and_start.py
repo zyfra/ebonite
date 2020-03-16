@@ -24,7 +24,7 @@ def main():
     #  1. for developing reasons 2. we dont have ebonite on pip yet
     with use_local_installation():
         create_service_from_model('my_model', reg, data, task_name='my_task',
-                                  service_name='magic-one-line-ebnt-service', run_service=True)
+                                  service_name='magic-one-line-ebnt-service', run_service=True, detach=False)
 
 
 if __name__ == '__main__':

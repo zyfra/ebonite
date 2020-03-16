@@ -1,17 +1,17 @@
 import os
+import time
 
 import pytest
 
 from ebonite.build.docker_objects import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
-from ebonite.build.runner.base import LocalTargetHost, TargetHost
-from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerServiceInstance
+from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerRuntimeInstance
 
 from docker import DockerClient
 from requests.exceptions import HTTPError
 from testcontainers.core.container import DockerContainer
 
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import is_container_running, stop_container, rm_container, rm_image
+from tests.build.conftest import rm_container, rm_image
 
 
 IMAGE_NAME = 'mike0sv/ebaklya'
@@ -31,15 +31,15 @@ def runner(pytestconfig):
         pytest.skip('skipping docker tests')
     args = []
 
-    def _runner(host: TargetHost, img: DockerImage, container_name: str):
+    def _runner(host: str, img: DockerImage, container_name: str):
         args.append((host, img, container_name))
         return DockerRunner()
 
     yield _runner
 
     for h, i, c in args:
-        rm_container(c, h.get_host())
-        rm_image(i.get_image_uri, h.get_host())
+        rm_container(c, h)
+        rm_image(i.get_image_uri(), h)
 
 
 # fixture that ensures that Docker registry is up between tests
@@ -74,16 +74,7 @@ def test_run_default_registry(runner):
     img_registry = DefaultDockerRegistry()
     img = DockerImage(IMAGE_NAME, registry=img_registry)
 
-    host = LocalTargetHost()
-
-    instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
-
-    if is_container_running(CONTAINER_NAME):
-        stop_container(CONTAINER_NAME, host)
-
-    runner = runner(host, img, CONTAINER_NAME)
-    runner.run(instance, detach=True)
-    assert is_container_running(CONTAINER_NAME, host)
+    _check_runner(runner, img)
 
 
 @pytest.mark.docker
@@ -92,15 +83,8 @@ def test_run_remote_registry(runner, registry):
     img = DockerImage(IMAGE_NAME,
                       repository=REPOSITORY_NAME,
                       registry=registry)
-    host = LocalTargetHost()
-    instance = DockerServiceInstance(CONTAINER_NAME, img, host)
 
-    if is_container_running(CONTAINER_NAME):
-        stop_container(CONTAINER_NAME, host)
-
-    runner = runner(host, img, CONTAINER_NAME)
-    runner.run(instance)
-    assert is_container_running(CONTAINER_NAME, host)
+    _check_runner(runner, img)
 
 
 @pytest.mark.docker
@@ -109,47 +93,34 @@ def test_run_local_image_name_that_will_never_exist(runner):
     img_registry = DefaultDockerRegistry()
     img = DockerImage('ebonite_image_name_that_will_never_exist', registry=img_registry)
 
-    host = LocalTargetHost()
-
-    instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
-
-    if is_container_running(CONTAINER_NAME):
-        stop_container(CONTAINER_NAME, host)
-
     with pytest.raises(HTTPError):
-        runner = runner(host, img, CONTAINER_NAME)
-        runner.run(instance)
+        _check_runner(runner, img)
 
 
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_run_local_fail_inside_container(runner, registry):
+@pytest.mark.parametrize('detach', [True, False])
+def test_run_local_fail_inside_container(runner, registry, detach):
     img = DockerImage(BROKEN_IMAGE_NAME,
                       repository=REPOSITORY_NAME,
                       registry=registry)
-    host = LocalTargetHost()
-    instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
-
-    if is_container_running(CONTAINER_NAME):
-        stop_container(CONTAINER_NAME, host)
 
     with pytest.raises(DockerRunnerException):
-        runner = runner(host, img, CONTAINER_NAME)
-        runner.run(instance, detach=True, rm=True)
+        _check_runner(runner, img, detach=detach, rm=True)
 
 
-@pytest.mark.docker
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_run_local_fail_inside_container_attached(runner, registry):
-    img = DockerImage(BROKEN_IMAGE_NAME,
-                      repository=REPOSITORY_NAME,
-                      registry=registry)
-    host = LocalTargetHost()
-    instance = DockerServiceInstance(CONTAINER_NAME, img, host, {80: 8080})
+def _check_runner(runner, img, host='', **kwargs):
+    runner = runner(host, img, CONTAINER_NAME)
+    instance = DockerRuntimeInstance(CONTAINER_NAME, img, ports_mapping={80: 8080})
 
-    if is_container_running(CONTAINER_NAME):
-        stop_container(CONTAINER_NAME, host)
+    assert not runner.is_running(instance)
 
-    with pytest.raises(DockerRunnerException):
-        runner = runner(host, img, CONTAINER_NAME)
-        runner.run(instance, detach=False, rm=True)
+    runner.run(instance, **kwargs)
+    time.sleep(.1)
+
+    assert runner.is_running(instance)
+
+    runner.stop(instance)
+    time.sleep(.1)
+
+    assert not runner.is_running(instance)

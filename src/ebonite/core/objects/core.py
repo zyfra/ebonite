@@ -199,8 +199,12 @@ class Task(EboniteObject):
         return self.name
 
     @property
+    @_with_meta
     def project(self):
-        raise AttributeError('Cant access project of unbound task')
+        p = self._meta.get_project_by_id(self.project_id)
+        if p is None:
+            raise errors.NonExistingProjectError(self.project_id)
+        return p
 
     @project.setter
     def project(self, project: Project):
@@ -509,8 +513,12 @@ class Model(EboniteObject):
         return self._id
 
     @property
+    @_with_meta
     def task(self):
-        raise AttributeError('Cant access task of unbound model')
+        t = self._meta.get_task_by_id(self.task_id)
+        if t is None:
+            raise errors.NonExistingTaskError(self.task_id)
+        return t
 
     @task.setter
     def task(self, task: Task):
@@ -582,11 +590,65 @@ class Image(EboniteObject):
         self.params = params or {}
 
     @property
+    @_with_meta
     def model(self) -> Model:
-        raise AttributeError('Can\'t access model of unbound image')
+        m = self._meta.get_model_by_id(self.model_id)
+        if m is None:
+            raise errors.NonExistingModelError(self.model_id)
+        return m
 
     @model.setter
     def model(self, model: Model):
         if not isinstance(model, Model):
             raise ValueError('{} is not Model'.format(model))
         self.model_id = model.id
+
+
+class RuntimeEnvironment(EboniteObject):
+    def __init__(self, name: str, id: str = None,
+                 host: str = None, port: int = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.host = host
+        self.port = port
+
+    def get_uri(self) -> str:
+        return f'{self.host}:{self.port}' if self.host else ''
+
+
+class RuntimeInstance(EboniteObject):
+    def __init__(self, name: str, id: str = None,
+                 image_id: str = None, environment_id: str = None, params: Dict[str, Any] = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.image_id = image_id
+        self.environment_id = environment_id
+        self.params = params or {}
+
+    @property
+    @_with_meta
+    def image(self) -> Image:
+        i = self._meta.get_image_by_id(self.image_id)
+        if i is None:
+            raise errors.NonExistingImageError(self.image_id)
+        return i
+
+    @image.setter
+    def image(self, image: Image):
+        if not isinstance(image, Image):
+            raise ValueError(f'{image} is not Image')
+        self.image_id = image.id
+
+    @property
+    @_with_meta
+    def environment(self) -> RuntimeEnvironment:
+        e = self._meta.get_environment_by_id(self.environment_id)
+        if e is None:
+            raise errors.NonExistingEnvironmentError(self.environment_id)
+        return e
+
+    @environment.setter
+    def environment(self, environment: RuntimeEnvironment):
+        if not isinstance(environment, RuntimeEnvironment):
+            raise ValueError(f'{environment} is not RuntimeEnvironment')
+        self.environment_id = environment.id

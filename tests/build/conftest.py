@@ -1,11 +1,9 @@
 import os
-import time
 
 import docker.errors
 import pandas as pd
 import pytest
 from ebonite.build.builder.docker_builder import create_docker_client, is_docker_running
-from ebonite.build.runner.base import LocalTargetHost, TargetHost
 from ebonite.core.objects.core import Model
 from sklearn.linear_model import LinearRegression
 
@@ -29,34 +27,15 @@ def has_local_image(img_name: str) -> bool:
     return True
 
 
-def is_container_running(container_name, host: TargetHost = None):
-    if has_docker():
-        time.sleep(.1)
-        host = host or LocalTargetHost()
-        with create_docker_client(host.get_host()) as client:
-            containers = client.containers.list()
-            return any(container_name == c.name for c in containers)
-
-
-def stop_container(container_name: str, host: TargetHost = None):
-    host = host or LocalTargetHost()
-    with create_docker_client(host.get_host()) as client:
-        containers = client.containers.list()
-        if any(container_name == c.name for c in containers):
-            client.containers.get(container_name).stop()
-
-
-def rm_container(container_name: str, host: TargetHost = None):
-    host = host or LocalTargetHost()
-    with create_docker_client(host.get_host()) as client:
+def rm_container(container_name: str, host: str = ''):
+    with create_docker_client(host) as client:
         containers = client.containers.list()
         if any(container_name == c.name for c in containers):
             client.containers.get(container_name).remove(force=True)
 
 
-def rm_image(image_tag: str, host: TargetHost = None):
-    host = host or LocalTargetHost()
-    with create_docker_client(host.get_host()) as client:
+def rm_image(image_tag: str, host: str = ''):
+    with create_docker_client(host) as client:
         tags = [t for i in client.images.list() for t in i.tags]
         if any(image_tag == t for t in tags):
             client.images.remove(image_tag, force=True)

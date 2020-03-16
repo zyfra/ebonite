@@ -63,9 +63,9 @@ class DockerImage:
             image = '{}/{}'.format(self.registry.get_host(), image)
         return image
 
-    def to_core_image(self):
+    def to_core_image(self) -> 'core.Image':
         return core.Image(self.get_image_uri(), params=serialize(self))
 
     @staticmethod
-    def from_core_image(image):
+    def from_core_image(image: 'core.Image') -> 'DockerImage':
         return deserialize(image.params, DockerImage)

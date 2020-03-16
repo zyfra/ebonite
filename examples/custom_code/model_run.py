@@ -23,7 +23,7 @@ def main():
         ebnt.build_service('custom_code_model_container', model, force_overwrite=True)
 
     # run docker conatainer
-    run_docker_img('custom_code_model_container', 'custom_code_model_container', port_mapping={9000: 9000})
+    run_docker_img('custom_code_model_container', 'custom_code_model_container', ports_mapping={9000: 9000})
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 
 

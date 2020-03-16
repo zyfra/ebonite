@@ -29,6 +29,7 @@ def test_project__add_task__new(set_project_id, meta: MetadataRepository, projec
     assert task == meta.get_task_by_id(task_id)
     assert task == project_b.tasks[task_id]
     assert task == project_b.tasks(task.name)
+    assert task.project == project_b
 
 
 def test_project__add_task__wrong_project(meta: MetadataRepository, project_factory, task_factory):
@@ -99,6 +100,7 @@ def test_task__add_model__new(set_task_id, meta: MetadataRepository, task_b: Tas
     assert model == meta.get_model_by_id(model_id)
     assert model == task_b.models[model_id]
     assert model == task_b.models(model.name)
+    assert model.task == task_b
 
 
 def test_task__add_model__wrong_task(meta: MetadataRepository, task_factory, model_factory):
@@ -124,6 +126,7 @@ def test_task__add_models(task_b: Task, model_factory, meta: MetadataRepository)
         assert m == meta.get_model_by_id(model_id)
         assert m == task_b.models[model_id]
         assert m == task_b.models(m.name)
+        assert m.task == task_b
 
 
 def test_task__add_models__empty(task_b: Task):
@@ -262,9 +265,11 @@ def test_model__add_images(model_factory, image_factory):
     assert len(model.images) == 2
     assert model.images[image1.id] is image1
     assert image1.model_id is not None
+    assert image1.model == model
     assert image1.id is not None
     assert model.images[image2.id] is image2
     assert image2.model_id is not None
+    assert image2.model == model
     assert image2.id is not None
 
 

@@ -88,6 +88,9 @@ class DockerBuilder(PythonBuilder):
         super().__init__(provider)
         self.params = params
         self.force_overwrite = force_overwrite
+
+        kwargs = {k: v for k, v in kwargs.items() if k in
+                  {'base_image', 'python_version', 'templates_dir', 'run_cmd'}}
         kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
