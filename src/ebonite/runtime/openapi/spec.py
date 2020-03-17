@@ -4,7 +4,7 @@ from pyjackson.utils import (Field, Signature, get_class_fields, get_collection_
                              is_collection, is_generic, is_mapping)
 
 from ebonite.core.objects.dataset_type import FilelikeDatasetType, PrimitiveDatasetType
-from ebonite.runtime.interface.typing import TypeWithSpec
+from ebonite.core.objects.typing import TypeWithSpec
 
 BUILTIN_TYPES: Dict[Type, str] = {
     int: 'integer', float: 'number', str: 'string', None: 'null', bool: 'boolean',  # list:'array', dict:'object'

@@ -8,7 +8,7 @@ from pyjackson.generics import Serializer
 from ebonite.core.analyzer.base import CanIsAMustHookMixin, TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects.dataset_type import DatasetType
-from ebonite.runtime.interface.typing import ListTypeWithSpec, SizedTypedListType
+from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
 def _python_type_from_np_string_repr(string_repr: str) -> type:

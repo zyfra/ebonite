@@ -7,14 +7,12 @@ from ebonite.core.objects import core
 from ebonite.core.objects.requirements import Requirements
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
+from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
 
-MODEL_BIN_PATH = 'model_dump'
-
 LOADER_PATH = 'loader'
 SERVER_PATH = 'server'
-MODEL_META_PATH = 'model.json'
 
 
 def read(path):

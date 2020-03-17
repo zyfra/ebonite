@@ -4,14 +4,13 @@ from typing import List
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
-from ebonite.build.provider.ml_model import MLModelProvider, MODEL_BIN_PATH
+from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.core.objects import core
 from ebonite.core.objects.requirements import Requirements
 from ebonite.core.objects.artifacts import ArtifactCollection, _RelativePathWrapper, CompositeArtifactCollection
+from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODELS_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
-
-MODELS_META_PATH = 'models.json'
 
 
 class MLModelMultiProvider(MLModelProvider):

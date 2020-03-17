@@ -7,7 +7,7 @@ from pyjackson.decorators import type_field
 from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.objects.base import EboniteParams
-from ebonite.runtime.interface.typing import SizedTypedListType, TypeWithSpec
+from ebonite.core.objects.typing import SizedTypedListType, TypeWithSpec
 
 
 # noinspection PyAbstractClass

@@ -4,13 +4,15 @@ from typing import List
 from pyjackson import read
 from pyjackson.core import Field, Signature
 
-from ebonite.build.provider.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
-from ebonite.build.provider.ml_model_multi import MODELS_META_PATH
 from ebonite.core.objects import core
 from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceLoader
 from ebonite.runtime.interface.utils import merge
 from ebonite.utils.log import rlogger
+
+MODEL_BIN_PATH = 'model_dump'
+MODEL_META_PATH = 'model.json'
+MODELS_META_PATH = 'models.json'
 
 
 def model_interface(model_meta: 'core.Model'):
