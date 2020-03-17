@@ -1,4 +1,4 @@
-from ebonite.core.objects import core
+from ebonite.core.objects import Model
 from ebonite.runtime.command_line import start_runtime
 from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.ml_model import ModelLoader, model_interface
@@ -6,7 +6,7 @@ from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
 
 
-def run_model_server(model: 'core.Model', server: Server = None):
+def run_model_server(model: Model, server: Server = None):
     """
     :func:`.start_runtime` wrapper helper which starts Ebonite runtime for given model and (optional) server
 

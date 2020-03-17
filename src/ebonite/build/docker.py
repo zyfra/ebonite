@@ -13,7 +13,7 @@ from pyjackson.decorators import type_field
 from pyjackson.deserialization import deserialize
 from pyjackson.serialization import serialize
 
-from ebonite.core.objects import core
+from ebonite.core.objects import Image
 from ebonite.utils.log import logger
 
 
@@ -70,11 +70,11 @@ class DockerImage:
             uri = '{}/{}'.format(self.registry.get_host(), uri)
         return uri
 
-    def to_core_image(self) -> 'core.Image':
-        return core.Image(self.get_uri(), params=serialize(self))
+    def to_core_image(self) -> Image:
+        return Image(self.get_uri(), params=serialize(self))
 
     @staticmethod
-    def from_core_image(image: 'core.Image') -> 'DockerImage':
+    def from_core_image(image: Image) -> 'DockerImage':
         return deserialize(image.params, DockerImage)
 
 

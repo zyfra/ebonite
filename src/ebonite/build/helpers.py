@@ -3,13 +3,13 @@ from typing import Union
 import ebonite
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.build.runner.docker import DockerImage, DockerRunner, DockerRuntimeInstance
-from ebonite.core.objects import core
+from ebonite.core.objects import Image, Model
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
 
 
-def build_model_docker(image_params: Union[str, DockerImage], model: 'core.Model', server: Server = None,
-                       force_overwrite=False, debug=False, **kwargs) -> 'core.Image':
+def build_model_docker(image_params: Union[str, DockerImage], model: Model, server: Server = None,
+                       force_overwrite=False, debug=False, **kwargs) -> Image:
     """
     Builds docker image from Model instance
 

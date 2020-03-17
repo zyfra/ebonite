@@ -4,7 +4,7 @@ from typing import List
 from pyjackson import read
 from pyjackson.core import Field, Signature
 
-from ebonite.core.objects import core
+from ebonite.core.objects import Model
 from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceLoader
 from ebonite.runtime.interface.utils import merge
@@ -15,7 +15,7 @@ MODEL_META_PATH = 'model.json'
 MODELS_META_PATH = 'models.json'
 
 
-def model_interface(model_meta: 'core.Model'):
+def model_interface(model_meta: Model):
     """
     Creates an interface from given model with `predict` and (if available) `predict_proba` methods.
     Methods signature is determined via metadata associated with given model.
@@ -62,7 +62,7 @@ class ModelLoader(InterfaceLoader):
     """
 
     def load(self) -> Interface:
-        meta = read(MODEL_META_PATH, core.Model)
+        meta = read(MODEL_META_PATH, Model)
         meta.wrapper.load(MODEL_BIN_PATH)
         return model_interface(meta)
 
@@ -74,7 +74,7 @@ class MultiModelLoader(InterfaceLoader):
     """
 
     def load(self) -> Interface:
-        metas = read(MODELS_META_PATH, List[core.Model])
+        metas = read(MODELS_META_PATH, List[Model])
         for i, meta in enumerate(metas):
             meta.wrapper.load(os.path.join(MODEL_BIN_PATH, str(i)))
         ifaces = {

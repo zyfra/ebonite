@@ -3,14 +3,14 @@ from typing import Union
 
 from ebonite.build.docker import DockerImage
 from ebonite.build.helpers import build_model_docker
-from ebonite.core.objects import core
+from ebonite.core.objects import Image, Model
 from ebonite.ext.flask.server import FlaskServer
 
 TEMPLATES_DIR = 'build_templates'
 
 
-def build_model_flask_docker(image_params: Union[str, DockerImage], model: 'core.Model',
-                             force_overwrite=False, debug=False) -> 'core.Image':
+def build_model_flask_docker(image_params: Union[str, DockerImage], model: Model,
+                             force_overwrite=False, debug=False) -> Image:
     """
     Builds flask docker image with nginx and uwsgi from Model instance
 
