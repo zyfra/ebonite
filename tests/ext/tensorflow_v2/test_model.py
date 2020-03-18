@@ -63,13 +63,28 @@ def complex_net(bi_np_data, labels):
     return model
 
 
+class _Wrapper:
+    def __init__(self, net):
+        self.net = net
+
+    def __call__(self, input_data):
+        return self.net.predict(input_data)
+
+
+@pytest.fixture
+def wrapped_net(simple_net):
+    return _Wrapper(simple_net)
+
+
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '2', reason="requires tensorflow 2.x")
 @pytest.mark.parametrize("net,input_data", [
     ("simple_net", "np_data"),
     ("simple_net", "tensor_data"),
     ("complex_net", "bi_np_data"),
     ("complex_net", "bi_tensor_data"),
-    ("complex_net", "mixed_data")
+    ("complex_net", "mixed_data"),
+    ("wrapped_net", "np_data"),
+    ("wrapped_net", "tensor_data")
 ])
 def test_model_wrapper(net, input_data, tmpdir, request):
     # force loading of dataset and model hooks
@@ -78,7 +93,7 @@ def test_model_wrapper(net, input_data, tmpdir, request):
     net = request.getfixturevalue(net)
     input_data = request.getfixturevalue(input_data)
 
-    orig_pred = net.predict(input_data)
+    orig_pred = net(input_data) if callable(net) else net.predict(input_data)
 
     tmw = ModelAnalyzer.analyze(net, input_data=input_data)
 

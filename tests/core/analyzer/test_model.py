@@ -5,42 +5,50 @@ from typing import Dict, Optional
 import numpy as np
 import pytest
 
-from ebonite.core.analyzer.model import ModelAnalyzer, ModelHook
+from ebonite.core.analyzer.model import BindingModelHook, ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
-from ebonite.core.objects.wrapper import ModelWrapper
+from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
 
 
 class _SummerModel:
     def __init__(self, b):
+        # module objects can not be pickled, thus `ModelAnalyzer` is required to use
+        # a combination of `pickle` and `_SummerModelIO` to deal with this model
+        self.pickle_failure = pytest
         self.b = b
 
     def predict(self, data):
         return np.sum(data) + self.b
 
 
+class _SummerModelIO(ModelIO):
+    model_filename = 'model.smr'
+
+    @contextlib.contextmanager
+    def dump(self, model) -> ArtifactCollection:
+        content = str(model.b).encode('utf-8')
+        yield Blobs({self.model_filename: InMemoryBlob(content)})
+
+    def load(self, path):
+        with open(os.path.join(path, self.model_filename), 'rb') as f:
+            return _SummerModel(int(f.read()))
+
+
 class _SummerModelWrapper(ModelWrapper):
     type = 'summer'
-    model_filename = 'model.smr'
+
+    def __init__(self):
+        super().__init__(_SummerModelIO())
 
     def _exposed_methods_mapping(self) -> Dict[str, Optional[str]]:
         return {
             'predict': 'predict'
         }
 
-    @ModelWrapper.with_model
-    @contextlib.contextmanager
-    def _dump(self) -> ArtifactCollection:
-        content = str(self.model.b).encode('utf-8')
-        yield Blobs({self.model_filename: InMemoryBlob(content)})
 
-    def _load(self, path):
-        with open(os.path.join(path, self.model_filename), 'rb') as f:
-            self.model = _SummerModel(int(f.read()))
-
-
-class _SummerModelHook(ModelHook):
-    def process(self, obj, **kwargs) -> ModelWrapper:
-        return _SummerModelWrapper().bind_model(obj, **kwargs)
+class _SummerModelHook(BindingModelHook):
+    def _wrapper_factory(self) -> ModelWrapper:
+        return _SummerModelWrapper()
 
     def can_process(self, obj) -> bool:
         return isinstance(obj, _SummerModel)

@@ -15,8 +15,7 @@ from pyjackson.decorators import type_field
 from pyjackson.utils import get_class_fields
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
-from ebonite.core.objects.artifacts import (ArtifactCollection, Blob, Blobs, CompositeArtifactCollection, InMemoryBlob,
-                                            _RelativePathWrapper)
+from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, CompositeArtifactCollection, InMemoryBlob
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.utils.pickling import EbonitePickler
@@ -29,43 +28,53 @@ Methods = typing.Dict[str, Method]
 
 
 @type_field('type')
-class ModelWrapper(EboniteParams):
+class ModelIO(EboniteParams):
     """
-    Base class for model wrapper. Wrapper is an object that can save, load and inference a model
+    Helps model wrapper with IO
+
     Must be pyjackson-serializable
     """
-    type = None
-    methods_json = 'methods.json'
-
-    def __init__(self):
-        self.model = None
-        self.methods: typing.Optional[Methods] = None
-
-    @contextlib.contextmanager
-    def dump(self) -> FilesContextManager:
-        with self._dump() as artifact:
-            yield artifact + Blobs({self.methods_json: InMemoryBlob(dumps(self.methods).encode('utf-8'))})
-
     @abstractmethod
-    def _dump(self) -> FilesContextManager:
+    def dump(self, model) -> FilesContextManager:
         """
         Must return context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         :return: :class:`~ebonite.core.objects.ArtifactCollection`
         """
         pass  # pragma: no cover
 
-    def load(self, path):
-        self._load(path)
-        self.methods = read(os.path.join(path, self.methods_json), typing.Optional[Methods])
-
     @abstractmethod
-    def _load(self, path):
+    def load(self, path):
         """
-        Must load and set internal .model field
-        :param path:
-        :return:
+        Must load and return model
+        :param path: path to load model from
+        :return: model object
         """
         pass  # pragma: no cover
+
+
+@type_field('type')
+class ModelWrapper(EboniteParams):
+    """
+    Base class for model wrapper. Wrapper is an object that can save, load and inference a model
+
+    Must be pyjackson-serializable
+    """
+    type = None
+    methods_json = 'methods.json'
+
+    def __init__(self, io: ModelIO):
+        self.model = None
+        self.methods: typing.Optional[Methods] = None
+        self.io = io
+
+    @contextlib.contextmanager
+    def dump(self) -> FilesContextManager:
+        with self.io.dump(self.model) as artifact:
+            yield artifact + Blobs({self.methods_json: InMemoryBlob(dumps(self.methods).encode('utf-8'))})
+
+    def load(self, path):
+        self.model = self.io.load(path)
+        self.methods = read(os.path.join(path, self.methods_json), typing.Optional[Methods])
 
     def bind_model(self, model, input_data=None, **kwargs):
         """
@@ -175,6 +184,7 @@ class ModelWrapper(EboniteParams):
     def __deepcopy__(self, memo):
         cls = type(self)
         obj = object.__new__(cls)
+        obj.io = self.io
         obj.model = self.model
         obj.methods = self.methods
         for field in get_class_fields(cls):
@@ -223,38 +233,42 @@ class WrapperArtifactCollection(ArtifactCollection, Unserializable):
 
 
 # noinspection PyAbstractClass
-class PickleModelWrapper(ModelWrapper):
+class PickleModelIO(ModelIO):
     """
-    ModelWrapper for pickle-able models
+    ModelIO for pickle-able models
 
-    When model is dumped, recursively checks objects if they can be dumped with ModelWrapper instead of pickling
+    When model is dumped, recursively checks objects if they can be dumped with ModelIO instead of pickling
 
     So, if you use function that internally calls tensorflow model, this tensorflow model will be dumped with
     tensorflow code and not pickled
     """
     model_filename = 'model.pkl'
-    wrapper_ext = '.wrapper'
+    io_ext = '.io'
 
-    @ModelWrapper.with_model
     @contextlib.contextmanager
-    def _dump(self) -> ArtifactCollection:
+    def dump(self, model) -> ArtifactCollection:
         """
         Dumps model artifacts as :class:`~ebonite.core.objects.ArtifactCollection`
 
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
-        model_blob, refs = self._serialize_model()
+        model_blob, refs = self._serialize_model(model)
         blobs = {self.model_filename: InMemoryBlob(model_blob)}
-        additional_artifacts = []
+        artifact_cms = []
+        uuids = []
 
-        for uuid, wrapper in refs.items():
-            blobs[uuid + self.wrapper_ext] = InMemoryBlob(self._serialize_wrapper(wrapper))
-            with wrapper.dump() as artifact:
-                additional_artifacts.append(_RelativePathWrapper(artifact, uuid))
+        for uuid, (io, obj) in refs.items():
+            blobs[uuid + self.io_ext] = InMemoryBlob(self._serialize_io(io))
+            artifact_cms.append(io.dump(obj))
+            uuids.append(uuid)
 
-        yield CompositeArtifactCollection([Blobs(blobs)] + additional_artifacts)
+        from ebonite.core.objects.artifacts import _enter_all_cm, _ExitAllCm, _RelativePathWrapper
+        additional_artifacts = _enter_all_cm(artifact_cms)
+        with _ExitAllCm(artifact_cms):
+            additional_artifacts = [_RelativePathWrapper(art, uuid) for art, uuid in zip(additional_artifacts, uuids)]
+            yield CompositeArtifactCollection([Blobs(blobs)] + additional_artifacts)
 
-    def _load(self, path):
+    def load(self, path):
         """
         Loads artifacts into model field
 
@@ -262,31 +276,32 @@ class PickleModelWrapper(ModelWrapper):
         """
         refs = {}
         for entry in os.listdir(path):
-            if not entry.endswith(self.wrapper_ext):
+            if not entry.endswith(self.io_ext):
                 continue
 
             with open(os.path.join(path, entry), 'rb') as f:
-                wrapper = self._deserialize_wrapper(f)
+                io = self._deserialize_io(f)
 
-            uuid = entry[:-len(self.wrapper_ext)]
-            wrapper.load(os.path.join(path, uuid))
-            refs[uuid] = wrapper.model
+            uuid = entry[:-len(self.io_ext)]
+            refs[uuid] = io.load(os.path.join(path, uuid))
 
         with open(os.path.join(path, self.model_filename), 'rb') as f:
-            self.model = self._deserialize_model(f, refs)
+            return self._deserialize_model(f, refs)
 
-    def _serialize_model(self):
+    @staticmethod
+    def _serialize_model(model):
         """
         Helper method to pickle model and get payload and refs
 
         :return: tuple of payload and refs
         """
         f = BytesIO()
-        pklr = _ModelPickler(self.model, f, recurse=True)
-        pklr.dump(self.model)
+        pklr = _ModelPickler(model, f, recurse=True)
+        pklr.dump(model)
         return f.getvalue(), pklr.refs
 
-    def _deserialize_model(self, in_file, refs):
+    @staticmethod
+    def _deserialize_model(in_file, refs):
         """
         Helper method to unpickle model from payload and refs
 
@@ -296,25 +311,27 @@ class PickleModelWrapper(ModelWrapper):
         """
         return _ModelUnpickler(refs, in_file).load()
 
-    def _serialize_wrapper(self, wrapper):
+    @staticmethod
+    def _serialize_io(io):
         """
-        Helper method to serialize object's wrapper as ref
+        Helper method to serialize object's IO as ref
 
-        :param wrapper: :class:`ModelWrapper` instance
+        :param io: :class:`ModelIO` instance
         :return: ref payload
         """
-        wrap_type = type(wrapper)
-        return f'{wrap_type.__module__}.{wrap_type.__name__}'.encode('utf-8')
+        io_type = type(io)
+        return f'{io_type.__module__}.{io_type.__name__}'.encode('utf-8')
 
-    def _deserialize_wrapper(self, in_file):
+    @staticmethod
+    def _deserialize_io(in_file):
         """
-        Helper method to deserialize object's wrapper from ref payload
+        Helper method to deserialize object's IO from ref payload
 
         :param in_file: ref payload
-        :return: :class:`ModelWrapper` instance
+        :return: :class:`ModelIO` instance
         """
-        wrapper_type_full_name = in_file.read().decode('utf-8')
-        *mod_name, type_name = wrapper_type_full_name.split('.')
+        io_type_full_name = in_file.read().decode('utf-8')
+        *mod_name, type_name = io_type_full_name.split('.')
         mod_name, pkg_name = '.'.join(mod_name), '.'.join(mod_name[:-1])
         return import_module(mod_name, pkg_name).__dict__[type_name]()
 
@@ -336,8 +353,8 @@ class _ModelPickler(EbonitePickler):
     # pickle "hook" for overriding serialization of objects
     def save(self, obj, save_persistent_id=True):
         """
-        Checks if obj has wrapper.
-        If it does, serializes object with :meth:`~ebonite.core.objects.wrapper.ModelWrapper.dump`
+        Checks if obj has IO.
+        If it does, serializes object with :meth:`~ebonite.core.objects.wrapper.ModelIO.dump`
         and creates a ref to it. Otherwise, saves object as default pickle would do
 
         :param obj: obj to save
@@ -348,28 +365,28 @@ class _ModelPickler(EbonitePickler):
             # at starting point, follow usual path not to fall into infinite loop
             return super().save(obj, save_persistent_id)
 
-        wrapper = self._safe_analyze(obj)
-        if wrapper is None or isinstance(wrapper, PickleModelWrapper):
-            # no wrapper or Pickle wrapper found, follow usual path
+        io = self._safe_analyze(obj)
+        if io is None or isinstance(io, PickleModelIO):
+            # no IO or Pickle IO found, follow usual path
             return super().save(obj, save_persistent_id)
 
         # found model with non-pickle serialization:
-        # replace with `_ExternalRef` stub and memorize wrapper to serialize model aside later
+        # replace with `_ExternalRef` stub and memorize IO to serialize model aside later
         obj_uuid = str(uuid4())
-        self.refs[obj_uuid] = wrapper
+        self.refs[obj_uuid] = (io, obj)
         return super().save(_ExternalRef(obj_uuid), save_persistent_id)
 
     def _safe_analyze(self, obj):
         """
-        Checks if obj has wrapper
+        Checks if obj has io
 
         :param obj: object to check
-        :return: :class:`ModelWrapper` instance or None
+        :return: :class:`ModelIO` instance or None
         """
         # we couldn't import analyzer at top as it leads to circular import failure
         from ebonite.core.analyzer.model import ModelAnalyzer
         try:
-            return ModelAnalyzer.analyze(obj)
+            return ModelAnalyzer._find_hook(obj)._wrapper_factory().io
         except ValueError:
             return None
 
@@ -412,18 +429,21 @@ class _ModelUnpickler(_Unpickler):
 
 class _ExternalRef:
     """
-    A class to mark objects dumped their own :class:`ModelWrapper`
+    A class to mark objects dumped their own :class:`ModelIO`
     """
 
     def __init__(self, ref: str):
         self.ref = ref
 
 
-class CallableMethodModelWrapper(PickleModelWrapper):
+class CallableMethodModelWrapper(ModelWrapper):
     """
     :class:`ModelWrapper` implementation for functions
     """
     type = 'callable_method'
+
+    def __init__(self):
+        super().__init__(PickleModelIO())
 
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {

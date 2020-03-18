@@ -16,6 +16,9 @@ from ebonite.runtime.server import Server
 class MockModelWrapper(ModelWrapper):
     type = 'test_wrapper2'
 
+    def __init__(self):
+        super().__init__(None)
+
     def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
         return {
             'predict': 'predict'

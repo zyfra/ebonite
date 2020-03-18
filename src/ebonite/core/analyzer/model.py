@@ -23,12 +23,26 @@ class ModelHook(Hook):
 ModelAnalyzer = analyzer_class(ModelHook, ModelWrapper)
 
 
-class CallableMethodModelHook(ModelHook):
+class BindingModelHook(ModelHook):
+    """
+    Binding model hook which `process` by first creating corresponding model wrapper (by means of a subclass) and
+    then binding created wrapper to given model object
+    """
+
+    def process(self, obj, **kwargs) -> ModelWrapper:
+        return self._wrapper_factory().bind_model(obj, **kwargs)
+
+    @abstractmethod
+    def _wrapper_factory(self) -> ModelWrapper:
+        pass  # pragma: no cover
+
+
+class CallableMethodModelHook(BindingModelHook):
     """
     Hook for processing functions
     """
-    def process(self, obj, **kwargs) -> ModelWrapper:
-        return CallableMethodModelWrapper().bind_model(obj, **kwargs)
+    def _wrapper_factory(self) -> ModelWrapper:
+        return CallableMethodModelWrapper()
 
     def can_process(self, obj) -> bool:
         return callable(obj)

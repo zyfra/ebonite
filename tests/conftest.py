@@ -12,19 +12,24 @@ from sklearn.linear_model import LogisticRegression
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model
 from ebonite.core.objects.dataset_type import DatasetType
-from ebonite.core.objects.wrapper import FilesContextManager, ModelWrapper
+from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
 from ebonite.repository.artifact.local import LocalArtifactRepository
+
+
+class MockModelIO(ModelIO):
+    @contextlib.contextmanager
+    def dump(self, model) -> FilesContextManager:
+        yield Blobs({'test.bin': InMemoryBlob(b'test')})
+
+    def load(self, path):
+        return None
 
 
 class MockModelWrapper(ModelWrapper):
     type = 'mock_wrapper'
 
-    @contextlib.contextmanager
-    def _dump(self) -> FilesContextManager:
-        yield Blobs({'test.bin': InMemoryBlob(b'test')})
-
-    def _load(self, path):
-        pass
+    def __init__(self):
+        super().__init__(MockModelIO())
 
     def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
         return {
