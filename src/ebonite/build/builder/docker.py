@@ -1,18 +1,15 @@
 import logging
 import os
 import tempfile
-from contextlib import contextmanager
-from threading import Lock
+
 from typing import Dict
 
-import docker
-import requests
 from docker import errors
 
 from jinja2 import Environment, FileSystemLoader
 
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
-from ebonite.build.docker_objects import DockerImage
+from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
 from ebonite.build.provider.base import PythonProvider
 from ebonite.core.objects import core
 from ebonite.utils.log import logger
@@ -21,40 +18,6 @@ from ebonite.utils.module import get_python_version
 TEMPLATE_FILE = 'dockerfile.j2'
 
 EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
-
-
-def is_docker_running():
-    """
-    Check if docker binary and docker daemon are available
-
-    :return: true or false
-    """
-    try:
-        with create_docker_client() as client:
-            client.images.list()
-        return True
-    except (ImportError, requests.exceptions.ConnectionError, docker.errors.DockerException):
-        return False
-
-
-_docker_host_lock = Lock()
-
-
-@contextmanager
-def create_docker_client(docker_host: str = '') -> docker.DockerClient:
-    """
-    Context manager for DockerClient creation
-
-    :param docker_host: DOCKER_HOST arg for DockerClient
-    :return: DockerClient instance
-    """
-    with _docker_host_lock:
-        os.environ["DOCKER_HOST"] = docker_host  # The env var DOCKER_HOST is used to configure docker.from_env()
-        client = docker.from_env()
-    try:
-        yield client
-    finally:
-        client.close()
 
 
 def _print_docker_logs(logs, level=logging.DEBUG):
@@ -110,9 +73,11 @@ class DockerBuilder(PythonBuilder):
             df.write(dockerfile)
 
     def _build_image(self, context_dir):
-        tag = '{}:{}'.format(self.params.name, self.params.tag)
+        tag = self.params.get_uri()
         logger.debug('Building docker image %s from %s...', tag, context_dir)
         with create_docker_client() as client:
+            login_to_registry(client, self.params.registry)
+
             if not self.force_overwrite:
                 try:
                     client.images.get(tag)
@@ -126,8 +91,13 @@ class DockerBuilder(PythonBuilder):
                     pass
             try:
                 _, logs = client.images.build(path=context_dir, tag=tag, rm=True)
-                logger.info('Build successful')
+                logger.info('Built image %s', tag)
                 _print_docker_logs(logs)
+
+                if isinstance(self.params.registry, RemoteDockerRegistry):
+                    client.images.push(tag)
+                    logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
+
                 return self.params.to_core_image()
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)

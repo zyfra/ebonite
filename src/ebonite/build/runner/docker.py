@@ -2,8 +2,7 @@ import sys
 import time
 from typing import Dict, Generator
 
-from ebonite.build.builder.docker_builder import create_docker_client
-from ebonite.build.docker_objects import DockerImage, RemoteDockerRegistry
+from ebonite.build.docker import DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
 from ebonite.utils.log import logger
 
@@ -31,15 +30,12 @@ class DockerRunner(RunnerBase):
 
     def run(self, instance: DockerRuntimeInstance, rm=True, detach=True):
         with create_docker_client(instance.target_uri) as client:
-            if isinstance(instance.image.registry, RemoteDockerRegistry):
-                client.login(registry=instance.image.registry.host,
-                             username=instance.image.registry.username,
-                             password=instance.image.registry.password)
+            login_to_registry(client, instance.image.registry)
 
             from docker.errors import ContainerError  # FIXME
             try:
                 # always detach from container and just stream logs if detach=False
-                container = client.containers.run(instance.image.get_image_uri(),
+                container = client.containers.run(instance.image.get_uri(),
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,

@@ -1,7 +1,7 @@
 import os
 from typing import Union
 
-from ebonite.build.docker_objects import DockerImage
+from ebonite.build.docker import DockerImage
 from ebonite.build.helpers import build_model_docker
 from ebonite.core.objects import core
 from ebonite.ext.flask.server import FlaskServer

@@ -142,7 +142,7 @@ class ISortModuleFinder:
         config['known_third_party'].append('xgboost')
         config['known_standard_library'].extend(
             ['opcode', 'nturl2path',  # pytest requirements missed by isort
-             'pkg_resources',  # EBNT-112: workaround for imports from setup.py (see docker_builder.py)
+             'pkg_resources',  # EBNT-112: workaround for imports from setup.py (see build/builder/docker.py)
              'posixpath', 'setuptools',
              'pydevconsole', 'pydevd_tracing', 'pydev_ipython.matplotlibtools', 'pydev_console.protocol',
              'pydevd_file_utils', 'pydevd_plugins.extensions.types.pydevd_plugins_django_form_str', 'pydev_console',
