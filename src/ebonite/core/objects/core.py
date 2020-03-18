@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
-from pyjackson.decorators import make_string
+from pyjackson.decorators import make_string, type_field
 
 import ebonite.repository
 from ebonite.core import errors
@@ -575,12 +575,16 @@ def _generate_model_name(wrapper: ModelWrapper):
 
 @make_string('id', 'name')
 class Image(EboniteObject):
+    @type_field('type')
+    class Params:
+        pass
+
     def __init__(self, name: str, id: int = None,
-                 model_id: int = None, params: Dict[str, Any] = None,
+                 model_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.model_id = model_id
-        self.params = params or {}
+        self.params = params
 
     @property
     @_with_meta
@@ -598,25 +602,34 @@ class Image(EboniteObject):
 
 
 class RuntimeEnvironment(EboniteObject):
+    @type_field('type')
+    class Params:
+        pass
+
     def __init__(self, name: str, id: int = None,
-                 host: str = None, port: int = None,
+                 host: str = None, port: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.host = host
         self.port = port
+        self.params = params
 
     def get_uri(self) -> str:
         return f'{self.host}:{self.port}' if self.host else ''
 
 
 class RuntimeInstance(EboniteObject):
+    @type_field('type')
+    class Params:
+        pass
+
     def __init__(self, name: str, id: int = None,
-                 image_id: int = None, environment_id: int = None, params: Dict[str, Any] = None,
+                 image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.image_id = image_id
         self.environment_id = environment_id
-        self.params = params or {}
+        self.params = params
 
     @property
     @_with_meta

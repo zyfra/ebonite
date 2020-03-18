@@ -3,17 +3,16 @@ import os
 from abc import abstractmethod
 from contextlib import contextmanager
 from threading import Lock
-from typing import Generator
+from typing import Dict, Generator
 
 import docker
 import requests
 from docker import errors
 
+from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
-from pyjackson.deserialization import deserialize
-from pyjackson.serialization import serialize
 
-from ebonite.core.objects import Image
+from ebonite.core.objects import Image, RuntimeInstance
 from ebonite.utils.log import logger
 
 
@@ -22,7 +21,7 @@ VALID_HOST_REGEX = r'^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]).)*([A-
 
 
 @type_field('type')
-class DockerRegistry:
+class DockerRegistry(Comparable):
 
     @abstractmethod
     def get_host(self) -> str:
@@ -54,7 +53,7 @@ class RemoteDockerRegistry(DockerRegistry):
         return self.host
 
 
-class DockerImage:
+class DockerImage(Image.Params, Comparable):
     def __init__(self, name: str, tag: str = 'latest',
                  repository: str = None, registry: DockerRegistry = None):
         self.name = name
@@ -70,12 +69,11 @@ class DockerImage:
             uri = '{}/{}'.format(self.registry.get_host(), uri)
         return uri
 
-    def to_core_image(self) -> Image:
-        return Image(self.get_uri(), params=serialize(self))
 
-    @staticmethod
-    def from_core_image(image: Image) -> 'DockerImage':
-        return deserialize(image.params, DockerImage)
+class DockerContainer(RuntimeInstance.Params, Comparable):
+    def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
+        self.name = name
+        self.ports_mapping = ports_mapping or {9000: 9000}
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):

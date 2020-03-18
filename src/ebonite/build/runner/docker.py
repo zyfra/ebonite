@@ -1,8 +1,8 @@
 import sys
 import time
-from typing import Dict, Generator
+from typing import Generator
 
-from ebonite.build.docker import DockerImage, create_docker_client, login_to_registry
+from ebonite.build.docker import DockerContainer, DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
 from ebonite.utils.log import logger
 
@@ -12,18 +12,10 @@ class DockerRunnerException(Exception):
 
 
 class DockerRuntimeInstance:
-    def __init__(self, name: str, image: DockerImage, target_uri: str = '', ports_mapping: Dict[int, int] = None):
-        self.name = name
+    def __init__(self, container: DockerContainer, image: DockerImage, target_uri: str = ''):
+        self.container = container
         self.image = image
         self.target_uri = target_uri
-        self.ports_mapping = ports_mapping or {}
-
-    @staticmethod
-    def from_core_instance(instance):
-        return DockerRuntimeInstance(instance.name,
-                                     DockerImage.from_core_image(instance.image),
-                                     instance.environment.get_uri(),
-                                     instance.params['ports_mapping'])
 
 
 class DockerRunner(RunnerBase):
@@ -36,9 +28,9 @@ class DockerRunner(RunnerBase):
             try:
                 # always detach from container and just stream logs if detach=False
                 container = client.containers.run(instance.image.get_uri(),
-                                                  name=instance.name,
+                                                  name=instance.container.name,
                                                   auto_remove=rm,
-                                                  ports=instance.ports_mapping,
+                                                  ports=instance.container.ports_mapping,
                                                   detach=True)
                 if not detach:
                     try:
@@ -47,7 +39,7 @@ class DockerRunner(RunnerBase):
                             logger.debug(log)
 
                         self._sleep()
-                        if not self._is_service_running(client, instance.name):
+                        if not self._is_service_running(client, instance.container.name):
                             raise DockerRunnerException("The container died unexpectedly.")
 
                     except KeyboardInterrupt:
@@ -56,7 +48,7 @@ class DockerRunner(RunnerBase):
 
                 else:
                     self._sleep()
-                    if not self._is_service_running(client, instance.name):
+                    if not self._is_service_running(client, instance.container.name):
                         if not rm:
                             for log in self._logs(container, stdout=False, stderr=True):
                                 raise DockerRunnerException("The container died unexpectedly.", log)
@@ -71,7 +63,7 @@ class DockerRunner(RunnerBase):
 
     def logs(self, instance: DockerRuntimeInstance, **kwargs) -> Generator[str, None, None]:
         with create_docker_client(instance.target_uri) as client:
-            container = client.containers.get(instance.name)
+            container = client.containers.get(instance.container.name)
             yield from self._logs(container, **kwargs)
 
     def _logs(self, container, stdout=True, stderr=True, stream=False,
@@ -98,9 +90,9 @@ class DockerRunner(RunnerBase):
 
     def is_running(self, instance: DockerRuntimeInstance) -> bool:
         with create_docker_client(instance.target_uri) as client:
-            return self._is_service_running(client, instance.name)
+            return self._is_service_running(client, instance.container.name)
 
     def stop(self, instance: DockerRuntimeInstance):
         with create_docker_client(instance.target_uri) as client:
-            container = client.containers.get(instance.name)
+            container = client.containers.get(instance.container.name)
             container.stop()

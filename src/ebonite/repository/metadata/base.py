@@ -532,7 +532,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_instance_by_name(self, instance_name, image: Union[int, 'core.Image'],
+    def get_instance_by_name(self, instance_name: str, image: Union[int, 'core.Image'],
                              environment: Union[int, 'core.RuntimeEnvironment']) -> Optional['core.RuntimeInstance']:
         """
         Finds instance by name in given image and environment.

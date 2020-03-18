@@ -1,8 +1,9 @@
 from typing import Union
 
 import ebonite
+from ebonite.build.docker import DockerContainer, DockerImage
 from ebonite.build.provider.ml_model import MLModelProvider
-from ebonite.build.runner.docker import DockerImage, DockerRunner, DockerRuntimeInstance
+from ebonite.build.runner.docker import DockerRunner, DockerRuntimeInstance
 from ebonite.core.objects import Image, Model
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
@@ -45,27 +46,26 @@ def build_model_docker(image_params: Union[str, DockerImage], model: Model, serv
     return image
 
 
-def run_docker_img(container_name: str, image_params: Union[str, DockerImage],
+def run_docker_img(container_params: Union[str, DockerContainer], image_params: Union[str, DockerImage],
                    target_uri='', ports_mapping=None, detach=True):
     """
     Runs Docker image as container
 
-    :param container_name: expected name of container to be run
+    :param container_params: expected params (or simply name) of container to be run
     :param image_params: params (or simply name) for docker image to be run
     :param target_uri: host URI to connect to Docker daemon on, if no given "localhost" is used
     :param ports_mapping: mapping of exposed ports in container
     :param detach: if `False` block execution until container exits
     :return: nothing
     """
+    if isinstance(container_params, str):
+        container_params = DockerContainer(container_params, ports_mapping)
+
     if isinstance(image_params, str):
         image_params = DockerImage(image_params)
 
-    if ports_mapping is None:
-        ports_mapping = {9000: 9000}
-
     runner = DockerRunner()
-    service = DockerRuntimeInstance(container_name, image_params,
-                                    target_uri=target_uri, ports_mapping=ports_mapping)
+    service = DockerRuntimeInstance(container_params, image_params, target_uri=target_uri)
     runner.run(service, detach=detach)
 
 
@@ -78,7 +78,7 @@ def is_docker_container_running(container_name: str, target_uri='') -> bool:
     :return: "is running" flag
     """
     runner = DockerRunner()
-    service = DockerRuntimeInstance(container_name, None, target_uri=target_uri)
+    service = DockerRuntimeInstance(DockerContainer(container_name), None, target_uri=target_uri)
     return runner.is_running(service)
 
 
@@ -91,7 +91,7 @@ def stop_docker_container(container_name: str, target_uri=''):
     :return: nothing
     """
     runner = DockerRunner()
-    service = DockerRuntimeInstance(container_name, None, target_uri=target_uri)
+    service = DockerRuntimeInstance(DockerContainer(container_name), None, target_uri=target_uri)
     runner.stop(service)
 
 

@@ -3,12 +3,12 @@ import time
 
 import pytest
 
-from ebonite.build.docker import DefaultDockerRegistry, DockerImage, RemoteDockerRegistry
+from ebonite.build import DefaultDockerRegistry, DockerContainer, DockerImage, RemoteDockerRegistry
 from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerRuntimeInstance
 
 from docker import DockerClient
 from requests.exceptions import HTTPError
-from testcontainers.core.container import DockerContainer
+from testcontainers.core.container import DockerContainer as Container
 
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import rm_container, rm_image
@@ -47,7 +47,7 @@ def runner(pytestconfig):
 def registry(tmpdir_factory, pytestconfig):
     if not has_docker() or 'not docker' in pytestconfig.getoption('markexpr'):
         pytest.skip('skipping docker tests')
-    with DockerContainer('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
+    with Container('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
         client = DockerClient()
 
         # migrate our image to custom Docker registry
@@ -111,7 +111,7 @@ def test_run_local_fail_inside_container(runner, registry, detach):
 
 def _check_runner(runner, img, host='', **kwargs):
     runner = runner(host, img, CONTAINER_NAME)
-    instance = DockerRuntimeInstance(CONTAINER_NAME, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(CONTAINER_NAME, ports_mapping={80: 8080}), img)
 
     assert not runner.is_running(instance)
 

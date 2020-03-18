@@ -1,4 +1,4 @@
-from ebonite.build.docker import DefaultDockerRegistry, DockerImage
+from ebonite.build import DefaultDockerRegistry, DockerContainer, DockerImage
 from ebonite.build.runner import DockerRunner, DockerRuntimeInstance
 
 
@@ -7,7 +7,7 @@ def run_detached_and_remove():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=True, rm=True)
@@ -18,7 +18,7 @@ def run_detached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name, ports_mapping={80: 8080}), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=True, rm=False)
@@ -29,7 +29,7 @@ def run_attached_and_remove():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name, ports_mapping={80: 8080}), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=False, rm=True)
@@ -40,7 +40,7 @@ def run_attached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name, ports_mapping={80: 8080}), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=False, rm=False)
@@ -51,7 +51,7 @@ def run_good():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('mike0sv/ebaklya', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name, ports_mapping={80: 8080}), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=True, rm=True)
@@ -65,7 +65,7 @@ def run_good_attached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('mike0sv/ebaklya', registry=img_registry)
-    instance = DockerRuntimeInstance(container_name, img, ports_mapping={80: 8080})
+    instance = DockerRuntimeInstance(DockerContainer(container_name, ports_mapping={80: 8080}), img)
 
     runner = DockerRunner()
     runner.run(instance, detach=False, rm=True)

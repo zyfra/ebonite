@@ -168,16 +168,15 @@ class Ebonite:
         if environment is None:
             environment = self.push_environment(RuntimeEnvironment(env_name))
 
-        params = {k: v for k, v in kwargs.items() if k in {'ports_mapping'}}
+        from ebonite.build import run_docker_img, DockerContainer
+        params = DockerContainer(name, **{k: v for k, v in kwargs.items() if k in {'ports_mapping'}})
 
         instance = RuntimeInstance(name, params=params)
         instance.image = image
         instance.environment = environment
         instance = self.meta_repo.create_instance(instance)
 
-        from ebonite.build import run_docker_img, DockerImage
-        run_docker_img(name, DockerImage.from_core_image(image), environment.get_uri(),
-                       detach=kwargs.get('detach', True), **params)
+        run_docker_img(params, image.params, environment.get_uri(), detach=kwargs.get('detach', True))
 
         return instance
 
