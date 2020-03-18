@@ -1,6 +1,5 @@
 import copy
 import os
-import uuid
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 import pyjackson
@@ -13,48 +12,63 @@ from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment,
 from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
-_Projects = Dict[str, Project]
-_Tasks = Dict[str, Task]
-_Models = Dict[str, Model]
-_Images = Dict[str, Image]
-_Environments = Dict[str, RuntimeEnvironment]
-_Instances = Dict[str, RuntimeInstance]
+_Projects = Dict[int, Project]
+_Tasks = Dict[int, Task]
+_Models = Dict[int, Model]
+_Images = Dict[int, Image]
+_Environments = Dict[int, RuntimeEnvironment]
+_Instances = Dict[int, RuntimeInstance]
 
 
 class _LocalContainer:
-    def __init__(self, projects: _Projects, tasks: _Tasks, models: _Models, images: _Images,
-                 environments: _Environments, instances: _Instances):
+    def __init__(self, next_project_id: int = 0, projects: _Projects = None,
+                 next_task_id: int = 0, tasks: _Tasks = None,
+                 next_model_id: int = 0, models: _Models = None,
+                 next_image_id: int = 0, images: _Images = None,
+                 next_environment_id: int = 0, environments: _Environments = None,
+                 next_instance_id: int = 0, instances: _Instances = None):
+        self.next_project_id = next_project_id
         self.projects: _Projects = {}
-        self.project_name_index: Dict[str, str] = {}
+        self.project_name_index: Dict[str, int] = {}
+        self.next_task_id = next_task_id
         self.tasks: _Tasks = {}
-        self.task_name_index: Dict[Tuple[str, str], str] = {}
+        self.task_name_index: Dict[Tuple[int, str], int] = {}
+        self.next_model_id = next_model_id
         self.models: _Models = {}
-        self.model_name_index: Dict[Tuple[str, str], str] = {}
+        self.model_name_index: Dict[Tuple[int, str], int] = {}
+        self.next_image_id = next_image_id
         self.images: _Images = {}
-        self.image_name_index: Dict[Tuple[str, str], str] = {}
+        self.image_name_index: Dict[Tuple[int, str], int] = {}
+        self.next_environment_id = next_environment_id
         self.environments: _Environments = {}
-        self.environment_name_index: Dict[Tuple[str, str], str] = {}
+        self.environment_name_index: Dict[str, int] = {}
+        self.next_instance_id = next_instance_id
         self.instances: _Instances = {}
-        self.instance_name_index: Dict[Tuple[str, str, str], str] = {}
-        self.instance_index: Dict[Tuple[str, str], Set[str]] = {}
+        self.instance_name_index: Dict[Tuple[int, int, str], int] = {}
+        self.instance_index: Dict[Tuple[int, int], Set[int]] = {}
 
-        for p in projects.values():
+        for p in (projects or {}).values():
             self.add_project(p)
 
-        for t in tasks.values():
+        for t in (tasks or {}).values():
             self.add_task(t)
 
-        for m in models.values():
+        for m in (models or {}).values():
             self.add_model(m)
 
-        for i in images.values():
+        for i in (images or {}).values():
             self.add_image(i)
 
-        for e in environments.values():
+        for e in (environments or {}).values():
             self.add_environment(e)
 
-        for i in instances.values():
+        for i in (instances or {}).values():
             self.add_instance(i)
+
+    def get_and_increment(self, name):
+        next_id = getattr(self, name)
+        setattr(self, name, next_id + 1)
+        return next_id
 
     def add_project(self, project: Project):
         assert project.id is not None
@@ -84,7 +98,7 @@ class _LocalContainer:
     def get_task_by_id(self, task_id):
         return self.tasks.get(task_id)
 
-    def get_task_by_name(self, project_id: str, name: str):
+    def get_task_by_name(self, project_id: int, name: str):
         return self.get_task_by_id(self.task_name_index.get((project_id, name), None))
 
     def remove_task(self, task_id, recursive):
@@ -104,7 +118,7 @@ class _LocalContainer:
     def get_model_by_id(self, model_id):
         return self.models.get(model_id, None)
 
-    def get_model_by_name(self, task_id: str, name: str):
+    def get_model_by_name(self, task_id: int, name: str):
         return self.get_model_by_id(self.model_name_index.get((task_id, name), None))
 
     def remove_model(self, model_id):
@@ -121,7 +135,7 @@ class _LocalContainer:
     def get_image_by_id(self, image_id):
         return self.images.get(image_id, None)
 
-    def get_image_by_name(self, model_id: str, name: str):
+    def get_image_by_name(self, model_id: int, name: str):
         return self.get_image_by_id(self.image_name_index.get((model_id, name), None))
 
     def remove_image(self, image_id):
@@ -151,16 +165,16 @@ class _LocalContainer:
         self.instance_name_index[(instance.environment_id, instance.image_id, instance.name)] = instance.id
         self.instance_index.setdefault((instance.environment_id, instance.image_id), set()).add(instance.id)
 
-    def get_instance_by_id(self, instance_id: str):
+    def get_instance_by_id(self, instance_id: int):
         return self.instances.get(instance_id, None)
 
-    def get_instance_by_name(self, environment_id: str, image_id: str, name: str):
+    def get_instance_by_name(self, environment_id: int, image_id: int, name: str):
         return self.get_instance_by_id(self.instance_name_index.get((environment_id, image_id, name), None))
 
-    def get_instances(self, environment_id: str, image_id: str):
+    def get_instances(self, environment_id: int, image_id: int):
         return [self.get_instance_by_id(iid) for iid in self.instance_index.get((environment_id, image_id), set())]
 
-    def remove_instance(self, instance_id: str):
+    def remove_instance(self, instance_id: int):
         instance = self.instances.pop(instance_id, None)
         self.instance_name_index.pop((instance.environment_id, instance.image_id, instance.name), None)
         self.instance_index[(instance.environment_id, instance.image_id)].discard(instance_id)
@@ -184,7 +198,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.path is not None:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)
 
-        self.data: _LocalContainer = _LocalContainer({}, {}, {}, {}, {}, {})
+        self.data: _LocalContainer = _LocalContainer()
         self.load()
         self.save()
 
@@ -194,7 +208,7 @@ class LocalMetadataRepository(MetadataRepository):
                 logger.debug('Loading metadata from %s', self.path)
                 self.data = pyjackson.load(f, _LocalContainer)
         else:
-            self.data = _LocalContainer({}, {}, {}, {}, {}, {})
+            self.data = _LocalContainer()
 
     def save(self):
         if self.path is None:
@@ -219,7 +233,7 @@ class LocalMetadataRepository(MetadataRepository):
     def create_project(self, project: Project) -> Project:
         if self.get_project_by_name(project.name) is not None:
             raise ExistingProjectError(project)
-        project._id = str(uuid.uuid4())
+        project._id = self.data.get_and_increment('next_project_id')
         self.data.add_project(copy.deepcopy(project))
         self.save()
         return project
@@ -273,7 +287,7 @@ class LocalMetadataRepository(MetadataRepository):
         if existing_task is not None:
             raise ExistingTaskError(task)
 
-        task._id = str(uuid.uuid4())
+        task._id = self.data.get_and_increment('next_task_id')
         self.data.add_task(copy.deepcopy(task))
         self.save()
         return task
@@ -329,7 +343,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.get_model_by_name(model.name, existing_task) is not None:
             raise ExistingModelError(model)
 
-        model._id = str(uuid.uuid4())
+        model._id = self.data.get_and_increment('next_model_id')
         self.data.add_model(copy.deepcopy(model))
         self.save()
         return model
@@ -371,7 +385,7 @@ class LocalMetadataRepository(MetadataRepository):
         return copy.deepcopy(self.data.get_image_by_name(model.id, image_name))
 
     @bind_to_self
-    def get_image_by_id(self, id: str) -> Optional[Image]:
+    def get_image_by_id(self, id: int) -> Optional[Image]:
         return copy.deepcopy(self.data.get_image_by_id(id))
 
     @bind_to_self
@@ -385,7 +399,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.get_image_by_name(image.name, existing_model) is not None:
             raise ExistingImageError(image)
 
-        image._id = str(uuid.uuid4())
+        image._id = self.data.get_and_increment('next_image_id')
         self.data.add_image(copy.deepcopy(image))
         self.save()
         return image
@@ -422,7 +436,7 @@ class LocalMetadataRepository(MetadataRepository):
         return copy.deepcopy(self.data.get_environment_by_name(name))
 
     @bind_to_self
-    def get_environment_by_id(self, id: str) -> Optional[RuntimeEnvironment]:
+    def get_environment_by_id(self, id: int) -> Optional[RuntimeEnvironment]:
         return copy.deepcopy(self.data.get_environment_by_id(id))
 
     @bind_to_self
@@ -431,7 +445,7 @@ class LocalMetadataRepository(MetadataRepository):
 
         if self.get_environment_by_name(environment.name) is not None:
             raise ExistingEnvironmentError(environment)
-        environment._id = str(uuid.uuid4())
+        environment._id = self.data.get_and_increment('next_environment_id')
         self.data.add_environment(copy.deepcopy(environment))
         self.save()
         return environment
@@ -457,21 +471,21 @@ class LocalMetadataRepository(MetadataRepository):
             raise NonExistingEnvironmentError(environment)
 
     @bind_to_self
-    def get_instances(self, image: Union[str, Image], environment: Union[str, RuntimeEnvironment]) \
+    def get_instances(self, image: Union[int, Image], environment: Union[int, RuntimeEnvironment]) \
             -> List[RuntimeInstance]:
         image = image.id if isinstance(image, Image) else image
         environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
         return self.data.get_instances(environment, image)
 
     @bind_to_self
-    def get_instance_by_name(self, instance_name, image: Union[str, Image],
-                             environment: Union[str, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
+    def get_instance_by_name(self, instance_name, image: Union[int, Image],
+                             environment: Union[int, RuntimeEnvironment]) -> Optional[RuntimeInstance]:
         image = image.id if isinstance(image, Image) else image
         environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
         return self.data.get_instance_by_name(environment, image, instance_name)
 
     @bind_to_self
-    def get_instance_by_id(self, id: str) -> Optional[RuntimeInstance]:
+    def get_instance_by_id(self, id: int) -> Optional[RuntimeInstance]:
         return self.data.get_instance_by_id(id)
 
     @bind_to_self
@@ -489,7 +503,7 @@ class LocalMetadataRepository(MetadataRepository):
         if self.get_instance_by_name(instance.name, image, environment) is not None:
             raise ExistingInstanceError(instance)
 
-        instance._id = str(uuid.uuid4())
+        instance._id = self.data.get_and_increment('next_instance_id')
         self.data.add_instance(copy.deepcopy(instance))
         self.save()
         return instance

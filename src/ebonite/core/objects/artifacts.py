@@ -35,7 +35,7 @@ class Blob(EboniteParams):
 
         :param path: path to write file
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     @contextlib.contextmanager
@@ -46,7 +46,7 @@ class Blob(EboniteParams):
 
         :yields: file-like object
         """
-        pass
+        pass  # pragma: no cover
 
     def bytes(self) -> bytes:
         """
@@ -159,7 +159,7 @@ class ArtifactCollection(EboniteParams):
 
         :param path: dir to write blobs
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def bytes_dict(self) -> typing.Dict[str, bytes]:
@@ -168,7 +168,7 @@ class ArtifactCollection(EboniteParams):
 
         :returns: dict of artifact names -> artifact payloads
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def blob_dict(self) -> typing.ContextManager[typing.Dict[str, Blob]]:
@@ -178,7 +178,7 @@ class ArtifactCollection(EboniteParams):
 
         :yields: dict of artifact name -> blob
         """
-        pass
+        pass  # pragma: no cover
 
     def __add__(self, other):
         """

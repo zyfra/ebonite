@@ -37,7 +37,7 @@ class EboniteObject(Comparable):
     _meta: 'ebonite.repository.MetadataRepository' = None
     _art: 'ebonite.repository.ArtifactRepository' = None
 
-    def __init__(self, id: str, name: str, author: str = None, creation_date: datetime.datetime = None):
+    def __init__(self, id: int, name: str, author: str = None, creation_date: datetime.datetime = None):
         self._id = id
         self.name = name
         self.author = author or _get_current_user()
@@ -69,7 +69,7 @@ class EboniteObject(Comparable):
         self.bind_meta_repo(cl.meta_repo)
 
     @property
-    def id(self):
+    def id(self) -> int:
         return self._id
 
 
@@ -118,7 +118,7 @@ class Project(EboniteObject):
     :param creation_date: date when this project was created
     """
 
-    def __init__(self, name: str, id: str = None, author: str = None, creation_date: datetime.datetime = None):
+    def __init__(self, name: str, id: int = None, author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self._tasks: IndexDict[Task] = IndexDict('id', 'name')
         self.tasks: IndexDictAccessor[Task] = IndexDictAccessor(self._tasks)
@@ -186,7 +186,7 @@ class Task(EboniteObject):
     :param creation_date: date when this task was created
     """
 
-    def __init__(self, name: str, id: str = None, project_id: str = None,
+    def __init__(self, name: str, id: int = None, project_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.project_id = project_id
@@ -313,8 +313,8 @@ class Model(EboniteObject):
                  requirements: Requirements = None,
                  params: Dict[str, Any] = None,
                  description: str = None,
-                 id: str = None,
-                 task_id: str = None,
+                 id: int = None,
+                 task_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
 
@@ -509,10 +509,6 @@ class Model(EboniteObject):
         return model
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     @_with_meta
     def task(self):
         t = self._meta.get_task_by_id(self.task_id)
@@ -582,8 +578,8 @@ def _generate_model_name(wrapper: ModelWrapper):
 
 @make_string('id', 'name')
 class Image(EboniteObject):
-    def __init__(self, name: str, id: str = None,
-                 model_id: str = None, params: Dict[str, Any] = None,
+    def __init__(self, name: str, id: int = None,
+                 model_id: int = None, params: Dict[str, Any] = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.model_id = model_id
@@ -605,7 +601,7 @@ class Image(EboniteObject):
 
 
 class RuntimeEnvironment(EboniteObject):
-    def __init__(self, name: str, id: str = None,
+    def __init__(self, name: str, id: int = None,
                  host: str = None, port: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
@@ -617,8 +613,8 @@ class RuntimeEnvironment(EboniteObject):
 
 
 class RuntimeInstance(EboniteObject):
-    def __init__(self, name: str, id: str = None,
-                 image_id: str = None, environment_id: str = None, params: Dict[str, Any] = None,
+    def __init__(self, name: str, id: int = None,
+                 image_id: int = None, environment_id: int = None, params: Dict[str, Any] = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.image_id = image_id

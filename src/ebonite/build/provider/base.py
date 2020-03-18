@@ -15,17 +15,17 @@ class ProviderBase:
     @abstractmethod
     def get_sources(self) -> Dict[str, str]:
         """Abstract method for text files"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_artifacts(self) -> ArtifactCollection:
         """Abstact method for binaries"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_env(self) -> Dict[str, str]:
         """Abstract method for environment variables"""
-        pass
+        pass  # pragma: no cover
 
 
 SERVER_ENV = 'EBONITE_SERVER'
@@ -52,7 +52,7 @@ class PythonProvider(ProviderBase):
     @abstractmethod
     def get_requirements(self) -> Requirements:
         """Abstract method for python requirements"""
-        pass
+        pass  # pragma: no cover
 
     def get_env(self) -> Dict[str, str]:
         """Get env variables for image"""

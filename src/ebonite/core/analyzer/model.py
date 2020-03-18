@@ -14,7 +14,7 @@ class ModelHook(Hook):
 
     @abstractmethod
     def process(self, obj, **kwargs) -> ModelWrapper:
-        pass
+        pass  # pragma: no cover
 
     def get_requirements(self, obj) -> Requirements:
         return get_object_requirements(obj)

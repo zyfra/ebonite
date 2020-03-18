@@ -34,7 +34,7 @@ class BuilderBase:
     """Abstract class for building images from ebonite objects"""
     @abstractmethod
     def build(self):
-        pass
+        pass  # pragma: no cover
 
 
 # noinspection PyAbstractClass

@@ -39,7 +39,7 @@ class TFTensorDatasetType(DatasetType, ListTypeWithSpec):
 
     @staticmethod
     def _get_dtype_from_str(dtype_str: str):
-        known_types = ['float', 'int']
+        known_types = {'float', 'int', 'bool', 'complex', 'str'}
         for known_type in known_types:
             if dtype_str.startswith(known_type):
                 return __builtins__[known_type]

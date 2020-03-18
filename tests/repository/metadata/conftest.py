@@ -30,7 +30,7 @@ def project2():
 @pytest.fixture
 def project_task(project):
     task = Task("Test Task")
-    task.project_id = project
+    task.project = project
     return task
 
 

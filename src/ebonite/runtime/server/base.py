@@ -41,7 +41,7 @@ class Server(_ServerBase):
         :return: nothing
         """
 
-        pass
+        pass  # pragma: no cover
 
     def start(self, loader: InterfaceLoader):
         """

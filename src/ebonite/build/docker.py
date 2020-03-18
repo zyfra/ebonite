@@ -26,7 +26,7 @@ class DockerRegistry:
 
     @abstractmethod
     def get_host(self) -> str:
-        pass
+        pass  # pragma: no cover
 
 
 class DefaultDockerRegistry(DockerRegistry):

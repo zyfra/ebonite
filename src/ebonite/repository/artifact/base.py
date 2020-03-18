@@ -42,7 +42,7 @@ class ArtifactRepository:
         model_id = model.id
         if model_id is None:
             raise ValueError('model_id cannot be "None"')
-        return model_id
+        return str(model_id)
 
     def push_artifacts(self, model: 'core.Model'):
         """
@@ -90,15 +90,15 @@ class ArtifactRepository:
 
     @abstractmethod
     def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     def _get_artifact(self, model_id: str) -> ArtifactCollection:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     def _delete_artifact(self, model_id: str):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 # noinspection PyAbstractClass

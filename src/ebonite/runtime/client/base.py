@@ -38,7 +38,7 @@ class BaseClient:
         :return: :class:`.InterfaceDescriptor` describing supported methods
         """
 
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def _call_method(self, name, args):
@@ -50,7 +50,7 @@ class BaseClient:
         :return: method return value which should be PyJackson deserializable.
         """
 
-        pass
+        pass  # pragma: no cover
 
     def __getattr__(self, name):
         if name not in self.methods:

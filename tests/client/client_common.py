@@ -1,58 +1,18 @@
-import copy
-import os
 import time
 
 import pytest
 
-from ebonite.build.builder.base import use_local_installation
 from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Model
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import rm_container, rm_image, train_model
-from tests.client.test_func import func
-
-LOCAL_REPO_PATH = os.path.dirname(__file__)
-LOCAL_ARTIFACT_REPO_PATH = os.path.join(LOCAL_REPO_PATH, 'artifacts')
-CONTAINER_NAME = "ebonite-test-service"
-
-CLEAR = True  # flag to disable removal of containers for easy inspection and debugging
-
-
-@pytest.fixture
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def container_name():
-    name = "{}-{}".format(CONTAINER_NAME, int(time.time() * 1000))
-    yield name
-
-    if not CLEAR:
-        return
-
-    rm_container(name)
-    rm_image(name + ":latest")  # FIXME later
-
-
-@pytest.fixture
-def ebnt(tmpdir):
-    with use_local_installation():
-        yield Ebonite.local(str(tmpdir))
-
-
-@pytest.fixture  # FIXME did not find the way to import fixture from build module
-def model():
-    model = Model.create(func, "kek", "Test Model")
-    return model
-
-
-def test_clearing_turned_on():  # just to remember to turn it on before commit
-    assert CLEAR
+from tests.build.conftest import train_model
 
 
 def test_get_or_create_task(ebnt: Ebonite):
     task = ebnt.get_or_create_task("Project", "Task")
-    project = ebnt.meta_repo.get_project_by_id(task.project_id)  # FIXME
     assert task.name == "Task"
-    assert project.name == "Project"
+    assert task.project.name == "Project"
 
 
 def test_get_or_create_task_exists(ebnt: Ebonite):
@@ -131,13 +91,21 @@ def test_push_model_exists(ebnt: Ebonite, model: Model):
     assert "Model2" == pushed_model2.name
 
 
+def test_push_model_same_model(ebnt: Ebonite, model: Model):
+    task = ebnt.get_or_create_task("Project", "Task1")
+    model = ebnt.push_model(model, task)
+
+    with pytest.raises(ExistingModelError):
+        ebnt.push_model(model, task)
+
+
 def test_push_model_with_same_name(ebnt: Ebonite, model: Model):
     task = ebnt.get_or_create_task("Project", "Task1")
-    ebnt.push_model(model, task)
+    model = ebnt.push_model(model, task)
 
-    model2 = copy.deepcopy(model)
+    model._id = None
     with pytest.raises(ExistingModelError):
-        ebnt.push_model(model2, task)
+        ebnt.push_model(model, task)
 
 
 def test_push_model_project_contains_two_tasks(ebnt: Ebonite, model: Model):
@@ -163,6 +131,9 @@ def test_build_and_run_service(ebnt, container_name):
     instance = ebnt.build_and_run_service(container_name, model)
     time.sleep(.1)
 
+    assert ebnt.get_environment(instance.environment.name) == instance.environment
+    assert ebnt.get_image(instance.image.name, model) == instance.image
+    assert ebnt.get_instance(instance.name, instance.image, instance.environment) == instance
     assert ebnt.is_service_running(instance)
 
     ebnt.stop_service(instance)

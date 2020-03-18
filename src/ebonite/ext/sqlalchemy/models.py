@@ -1,9 +1,8 @@
-import uuid
 from abc import abstractmethod
 from typing import Any, Dict, Optional, Type, TypeVar
 
 from pyjackson import dumps, loads
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -12,10 +11,6 @@ from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment,
 from ebonite.core.objects.requirements import Requirements
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
-
-
-def generate_uuid():
-    return str(uuid.uuid4())
 
 
 def json_column():
@@ -28,12 +23,6 @@ def safe_loads(payload, as_class):
 
 def sqlobject(obj):
     return getattr(obj, SQL_OBJECT_FIELD, None)
-
-
-def tostr(s: int):
-    if s is None:
-        return None
-    return str(s)
 
 
 def update_attrs(obj, **attrs):
@@ -65,11 +54,11 @@ class Attaching:
     @classmethod
     @abstractmethod
     def get_kwargs(cls, obj: T) -> dict:
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def to_obj(self) -> T:
-        pass
+        pass  # pragma: no cover
 
 
 Base = declarative_base()
@@ -85,7 +74,7 @@ class SProject(Base, Attaching):
     tasks = relationship("STask", back_populates="project")
 
     def to_obj(self) -> Project:
-        p = Project(self.name, id=tostr(self.id), author=self.author, creation_date=self.creation_date)
+        p = Project(self.name, id=self.id, author=self.author, creation_date=self.creation_date)
         for task in self.tasks:
             p._tasks.add(task.to_obj())
         return self.attach(p)
@@ -103,7 +92,7 @@ class STask(Base, Attaching):
     __tablename__ = 'tasks'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=False, nullable=False)
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
@@ -111,12 +100,14 @@ class STask(Base, Attaching):
     project = relationship("SProject", back_populates="tasks")
     models = relationship("SModel", back_populates="task")
 
+    __table_args__ = (UniqueConstraint('name', 'project_id', name='tasks_name_and_ref'),)
+
     def to_obj(self) -> Task:
-        task = Task(id=tostr(self.id),
+        task = Task(id=self.id,
                     name=self.name,
                     author=self.author,
                     creation_date=self.creation_date,
-                    project_id=tostr(self.project_id))
+                    project_id=self.project_id)
         for model in self.models:
             task._models.add(model.to_obj())
         return self.attach(task)
@@ -136,7 +127,7 @@ class SModel(Base, Attaching):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=False, nullable=False)
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
     wrapper = Column(Text)
@@ -149,6 +140,8 @@ class SModel(Base, Attaching):
     task = relationship("STask", back_populates="models")
     images = relationship("SImage", back_populates="model")
 
+    __table_args__ = (UniqueConstraint('name', 'task_id', name='models_name_and_ref'),)
+
     def to_obj(self) -> Model:
         model = Model(name=self.name,
                       wrapper_meta=safe_loads(self.wrapper, dict),
@@ -158,8 +151,8 @@ class SModel(Base, Attaching):
                       requirements=safe_loads(self.requirements, Requirements),
                       description=self.description,
                       params=safe_loads(self.params, Dict[str, Any]),
-                      id=tostr(self.id),
-                      task_id=tostr(self.task_id))
+                      id=self.id,
+                      task_id=self.task_id)
         return self.attach(model)
 
     @classmethod
@@ -181,7 +174,7 @@ class SImage(Base, Attaching):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=False, nullable=False)
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
@@ -190,12 +183,14 @@ class SImage(Base, Attaching):
 
     params = Column(Text)
 
+    __table_args__ = (UniqueConstraint('name', 'model_id', name='image_name_and_ref'),)
+
     def to_obj(self) -> Image:
         model = Image(name=self.name,
                       author=self.author,
                       creation_date=self.creation_date,
-                      id=tostr(self.id),
-                      model_id=tostr(self.model_id),
+                      id=self.id,
+                      model_id=self.model_id,
                       params=safe_loads(self.params, Dict[str, Any]))
         return self.attach(model)
 
@@ -226,7 +221,7 @@ class SRuntimeEnvironment(Base, Attaching):
             name=self.name,
             author=self.author,
             creation_date=self.creation_date,
-            id=tostr(self.id),
+            id=self.id,
             host=self.host,
             port=self.port)
         return self.attach(environment)
@@ -246,7 +241,7 @@ class SRuntimeInstance(Base, Attaching):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=False, nullable=False)
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
@@ -255,14 +250,16 @@ class SRuntimeInstance(Base, Attaching):
 
     params = Column(Text)
 
+    __table_args__ = (UniqueConstraint('name', 'image_id', 'environment_id', name='instance_name_and_ref'),)
+
     def to_obj(self) -> RuntimeInstance:
         instance = RuntimeInstance(
             name=self.name,
             author=self.author,
             creation_date=self.creation_date,
-            id=tostr(self.id),
-            image_id=tostr(self.image_id),
-            environment_id=tostr(self.environment_id),
+            id=self.id,
+            image_id=self.image_id,
+            environment_id=self.environment_id,
             params=safe_loads(self.params, Dict[str, Any]))
         return self.attach(instance)
 

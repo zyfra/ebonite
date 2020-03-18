@@ -1,4 +1,5 @@
-from functools import wraps
+import os
+import shutil
 from typing import Union
 
 from pyjackson import read, write
@@ -8,6 +9,7 @@ from ebonite.core import errors
 from ebonite.core.objects import core
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
+from ebonite.repository.artifact.local import LocalArtifactRepository
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
@@ -233,10 +235,17 @@ class Ebonite:
     @classmethod
     def local(cls, path=None, clear=False):
         """
-        Get an instance of :class:`~ebonite.client.local.LocalClient`
+        Get an instance of :class:`~ebonite.Ebonite` that stores metadata and artifacts on local filesystem
+
+        :param path: path to storage dir. If None, `.ebonite` dir is used
+        :param clear: if True, erase previous data from storage
         """
-        from ebonite.client.local import LocalClient
-        return LocalClient(path, clear)
+        path = path or '.ebonite'
+        if clear and os.path.exists(path):
+            shutil.rmtree(path)
+        meta_repo = LocalMetadataRepository(os.path.join(path, 'metadata.json'))
+        artifact_repo = LocalArtifactRepository(os.path.join(path, 'artifacts'))
+        return Ebonite(meta_repo, artifact_repo)
 
     @classmethod
     def inmemory(cls):
@@ -286,23 +295,3 @@ class Ebonite:
         :param filepath: path to file
         """
         write(filepath, self, Ebonite)
-
-
-def ebonite_client(name, force=False):
-    """Decorator for registering Ebonite child implementations as factory classmethods on :class:`ebonite.Ebonite`"""
-    def inner(cls):
-        if hasattr(Ebonite, name):
-            if force:
-                raise ValueError(f'Cant register client impl with name {name}: it shadows {getattr(Ebonite, name)}')
-            else:
-                return cls
-
-        @wraps(cls.__init__)
-        def factory(c, *args, **kwargs):
-            return cls(*args, **kwargs)
-
-        factory.__name__ = name
-        setattr(Ebonite, name, classmethod(factory))
-        return cls
-
-    return inner
