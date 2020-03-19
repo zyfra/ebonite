@@ -7,7 +7,7 @@ from pyjackson.errors import DeserializationError, SerializationError
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects import DatasetType
-from ebonite.runtime.interface.typing import ListTypeWithSpec, SizedTypedListType
+from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
 class TFTensorDatasetType(DatasetType, ListTypeWithSpec):

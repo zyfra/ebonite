@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
 from ebonite.build.provider.base import PythonProvider
-from ebonite.core.objects import core
+from ebonite.core.objects import Image
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
@@ -57,7 +57,7 @@ class DockerBuilder(PythonBuilder):
         kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
-    def build(self) -> 'core.Image':
+    def build(self) -> Image:
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
             self._write_distribution(tempdir)
             return self._build_image(tempdir)

@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from typing import Dict
 
-from ebonite import ext
 from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.requirements import Requirements
 from ebonite.runtime.interface import InterfaceLoader
@@ -68,7 +67,8 @@ class PythonProvider(ProviderBase):
 
         modules = set(self.get_requirements().modules)
 
-        extensions = ext.ExtensionLoader.loaded_extensions.keys()
+        from ebonite.ext import ExtensionLoader
+        extensions = ExtensionLoader.loaded_extensions.keys()
         used_extensions = [e.module for e in extensions if all(r in modules for r in e.reqs)]
         if len(used_extensions) > 0:
             envs['EBONITE_EXTENSIONS'] = ','.join(used_extensions)

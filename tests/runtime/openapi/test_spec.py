@@ -4,7 +4,7 @@ import pytest
 from pyjackson.core import ArgList, Field, Signature
 
 from ebonite.core.objects.dataset_type import FilelikeDatasetType
-from ebonite.runtime.interface.typing import TypeWithSpec
+from ebonite.core.objects.typing import TypeWithSpec
 from ebonite.runtime.openapi.spec import _field_to_schema, create_spec, make_array, make_object, type_to_schema
 
 

@@ -10,7 +10,6 @@ from pyjackson.core import Comparable
 from pyjackson.decorators import make_string
 
 import ebonite.repository
-from ebonite import client
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
@@ -63,10 +62,6 @@ class EboniteObject(Comparable):
     @property
     def has_artifact_repo(self):
         return self._art is not None
-
-    def bind_client(self, cl: 'client.Ebonite'):
-        self.bind_artifact_repo(cl.artifact_repo)
-        self.bind_meta_repo(cl.meta_repo)
 
     @property
     def id(self) -> int:
@@ -248,7 +243,8 @@ class Task(EboniteObject):
         if model_id not in self._models:
             raise errors.NonExistingModelError(model)
 
-        client.Ebonite(self._meta, self._art).delete_model(model, force)
+        from ebonite.client import Ebonite
+        Ebonite(self._meta, self._art).delete_model(model, force)
         del self._models[model_id]
 
     #  ##########API############
@@ -276,7 +272,8 @@ class Task(EboniteObject):
         :param model: :class:`Model` to push
         :return: same pushed :class:`Model`
         """
-        model = client.Ebonite(self._meta, self._art).push_model(model, self)
+        from ebonite.client import Ebonite
+        model = Ebonite(self._meta, self._art).push_model(model, self)
         self._models.add(model)
         return model
 

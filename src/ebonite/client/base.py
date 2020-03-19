@@ -5,8 +5,8 @@ from typing import Union
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
-from ebonite.core import errors
-from ebonite.core.objects import core
+from ebonite.core.errors import ExistingModelError
+from ebonite.core.objects import Image, Model, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
@@ -34,7 +34,7 @@ class Ebonite:
         self.meta_repo = meta_repo
         self.artifact_repo = artifact_repo
 
-    def push_model(self, model: 'core.Model', task: 'core.Task' = None) -> 'core.Model':
+    def push_model(self, model: Model, task: Task = None) -> Model:
         """
         Pushes :py:class:`~ebonite.core.objects.Model` instance into metadata and artifact repositories
 
@@ -43,7 +43,7 @@ class Ebonite:
         :return: same saved :py:class:`~ebonite.core.objects.Model` instance
         """
         if model.id is not None:
-            raise errors.ExistingModelError(model)
+            raise ExistingModelError(model)
         if task is not None:
             if model.task_id is not None:
                 if model.task_id != task.id:
@@ -61,7 +61,7 @@ class Ebonite:
         model = self.meta_repo.save_model(model)
         return model
 
-    def delete_model(self, model: 'core.Model', force=False):
+    def delete_model(self, model: Model, force=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
 
@@ -80,7 +80,7 @@ class Ebonite:
         self.meta_repo.delete_model(model)
         model.task_id = None
 
-    def get_or_create_task(self, project_name, task_name) -> 'core.Task':
+    def get_or_create_task(self, project_name: str, task_name: str) -> Task:
         """
         Load task from repository if it exists and create it otherwise
 
@@ -93,7 +93,7 @@ class Ebonite:
         return task
 
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
-                  load_artifacts: bool = True) -> 'core.Model':
+                  load_artifacts: bool = True) -> Model:
         """
         Load model from repository
 
@@ -103,12 +103,12 @@ class Ebonite:
         :param load_artifacts: if True, load model artifact into wrapper
         :return: :py:class:`~ebonite.core.objects.Model` instance
         """
-        model: 'core.Model' = self.meta_repo.get_model_by_name(model_name, task, project)
+        model: Model = self.meta_repo.get_model_by_name(model_name, task, project)
         if model is not None and load_artifacts:
             model.load()
         return model
 
-    def build_service(self, name: str, model: 'core.Model', **kwargs) -> 'core.Image':
+    def build_service(self, name: str, model: Model, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
@@ -125,7 +125,7 @@ class Ebonite:
             image = build_model_docker(name, model, **kwargs)
         return self.meta_repo.create_image(image)
 
-    def get_image(self, name: str, model: 'core.Model') -> 'core.Image':
+    def get_image(self, name: str, model: Model) -> Image:
         """
         Load image from repository
 
@@ -135,7 +135,7 @@ class Ebonite:
         """
         return self.meta_repo.get_image_by_name(name, model)
 
-    def push_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def push_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
         """
         Pushes runtime environment to repository
 
@@ -144,7 +144,7 @@ class Ebonite:
         """
         return self.meta_repo.create_environment(environment)
 
-    def get_environment(self, name: str) -> 'core.RuntimeEnvironment':
+    def get_environment(self, name: str) -> RuntimeEnvironment:
         """
         Load runtime environment from repository
 
@@ -153,8 +153,7 @@ class Ebonite:
         """
         return self.meta_repo.get_environment_by_name(name)
 
-    def run_service(self, name: str, image: 'core.Image', environment: 'core.RuntimeEnvironment' = None,
-                    **kwargs) -> 'core.RuntimeInstance':
+    def run_service(self, name: str, image: Image, environment: RuntimeEnvironment = None, **kwargs) -> RuntimeInstance:
         """
         Runs model service and stores it to repository
 
@@ -167,11 +166,11 @@ class Ebonite:
         if environment is None:
             environment = self.get_environment(env_name)
         if environment is None:
-            environment = self.push_environment(core.RuntimeEnvironment(env_name))
+            environment = self.push_environment(RuntimeEnvironment(env_name))
 
         params = {k: v for k, v in kwargs.items() if k in {'ports_mapping'}}
 
-        instance = core.RuntimeInstance(name, params=params)
+        instance = RuntimeInstance(name, params=params)
         instance.image = image
         instance.environment = environment
         instance = self.meta_repo.create_instance(instance)
@@ -182,8 +181,8 @@ class Ebonite:
 
         return instance
 
-    def build_and_run_service(self, name: str, model: 'core.Model', environment: 'core.RuntimeEnvironment' = None,
-                              **kwargs) -> 'core.RuntimeInstance':
+    def build_and_run_service(self, name: str, model: Model, environment: RuntimeEnvironment = None,
+                              **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
 
@@ -195,8 +194,7 @@ class Ebonite:
         image = self.build_service(name, model, **kwargs)
         return self.run_service(name, image, environment, **kwargs)
 
-    def get_instance(self, name: str, image: 'core.Image', environment: 'core.RuntimeEnvironment') \
-            -> 'core.RuntimeInstance':
+    def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
         """
         Loads service instance from repository
 
@@ -207,7 +205,7 @@ class Ebonite:
         """
         return self.meta_repo.get_instance_by_name(name, image, environment)
 
-    def is_service_running(self, instance: 'core.RuntimeInstance') -> bool:
+    def is_service_running(self, instance: RuntimeInstance) -> bool:
         """
         Checks whether instance is running
 
@@ -220,7 +218,7 @@ class Ebonite:
             return False
         return is_docker_container_running(instance.name, instance.environment.get_uri())
 
-    def stop_service(self, instance: 'core.RuntimeInstance'):
+    def stop_service(self, instance: RuntimeInstance):
         """
         Stops instance of model service and deletes it from repository
 
@@ -233,7 +231,7 @@ class Ebonite:
         self.meta_repo.delete_instance(instance)
 
     @classmethod
-    def local(cls, path=None, clear=False):
+    def local(cls, path=None, clear=False) -> 'Ebonite':
         """
         Get an instance of :class:`~ebonite.Ebonite` that stores metadata and artifacts on local filesystem
 
@@ -248,7 +246,7 @@ class Ebonite:
         return Ebonite(meta_repo, artifact_repo)
 
     @classmethod
-    def inmemory(cls):
+    def inmemory(cls) -> 'Ebonite':
         """
         Get an instance of :class:`~ebonite.Ebonite` with inmemory repositories
         """
@@ -256,7 +254,7 @@ class Ebonite:
 
     @classmethod
     def custom_client(cls, metadata: Union[str, MetadataRepository], artifact: Union[str, ArtifactRepository],
-                      meta_kwargs: dict = None, artifact_kwargs: dict = None):
+                      meta_kwargs: dict = None, artifact_kwargs: dict = None) -> 'Ebonite':
         """
         Create custom Ebonite client from metadata and artifact repositories.
 
@@ -279,7 +277,7 @@ class Ebonite:
         return Ebonite(metadata, artifact)
 
     @classmethod
-    def from_config_file(cls, filepath):
+    def from_config_file(cls, filepath) -> 'Ebonite':
         """
         Read and create Ebonite instance from config file
 

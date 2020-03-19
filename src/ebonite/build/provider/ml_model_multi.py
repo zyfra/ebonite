@@ -4,14 +4,12 @@ from typing import List
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
-from ebonite.build.provider.ml_model import MLModelProvider, MODEL_BIN_PATH
-from ebonite.core.objects import core
-from ebonite.core.objects.requirements import Requirements
-from ebonite.core.objects.artifacts import ArtifactCollection, _RelativePathWrapper, CompositeArtifactCollection
+from ebonite.build.provider.ml_model import MLModelProvider
+from ebonite.core.objects import ArtifactCollection, Model, Requirements
+from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection
+from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODELS_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
-
-MODELS_META_PATH = 'models.json'
 
 
 class MLModelMultiProvider(MLModelProvider):
@@ -20,10 +18,10 @@ class MLModelMultiProvider(MLModelProvider):
     :param models: List of Model instances
     :param server: Server instance to build with"""
 
-    def __init__(self, models: List['core.Model'], server: Server):
+    def __init__(self, models: List[Model], server: Server):
         from ebonite.runtime.interface.ml_model import MultiModelLoader
         super(MLModelProvider, self).__init__(server, MultiModelLoader())
-        self.models: List[core.Model] = models
+        self.models: List[Model] = models
 
     @cached_property
     def _requirements(self) -> Requirements:
