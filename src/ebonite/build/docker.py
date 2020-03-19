@@ -12,7 +12,7 @@ from docker import errors
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 
-from ebonite.core.objects import Image, RuntimeInstance
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
 from ebonite.utils.log import logger
 
 
@@ -74,6 +74,11 @@ class DockerContainer(RuntimeInstance.Params, Comparable):
     def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
         self.name = name
         self.ports_mapping = ports_mapping or {9000: 9000}
+
+
+class DockerHost(RuntimeEnvironment.Params, Comparable):
+    def __init__(self, host: str = ''):
+        self.host = host
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):

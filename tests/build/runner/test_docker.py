@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from ebonite.build import DefaultDockerRegistry, DockerContainer, DockerImage, RemoteDockerRegistry
-from ebonite.build.runner.docker import DockerRunner, DockerRunnerException, DockerRuntimeInstance
+from ebonite.build import DefaultDockerRegistry, DockerContainer, DockerHost, DockerImage, RemoteDockerRegistry
+from ebonite.build.runner.docker import DockerRunner, DockerRunnerException
 
 from docker import DockerClient
 from requests.exceptions import HTTPError
@@ -111,16 +111,17 @@ def test_run_local_fail_inside_container(runner, registry, detach):
 
 def _check_runner(runner, img, host='', **kwargs):
     runner = runner(host, img, CONTAINER_NAME)
-    instance = DockerRuntimeInstance(DockerContainer(CONTAINER_NAME, ports_mapping={80: 8080}), img)
+    instance = DockerContainer(CONTAINER_NAME, ports_mapping={80: 8080})
+    env = DockerHost(host)
 
-    assert not runner.is_running(instance)
+    assert not runner.is_running(instance, env)
 
-    runner.run(instance, **kwargs)
+    runner.run(instance, img, env, **kwargs)
     time.sleep(.1)
 
-    assert runner.is_running(instance)
+    assert runner.is_running(instance, env)
 
-    runner.stop(instance)
+    runner.stop(instance, env)
     time.sleep(.1)
 
-    assert not runner.is_running(instance)
+    assert not runner.is_running(instance, env)

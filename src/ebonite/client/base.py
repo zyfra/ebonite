@@ -153,30 +153,35 @@ class Ebonite:
         """
         return self.meta_repo.get_environment_by_name(name)
 
-    def run_service(self, name: str, image: Image, environment: RuntimeEnvironment = None, **kwargs) -> RuntimeInstance:
+    def run_service(self, name: str, image: Image, environment: RuntimeEnvironment = None,
+                    service_type: str = 'docker', **kwargs) -> RuntimeInstance:
         """
         Runs model service and stores it to repository
 
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
+        :param service_type: type of service to be run, default is regular Docker container
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        env_name = 'localhost'
+        from ebonite.build import RunnerBase, RunnersCatalog
+        runner: RunnerBase = RunnersCatalog.get(service_type)
+
+        env_name = f'{service_type}_localhost'
         if environment is None:
             environment = self.get_environment(env_name)
         if environment is None:
-            environment = self.push_environment(RuntimeEnvironment(env_name))
+            environment = RuntimeEnvironment(env_name, params=runner.localhost_env())
+            environment = self.push_environment(environment)
 
-        from ebonite.build import run_docker_img, DockerContainer
-        params = DockerContainer(name, **{k: v for k, v in kwargs.items() if k in {'ports_mapping'}})
+        params = runner.create_instance(name, **kwargs)
 
         instance = RuntimeInstance(name, params=params)
         instance.image = image
         instance.environment = environment
         instance = self.meta_repo.create_instance(instance)
 
-        run_docker_img(params, image.params, environment.get_uri(), detach=kwargs.get('detach', True))
+        runner.run(params, image.params, environment.params, **kwargs)
 
         return instance
 
@@ -204,28 +209,31 @@ class Ebonite:
         """
         return self.meta_repo.get_instance_by_name(name, image, environment)
 
-    def is_service_running(self, instance: RuntimeInstance) -> bool:
+    def is_service_running(self, instance: RuntimeInstance, **kwargs) -> bool:
         """
         Checks whether instance is running
 
         :param instance: instance to check
         :return: "is running" flag
         """
-        from ebonite.build import is_docker_container_running
         if not instance.has_meta_repo:
             # unbound instances could not be running: they are either not yet started or already stopped
             return False
-        return is_docker_container_running(instance.name, instance.environment.get_uri())
 
-    def stop_service(self, instance: RuntimeInstance):
+        from ebonite.build import RunnerBase, RunnersCatalog
+        runner: RunnerBase = RunnersCatalog.get(type(instance.params))
+        return runner.is_running(instance.params, instance.environment.params, **kwargs)
+
+    def stop_service(self, instance: RuntimeInstance, **kwargs):
         """
         Stops instance of model service and deletes it from repository
 
         :param instance: instance to stop
         :return: nothing
         """
-        from ebonite.build import stop_docker_container
-        stop_docker_container(instance.name, instance.environment.get_uri())
+        from ebonite.build import RunnerBase, RunnersCatalog
+        runner: RunnerBase = RunnersCatalog.get(type(instance.params))
+        runner.stop(instance.params, instance.environment.params, **kwargs)
 
         self.meta_repo.delete_instance(instance)
 

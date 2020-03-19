@@ -1,4 +1,5 @@
 from .base import RunnerBase
-from .docker import DockerRunner, DockerRuntimeInstance
+from .catalog import RunnersCatalog
+from .docker import DockerRunner
 
-__all__ = ['RunnerBase', 'DockerRunner', 'DockerRuntimeInstance']
+__all__ = ['DockerRunner', 'RunnerBase', 'RunnersCatalog']

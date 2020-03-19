@@ -1,9 +1,9 @@
 from typing import Union
 
 import ebonite
-from ebonite.build.docker import DockerContainer, DockerImage
+from ebonite.build.docker import DockerContainer, DockerHost, DockerImage
 from ebonite.build.provider.ml_model import MLModelProvider
-from ebonite.build.runner.docker import DockerRunner, DockerRuntimeInstance
+from ebonite.build.runner.docker import DockerRunner
 from ebonite.core.objects import Image, Model
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
@@ -47,52 +47,57 @@ def build_model_docker(image_params: Union[str, DockerImage], model: Model, serv
 
 
 def run_docker_img(container_params: Union[str, DockerContainer], image_params: Union[str, DockerImage],
-                   target_uri='', ports_mapping=None, detach=True):
+                   host_params: Union[str, DockerHost] = '', ports_mapping=None, detach=True):
     """
     Runs Docker image as container
 
     :param container_params: expected params (or simply name) of container to be run
     :param image_params: params (or simply name) for docker image to be run
-    :param target_uri: host URI to connect to Docker daemon on, if no given "localhost" is used
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
     :param ports_mapping: mapping of exposed ports in container
     :param detach: if `False` block execution until container exits
     :return: nothing
     """
-    if isinstance(container_params, str):
-        container_params = DockerContainer(container_params, ports_mapping)
-
     if isinstance(image_params, str):
         image_params = DockerImage(image_params)
 
-    runner = DockerRunner()
-    service = DockerRuntimeInstance(container_params, image_params, target_uri=target_uri)
-    runner.run(service, detach=detach)
+    DockerRunner().run(_as_container(container_params, ports_mapping),
+                       image_params, _as_host(host_params), detach=detach)
 
 
-def is_docker_container_running(container_name: str, target_uri='') -> bool:
+def is_docker_container_running(container_params: Union[str, DockerContainer],
+                                host_params: Union[str, DockerHost] = '') -> bool:
     """
     Checks whether Docker container is running
 
-    :param container_name: name of container to be stopped
-    :param target_uri: host URI to connect to Docker daemon on, if no given "localhost" is used
+    :param container_params: params (or simply name) of container to check running
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
     :return: "is running" flag
     """
-    runner = DockerRunner()
-    service = DockerRuntimeInstance(DockerContainer(container_name), None, target_uri=target_uri)
-    return runner.is_running(service)
+    return DockerRunner().is_running(_as_container(container_params), _as_host(host_params))
 
 
-def stop_docker_container(container_name: str, target_uri=''):
+def stop_docker_container(container_params: Union[str, DockerContainer], host_params: Union[str, DockerHost] = ''):
     """
     Stops Docker container
 
-    :param container_name: name of container to be stopped
-    :param target_uri: host URI to connect to Docker daemon on, if no given "localhost" is used
+    :param container_params: params (or simply name) of container to be stopped
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
     :return: nothing
     """
-    runner = DockerRunner()
-    service = DockerRuntimeInstance(DockerContainer(container_name), None, target_uri=target_uri)
-    runner.stop(service)
+    DockerRunner().stop(_as_container(container_params), _as_host(host_params))
+
+
+def _as_container(container_params: Union[str, DockerContainer], ports_mapping=None):
+    if isinstance(container_params, str):
+        container_params = DockerContainer(container_params, ports_mapping)
+    return container_params
+
+
+def _as_host(host_params: Union[str, DockerHost]):
+    if isinstance(host_params, str):
+        host_params = DockerHost(host_params)
+    return host_params
 
 
 def create_service_from_model(model_name: str, model_object, model_input, *,

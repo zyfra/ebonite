@@ -896,8 +896,6 @@ def test_create_environment__ok(meta: MetadataRepository, environment, created_e
     assert created_environment.has_meta_repo
 
     assert created_environment.name == environment.name
-    assert created_environment.host == environment.host
-    assert created_environment.port == environment.port
     assert created_environment.params == environment.params
 
 
@@ -908,17 +906,11 @@ def test_create_environment__saved(meta: MetadataRepository, created_environment
 
 def test_update_environment__ok(meta: MetadataRepository, created_environment):
     key = 2
-    assert created_environment.host is not None
-    assert created_environment.port is not None
     assert created_environment.params.key != key
 
-    created_environment.host = None
-    created_environment.port = None
     created_environment.params.key = key
     environment = meta.update_environment(created_environment)
 
-    assert environment.host is None
-    assert environment.port is None
     assert environment.params.key == key
 
 
@@ -942,17 +934,11 @@ def test_delete_environment__not_existing(meta: MetadataRepository, environment)
 
 def test_save_environment__ok_existing(meta: MetadataRepository, created_environment):
     key = 2
-    assert created_environment.host is not None
-    assert created_environment.port is not None
     assert created_environment.params.key != key
 
-    created_environment.host = None
-    created_environment.port = None
     created_environment.params.key = key
     environment = meta.save_environment(created_environment)
 
-    assert environment.host is None
-    assert environment.port is None
     assert environment.params.key == key
 
 
@@ -966,8 +952,6 @@ def test_save_environment__ok_not_existing(meta: MetadataRepository, environment
     assert created_environment.has_meta_repo
 
     assert created_environment.name == environment.name
-    assert created_environment.host == environment.host
-    assert created_environment.port == environment.port
     assert created_environment.params == environment.params
 
 

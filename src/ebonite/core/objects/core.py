@@ -606,16 +606,10 @@ class RuntimeEnvironment(EboniteObject):
     class Params:
         pass
 
-    def __init__(self, name: str, id: int = None,
-                 host: str = None, port: int = None, params: Params = None,
+    def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
-        self.host = host
-        self.port = port
         self.params = params
-
-    def get_uri(self) -> str:
-        return f'{self.host}:{self.port}' if self.host else ''
 
 
 class RuntimeInstance(EboniteObject):

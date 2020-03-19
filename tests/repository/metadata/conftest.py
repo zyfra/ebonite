@@ -83,7 +83,7 @@ def created_image(meta, created_model, image):
 
 @pytest.fixture
 def environment():
-    return RuntimeEnvironment("Test Environment", host='168.132.157.0', port=8558, params=TestParams(123))
+    return RuntimeEnvironment("Test Environment", params=TestParams(123))
 
 
 @pytest.fixture

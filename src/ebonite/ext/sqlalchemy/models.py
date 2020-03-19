@@ -213,9 +213,6 @@ class SRuntimeEnvironment(Base, Attaching):
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
-    host = Column(String)
-    port = Column(Integer)
-
     params = Column(Text)
 
     def to_obj(self) -> RuntimeEnvironment:
@@ -224,8 +221,6 @@ class SRuntimeEnvironment(Base, Attaching):
             author=self.author,
             creation_date=self.creation_date,
             id=self.id,
-            host=self.host,
-            port=self.port,
             params=safe_loads(self.params, RuntimeEnvironment.Params))
         return self.attach(environment)
 
@@ -235,8 +230,6 @@ class SRuntimeEnvironment(Base, Attaching):
                     name=environment.name,
                     author=environment.author,
                     creation_date=environment.creation_date,
-                    host=environment.host,
-                    port=environment.port,
                     params=dumps(environment.params))
 
 
