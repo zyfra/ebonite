@@ -3,7 +3,7 @@ import json
 import os
 import tempfile
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Dict
 
 import tensorflow as tf
 from pyjackson.decorators import make_string
