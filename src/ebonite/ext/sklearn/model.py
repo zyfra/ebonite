@@ -4,14 +4,16 @@ from pyjackson.decorators import make_string
 from sklearn.base import ClassifierMixin
 
 from ebonite.core.analyzer.base import LibHookMixin
-from ebonite.core.analyzer.model import ModelHook
-from ebonite.core.objects.wrapper import ModelWrapper, PickleModelWrapper
+from ebonite.core.analyzer.model import BindingModelHook
+from ebonite.core.objects.wrapper import ModelWrapper, PickleModelIO
 
 
-class SklearnModelWrapper(PickleModelWrapper):
+class SklearnModelWrapper(ModelWrapper):
     """
     `pickle`-based :class:`.ModelWrapper` implementation for `scikit-learn` models
     """
+    def __init__(self):
+        super().__init__(PickleModelIO())
 
     def _exposed_methods_mapping(self) -> Dict[str, str]:
         ret = {
@@ -23,7 +25,7 @@ class SklearnModelWrapper(PickleModelWrapper):
 
 
 @make_string(include_name=True)
-class SklearnHook(ModelHook, LibHookMixin):
+class SklearnHook(BindingModelHook, LibHookMixin):
     """
     :class:`ebonite.core.analyzer.model.ModelHook` implementation for `scikit-learn` models
     which uses :class:`SklearnModelWrapper`
@@ -31,5 +33,5 @@ class SklearnHook(ModelHook, LibHookMixin):
 
     base_module_name = 'sklearn'
 
-    def process(self, obj, **kwargs) -> ModelWrapper:
-        return SklearnModelWrapper().bind_model(obj, **kwargs)
+    def _wrapper_factory(self) -> ModelWrapper:
+        return SklearnModelWrapper()

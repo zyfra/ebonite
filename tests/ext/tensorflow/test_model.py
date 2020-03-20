@@ -33,7 +33,7 @@ def _check_model_wrapper(graph, model, feed_dict, tmpdir):
         # training here is just random initialization
 
         tmw = ModelAnalyzer.analyze(model, input_data=feed_dict)
-        assert tmw.model is model
+        assert tmw.model.tensors is model
 
         pred = tmw.call_method('predict', feed_dict)
 
