@@ -1,4 +1,5 @@
 import contextlib
+import json
 import os
 import tempfile
 from abc import abstractmethod
@@ -8,11 +9,56 @@ import tensorflow as tf
 from pyjackson.decorators import make_string
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
-from ebonite.core.analyzer.model import ModelHook
-from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import FilesContextManager, ModelWrapper
+from ebonite.core.analyzer.model import BindingModelHook
+from ebonite.core.objects.artifacts import Blobs, InMemoryBlob, LocalFileBlob
+from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
 
 TF_MODEL_FILENAME = 'graph'
+
+
+class _TfModel:
+    def __init__(self, tensors, session=None):
+        self.tensors = tensors
+        self.__session = session
+
+        if isinstance(tensors, list):
+            self.tensor_names = [t.name for t in tensors]
+        else:
+            self.tensor_names = tensors.name
+
+        self.is_frozen = self._is_graph_frozen()
+
+    def predict(self, input_data):
+        """
+        Runs session and returns output tensor values
+
+        :param input_data: data to predict
+        :return: prediction
+        """
+        prediction = self.get_session().run(self.tensors, feed_dict=input_data)
+        if isinstance(prediction, list):
+            return {str(i): tensor for i, tensor in enumerate(prediction)}
+        return prediction
+
+    def get_session(self):
+        session = self.__session or tf.get_default_session()
+        if session is None:
+            raise ValueError('Cant work with model without session, please use inside "with session.as_default()"')
+        return session
+
+    def close_session(self):
+        if self.__session is not None:
+            self.__session.close()
+
+    @staticmethod
+    def _is_graph_frozen() -> bool:
+        """
+        Checks if graph in current graph is frozen
+
+        :return: `True` or `False`
+        """
+        from tensorflow.python.ops import variables
+        return not bool(variables._all_saveable_objects())
 
 
 class _TFDump:
@@ -34,6 +80,7 @@ class _Saver(_TFDump):
     :class:`_TFDump` implementation with tf.train.Saver
     """
 
+    @contextlib.contextmanager
     def dump(self, session, path) -> FilesContextManager:
         with session.as_default(), session.graph.as_default():
             saver = tf.train.Saver(save_relative_paths=True)
@@ -54,6 +101,7 @@ class _Protobuf(_TFDump):
     :class:`_TFDump` implementation with tf.train.write_graph
     """
 
+    @contextlib.contextmanager
     def dump(self, session, path) -> FilesContextManager:
         tf.train.write_graph(session.graph.as_graph_def(), path, TF_MODEL_FILENAME, as_text=False)
         yield Blobs({
@@ -69,87 +117,79 @@ class _Protobuf(_TFDump):
                 tf.import_graph_def(od_graph_def, name='')
 
 
-class TFTensorModelWrapper(ModelWrapper):
+class TFTensorModelIO(ModelIO):
     """
-    :class:`ebonite.core.objects.ModelWrapper` for tensorflow models. `.model` attribute is a list of output tensors
-
-    :param output_tensor_names: list of output tensor names
-    :param is_frozen: flag to mark frozen graphs. They will be saved with protobuf instead of saver
+    :class:`ebonite.core.objects.ModelIO` for tensorflow models. Model is a `_TfModel` instance
     """
+    meta_json = 'meta.json'
 
-    def __init__(self, output_tensor_names: List[str], is_frozen: bool):
-        super().__init__()
-        self.output_tensor_names = output_tensor_names
-        self.is_frozen = is_frozen
-        self._dumper = _Protobuf() if is_frozen else _Saver()
-        self.__session = None
-
-    @ModelWrapper.with_model
     @contextlib.contextmanager
-    def _dump(self) -> FilesContextManager:
+    def dump(self, model: _TfModel) -> FilesContextManager:
         """
         Dumps session to temporary directory and creates :class:`~ebonite.core.objects.ArtifactCollection` from it
 
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
         with tempfile.TemporaryDirectory(prefix='ebonite_tensor_') as tempdir:
-            yield from self._dumper.dump(self._get_session(), tempdir)
+            dumper = self._get_dumper(model.is_frozen)
+            with dumper.dump(model.get_session(), tempdir) as artifact:
+                meta = json.dumps([model.tensor_names, model.is_frozen]).encode('utf-8')
+                yield artifact + Blobs({self.meta_json: InMemoryBlob(meta)})
 
-    def _load(self, path):
+    def load(self, path) -> _TfModel:
         """
         Loads graph from path
 
         :param path: path to load from
         """
-        if self.__session is not None:
-            self.__session.close()
+        with open(os.path.join(path, self.meta_json)) as f:
+            tensor_names, is_frozen = json.load(f)
+        dumper = self._get_dumper(is_frozen)
+
         graph = tf.Graph()
-        self.__session = tf.Session(graph=graph)
+        session = tf.Session(graph=graph)
 
-        self._dumper.load(self.__session, path)
+        dumper.load(session, path)
 
-        if isinstance(self.output_tensor_names, list):
-            self.model = [graph.get_tensor_by_name(n) for n in self.output_tensor_names]
+        if isinstance(tensor_names, list):
+            tensors = [graph.get_tensor_by_name(n) for n in tensor_names]
         else:
-            self.model = graph.get_tensor_by_name(self.output_tensor_names)
+            tensors = graph.get_tensor_by_name(tensor_names)
+
+        return _TfModel(tensors, session)
+
+    @staticmethod
+    def _get_dumper(is_frozen):
+        return _Protobuf() if is_frozen else _Saver()
+
+
+class TFTensorModelWrapper(ModelWrapper):
+    """
+    :class:`ebonite.core.objects.ModelWrapper` for tensorflow models. `.model` attribute is a list of output tensors
+    """
+    def __init__(self):
+        super().__init__(TFTensorModelIO())
 
     def _exposed_methods_mapping(self) -> Dict[str, str]:
         return {
-            'predict': '_predict'
+            'predict': 'predict'
         }
 
-    @ModelWrapper.with_model
-    def _predict(self, data):
-        """
-        Runs session and returns output tensor values
+    def load(self, path):
+        self._close_session_if_any()
+        super().load(path)
 
-        :param data: data to predict
-        :return: prediction
-        """
-        prediction = self._get_session().run(self.model, feed_dict=data)
-        if isinstance(prediction, list):
-            return {str(i): tensor for i, tensor in enumerate(prediction)}
-        return prediction
+    def bind_model(self, model, input_data=None, **kwargs):
+        self._close_session_if_any()
+        return super().bind_model(_TfModel(model), input_data, **kwargs)
 
-    def _get_session(self):
-        session = self.__session or tf.get_default_session()
-        if session is None:
-            raise ValueError('Cant work with model without session, please use inside "with session.as_default()"')
-        return session
-
-
-def is_graph_frozen() -> bool:
-    """
-    Checks if graph in current graph is frozen
-
-    :return: `True` or `False`
-    """
-    from tensorflow.python.ops import variables
-    return not bool(variables._all_saveable_objects())
+    def _close_session_if_any(self):
+        if self.model is not None:
+            self.model.close_session()
 
 
 @make_string(include_name=True)
-class TFTensorHook(CanIsAMustHookMixin, ModelHook):
+class TFTensorHook(CanIsAMustHookMixin, BindingModelHook):
     """
     Hook for tensorflow models
     """
@@ -163,17 +203,10 @@ class TFTensorHook(CanIsAMustHookMixin, ModelHook):
         """
         return isinstance(obj, tf.Tensor) or (isinstance(obj, list) and all(isinstance(o, tf.Tensor) for o in obj))
 
-    def process(self, obj, **kwargs) -> ModelWrapper:
+    def _wrapper_factory(self) -> ModelWrapper:
         """
         Creates :class:`TFTensorModelWrapper` for tensorflow model object
 
-        :param obj: obj to process
-        :param kwargs: additional information to be used for analysis
         :return: :class:`TFTensorModelWrapper` instance
         """
-        if isinstance(obj, list):
-            tensor_names = [t.name for t in obj]
-        else:
-            tensor_names = obj.name
-
-        return TFTensorModelWrapper(tensor_names, is_graph_frozen()).bind_model(obj, **kwargs)
+        return TFTensorModelWrapper()
