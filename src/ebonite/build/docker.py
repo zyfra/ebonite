@@ -71,9 +71,11 @@ class DockerImage(Image.Params):
 
 
 class DockerContainer(RuntimeInstance.Params):
-    def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
+    # FIXME `ports_mapping` keys could be effectively `int` or `str` but
+    # pyjackson deserializer doesn't support non-`str` keys in `dict`
+    def __init__(self, name: str, ports_mapping: Dict[str, int] = None):
         self.name = name
-        self.ports_mapping = ports_mapping or {9000: 9000}
+        self.ports_mapping = ports_mapping or {'9000': 9000}
 
 
 class DockerHost(RuntimeEnvironment.Params):
