@@ -576,7 +576,7 @@ def _generate_model_name(wrapper: ModelWrapper):
 @make_string('id', 'name')
 class Image(EboniteObject):
     @type_field('type')
-    class Params:
+    class Params(Comparable):
         pass
 
     def __init__(self, name: str, id: int = None,
@@ -603,7 +603,7 @@ class Image(EboniteObject):
 
 class RuntimeEnvironment(EboniteObject):
     @type_field('type')
-    class Params:
+    class Params(Comparable):
         pass
 
     def __init__(self, name: str, id: int = None, params: Params = None,
@@ -614,7 +614,7 @@ class RuntimeEnvironment(EboniteObject):
 
 class RuntimeInstance(EboniteObject):
     @type_field('type')
-    class Params:
+    class Params(Comparable):
         pass
 
     def __init__(self, name: str, id: int = None,

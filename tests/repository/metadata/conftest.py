@@ -2,7 +2,6 @@ import datetime
 from copy import deepcopy
 
 import pytest
-from pyjackson.core import Comparable
 
 from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from tests.conftest import interface_hook_creator
@@ -64,7 +63,7 @@ def created_model(meta, project, task, model):
     return meta.create_model(model)
 
 
-class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params, Comparable):
+class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params):
     def __init__(self, key: int):
         self.key = key
 

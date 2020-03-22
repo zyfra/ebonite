@@ -53,7 +53,7 @@ class RemoteDockerRegistry(DockerRegistry):
         return self.host
 
 
-class DockerImage(Image.Params, Comparable):
+class DockerImage(Image.Params):
     def __init__(self, name: str, tag: str = 'latest',
                  repository: str = None, registry: DockerRegistry = None):
         self.name = name
@@ -70,13 +70,13 @@ class DockerImage(Image.Params, Comparable):
         return uri
 
 
-class DockerContainer(RuntimeInstance.Params, Comparable):
+class DockerContainer(RuntimeInstance.Params):
     def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
         self.name = name
         self.ports_mapping = ports_mapping or {9000: 9000}
 
 
-class DockerHost(RuntimeEnvironment.Params, Comparable):
+class DockerHost(RuntimeEnvironment.Params):
     def __init__(self, host: str = ''):
         self.host = host
 
