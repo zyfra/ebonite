@@ -62,7 +62,7 @@ Request
 
 .. code-block::
 
-  PUT /projects
+  POST /projects
 
 .. code-block:: json
 
@@ -73,7 +73,7 @@ Request
 Response
 ^^^^^^^^^^^^^^
 
-* `200`:
+* `201`:
 
 .. code-block:: json
 
@@ -102,6 +102,6 @@ Request
 Response
 ^^^^^^^^^^^^^^
 
-* `200`: OK
+* `204`: OK
 * `400`: if `cascade` is not `1` and given project has tasks in it
 * `404`: if given project doesn't exist

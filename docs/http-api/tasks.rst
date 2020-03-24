@@ -67,7 +67,7 @@ Request
 
 .. code-block::
 
-  PUT /tasks
+  POST /tasks
 
 .. code-block:: json
 
@@ -79,7 +79,7 @@ Request
 Response
 ^^^^^^^^^^^^^^
 
-* `200`:
+* `201`:
 
 .. code-block:: json
 
@@ -109,6 +109,6 @@ Request
 Response
 ^^^^^^^^^^^^^^
 
-* `200`: OK
+* `204`: OK
 * `400`: if `cascade` is not `1` and given task has models in it
 * `404`: if given task doesn't exist
