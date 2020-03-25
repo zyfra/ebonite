@@ -604,7 +604,13 @@ class Image(EboniteObject):
 class RuntimeEnvironment(EboniteObject):
     @type_field('type')
     class Params(Comparable):
-        pass
+        default_runner = None
+
+        def get_runner(self):
+            """
+            :return: Runner for this environment
+            """
+            return self.default_runner
 
     def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
@@ -612,7 +618,26 @@ class RuntimeEnvironment(EboniteObject):
         self.params = params
 
 
+def _with_runner(method):
+    """
+       Decorator for methods to check that object is binded to runner
+
+       :param method: method to apply decorator
+       :return: decorated method
+       """
+
+    @wraps(method)
+    def inner(self, *args, **kwargs):
+        if not self.has_runner:
+            raise ValueError(f'{self} has no binded runner')
+        return method(self, *args, **kwargs)
+
+    return inner
+
+
 class RuntimeInstance(EboniteObject):
+    runner = None
+
     @type_field('type')
     class Params(Comparable):
         pass
@@ -641,7 +666,7 @@ class RuntimeInstance(EboniteObject):
 
     @property
     @_with_meta
-    def environment(self) -> RuntimeEnvironment:
+    def environment(self) -> RuntimeEnvironment:  # TODO caching
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
@@ -652,3 +677,33 @@ class RuntimeInstance(EboniteObject):
         if not isinstance(environment, RuntimeEnvironment):
             raise ValueError(f'{environment} is not RuntimeEnvironment')
         self.environment_id = environment.id
+
+    def bind_runner(self, runner):
+        self.runner = runner
+        return self
+
+    def unbind_runner(self):
+        del self.runner
+
+    @property
+    def has_runner(self):
+        return self.runner is not None
+
+    @_with_runner
+    def logs(self, **kwargs):
+        """
+
+        :param kwargs: parameters for runner `logs` method
+        :yields: str logs from running instance
+        """
+        yield from self.runner.logs(self.params, self.environment.params, **kwargs)
+
+    @_with_runner
+    def is_running(self, **kwargs) -> bool:
+        """
+        Checks whether instance is running
+
+        :param kwargs: params for runner `is_running` method
+        :return: "is running" flag
+        """
+        return self.runner.is_running(self.params, self.environment.params, **kwargs)

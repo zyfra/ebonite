@@ -122,7 +122,7 @@ def create_service_from_model(model_name: str, model_object, model_input, *,
     t = ebnt.get_or_create_task(project_name, task_name)
     model = t.create_and_push_model(model_object, model_input, model_name)
 
-    image = ebnt.build_service(service_name, model)
+    image = ebnt.build_image(service_name, model)
 
     if run_service:
-        ebnt.run_service(service_name, image, detach=detach)
+        ebnt.run_instance(service_name, image, detach=detach)

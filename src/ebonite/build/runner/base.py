@@ -23,13 +23,6 @@ class RunnerBase:
         pass  # pragma: no cover
 
     @abstractmethod
-    def localhost_env(self) -> RuntimeEnvironment.Params:
-        """
-        :return: :class:`.RuntimeEnvironment.Params` subclass instance which represents "localhost"
-        """
-        pass  # pragma: no cover
-
-    @abstractmethod
     def run(self, instance: RuntimeInstance.Params, image: Image.Params, env: RuntimeEnvironment.Params, **kwargs):
         """
         Runs given image on given environment with params given by instance

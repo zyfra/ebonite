@@ -13,6 +13,7 @@ from ebonite.repository.artifact.local import LocalArtifactRepository
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
+from ebonite.runtime.server import Server
 from ebonite.utils.log import logger
 
 
@@ -29,6 +30,9 @@ class Ebonite:
     :param meta_repo: :class:`~ebonite.repository.MetadataRepository` instance to save metadata
     :param artifact_repo: :class:`~ebonite.repository.ArtifactRepository` instance to save artifacts
     """
+
+    default_server: Server = None
+    default_env: RuntimeEnvironment = None
 
     def __init__(self, meta_repo: MetadataRepository, artifact_repo: ArtifactRepository):
         self.meta_repo = meta_repo
@@ -108,15 +112,20 @@ class Ebonite:
             model.load()
         return model
 
-    def build_service(self, name: str, model: Model, **kwargs) -> Image:
+    def build_image(self, name: str, model: Model, server: Server = None, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
         :param name: name of image to build
         :param model: model to wrap into service
+        :param server: server to build image with
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
-        if 'server' not in kwargs:  # by default we use uwsgi flask server
+        if server is None:
+            server = self.get_default_server()
+
+        from ebonite.ext.flask import FlaskServer
+        if isinstance(server, FlaskServer):  # FIXME temporary until EBNT-253 is in place
             from ebonite.ext.flask.helpers import build_model_flask_docker
             kwargs = {k: v for k, v in kwargs.items() if k in {'force_overwrite', 'debug'}}
             image = build_model_flask_docker(name, model, **kwargs)
@@ -153,26 +162,20 @@ class Ebonite:
         """
         return self.meta_repo.get_environment_by_name(name)
 
-    def run_service(self, name: str, image: Image, environment: RuntimeEnvironment = None,
-                    service_type: str = 'docker', **kwargs) -> RuntimeInstance:
+    def run_instance(self, name: str, image: Image, environment: RuntimeEnvironment = None,
+                     **kwargs) -> RuntimeInstance:
         """
-        Runs model service and stores it to repository
+        Runs model service instance and stores it to repository
 
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
-        :param service_type: type of service to be run, default is regular Docker container
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        from ebonite.build import RunnerBase, RunnersCatalog
-        runner: RunnerBase = RunnersCatalog.get(service_type)
 
-        env_name = f'{service_type}_localhost'
         if environment is None:
-            environment = self.get_environment(env_name)
-        if environment is None:
-            environment = RuntimeEnvironment(env_name, params=runner.localhost_env())
-            environment = self.push_environment(environment)
+            environment = self.get_default_environment()
+        runner = environment.params.get_runner()
 
         params = runner.create_instance(name, **kwargs)
 
@@ -183,10 +186,10 @@ class Ebonite:
 
         runner.run(params, image.params, environment.params, **kwargs)
 
-        return instance
+        return instance.bind_runner(runner)
 
-    def build_and_run_service(self, name: str, model: Model, environment: RuntimeEnvironment = None,
-                              **kwargs) -> RuntimeInstance:
+    def build_and_run_instance(self, name: str, model: Model, environment: RuntimeEnvironment = None,
+                               **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
 
@@ -195,8 +198,8 @@ class Ebonite:
         :param environment: environment to run instance in, if no given `localhost` is used
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        image = self.build_service(name, model, **kwargs)
-        return self.run_service(name, image, environment, **kwargs)
+        image = self.build_image(name, model, **kwargs)
+        return self.run_instance(name, image, environment, **kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
         """
@@ -209,30 +212,14 @@ class Ebonite:
         """
         return self.meta_repo.get_instance_by_name(name, image, environment)
 
-    def is_service_running(self, instance: RuntimeInstance, **kwargs) -> bool:
-        """
-        Checks whether instance is running
-
-        :param instance: instance to check
-        :return: "is running" flag
-        """
-        if not instance.has_meta_repo:
-            # unbound instances could not be running: they are either not yet started or already stopped
-            return False
-
-        from ebonite.build import RunnerBase, RunnersCatalog
-        runner: RunnerBase = RunnersCatalog.get(type(instance.params))
-        return runner.is_running(instance.params, instance.environment.params, **kwargs)
-
-    def stop_service(self, instance: RuntimeInstance, **kwargs):
+    def stop_instance(self, instance: RuntimeInstance, **kwargs):
         """
         Stops instance of model service and deletes it from repository
 
         :param instance: instance to stop
         :return: nothing
         """
-        from ebonite.build import RunnerBase, RunnersCatalog
-        runner: RunnerBase = RunnersCatalog.get(type(instance.params))
+        runner = instance.runner or instance.environment.params.get_runner()
         runner.stop(instance.params, instance.environment.params, **kwargs)
 
         self.meta_repo.delete_instance(instance)
@@ -300,3 +287,27 @@ class Ebonite:
         :param filepath: path to file
         """
         write(filepath, self, Ebonite)
+
+    def get_default_server(self):
+        """
+        :return: Default server implementation for this client
+        """
+        if self.default_server is None:
+            from ebonite.ext.flask import FlaskServer
+            self.default_server = FlaskServer()
+        return self.default_server
+
+    def get_default_environment(self):
+        """
+        Creates (if needed) and returns default runtime environment
+        :return: saved instance of :class:`.RuntimeEnvironment`
+        """
+        if self.default_env is not None:
+            return self.default_env
+        env_name = 'docker_localhost'
+        self.default_env = self.get_environment(env_name)
+        if self.default_env is None:
+            from ebonite.build import DockerHost
+            self.default_env = RuntimeEnvironment(env_name, params=DockerHost())
+            self.default_env = self.push_environment(self.default_env)
+        return self.default_env
