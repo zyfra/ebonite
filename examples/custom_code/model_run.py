@@ -20,7 +20,7 @@ def main():
     #  1. for developing reasons 2. we dont have ebonite on pip yet
     with use_local_installation():
         # build docker container from model
-        ebnt.build_service('custom_code_model_container', model, force_overwrite=True)
+        ebnt.build_image('custom_code_model_container', model, force_overwrite=True)
 
     # run docker conatainer
     run_docker_img('custom_code_model_container', 'custom_code_model_container', ports_mapping={9000: 9000})

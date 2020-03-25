@@ -18,9 +18,6 @@ class DockerRunner(RunnerBase):
     def create_instance(self, name: str, ports_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
         return DockerContainer(name, ports_mapping)
 
-    def localhost_env(self) -> DockerHost:
-        return DockerHost()
-
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerHost, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
                 isinstance(env, DockerHost)):

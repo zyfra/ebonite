@@ -15,7 +15,6 @@ from pyjackson.decorators import type_field
 from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
 from ebonite.utils.log import logger
 
-
 # TODO check
 VALID_HOST_REGEX = r'^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]).)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$'
 
@@ -79,6 +78,15 @@ class DockerContainer(RuntimeInstance.Params):
 class DockerHost(RuntimeEnvironment.Params):
     def __init__(self, host: str = ''):
         self.host = host
+
+    def get_runner(self):
+        """
+        :return: docker runner
+        """
+        if self.default_runner is None:
+            from ebonite.build import DockerRunner
+            self.default_runner = DockerRunner()
+        return self.default_runner
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):

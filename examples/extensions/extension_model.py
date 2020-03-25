@@ -14,7 +14,7 @@ def run_model(name):
     model = t.create_and_push_model('ahaha', 1, 'model')
 
     with use_local_installation():
-        ebnt.build_service(name, model)
+        ebnt.build_image(name, model)
 
     run_docker_img(name, name)
 
@@ -36,7 +36,7 @@ def main():
     with use_local_installation():
         # your extension code will be inside docker image in form of files
         # if you have local files, or requirement if you installed it from pip
-        ebnt.build_service('local_ext_model', model, force_overwrite=True)
+        ebnt.build_image('local_ext_model', model, force_overwrite=True)
 
     run_docker_img('local_ext_model', 'local_ext_model')
 
