@@ -35,7 +35,9 @@ Request
 
 .. code-block::
 
-  GET /projects/1
+  GET /projects/<:id>
+
+* `id`: id of project to get
 
 Response
 ^^^^^^^^
@@ -95,8 +97,9 @@ Request
 
 .. code-block::
 
-  DELETE /projects/1?cascade=1
+  DELETE /projects/<:id>?cascade=1
 
+* `id`: id of project to delete
 * `cascade`: (optional, default - `0`) delete cascadely (with referenced tasks, models, etc)
 
 Response
