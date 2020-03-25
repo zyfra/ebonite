@@ -98,6 +98,35 @@ Response
 * `400`: if task with given name already exists in given project
 
 
+Update task
+-----------
+
+Request
+^^^^^^^
+
+.. code-block::
+
+  PUT /tasks/<:id>
+
+* `id`: id of task to update
+
+.. code-block:: json
+
+  {
+    "name": "first task",
+    "project_id": 1,
+    "author": "user_name",
+    "creation_date": "1970-01-01 00:00:00.000000 "
+  }
+
+Response
+^^^^^^^^^^^^^^
+
+* `204`: OK
+* `403`: if caller has no rights to update fields they passed
+* `404`: if given task doesn't exist
+
+
 Delete task
 -----------
 

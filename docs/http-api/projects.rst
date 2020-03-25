@@ -89,6 +89,34 @@ Response
 * `400`: if project with given name already exists
 
 
+Update project
+--------------
+
+Request
+^^^^^^^
+
+.. code-block::
+
+  PUT /projects/<:id>
+
+* `id`: id of project to update
+
+.. code-block:: json
+
+  {
+    "name": "first project",
+    "author": "user_name",
+    "creation_date": "1970-01-01 00:00:00.000000 "
+  }
+
+Response
+^^^^^^^^^^^^^^
+
+* `204`: OK
+* `403`: if caller has no rights to update fields they passed
+* `404`: if given project doesn't exist
+
+
 Delete project
 --------------
 
