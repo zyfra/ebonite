@@ -706,4 +706,7 @@ class RuntimeInstance(EboniteObject):
         :param kwargs: params for runner `is_running` method
         :return: "is running" flag
         """
+        if not self.has_meta_repo:
+            return False # TODO separate repo logic from runner logic and remove this check
         return self.runner.is_running(self.params, self.environment.params, **kwargs)
+
