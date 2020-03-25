@@ -134,9 +134,9 @@ def test_build_and_run_instance(ebnt, container_name):
     assert ebnt.get_environment(instance.environment.name) == instance.environment
     assert ebnt.get_image(instance.image.name, model) == instance.image
     assert ebnt.get_instance(instance.name, instance.image, instance.environment) == instance
-    assert instance.is_runnning()
+    assert instance.is_running()
 
     ebnt.stop_instance(instance)
     time.sleep(.1)
 
-    assert not instance.is_runnning()
+    assert not instance.is_running()
