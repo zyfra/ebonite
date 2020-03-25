@@ -189,13 +189,13 @@ class SImage(Base, Attaching):
     __table_args__ = (UniqueConstraint('name', 'model_id', name='image_name_and_ref'),)
 
     def to_obj(self) -> Image:
-        model = Image(name=self.name,
+        image = Image(name=self.name,
                       author=self.author,
                       creation_date=self.creation_date,
                       id=self.id,
                       model_id=self.model_id,
                       params=safe_loads(self.params, Dict[str, Any]))
-        return self.attach(model)
+        return self.attach(image)
 
     @classmethod
     def get_kwargs(cls, image: Image) -> dict:
