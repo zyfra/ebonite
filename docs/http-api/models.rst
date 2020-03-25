@@ -102,6 +102,35 @@ Response
 * `404`: if given model or artifact doesn't exist
 
 
+Update model
+------------
+
+Request
+^^^^^^^
+
+.. code-block::
+
+  PUT /models/<:id>
+
+* `id`: id of model to update
+
+.. code-block:: json
+
+  {
+    "name": "first model",
+    "task_id": 1,
+    "author": "user_name",
+    "creation_date": "1970-01-01 00:00:00.000000 "
+  }
+
+Response
+^^^^^^^^^^^^^^
+
+* `204`: OK
+* `403`: if caller has no rights to update fields they passed
+* `404`: if given model doesn't exist
+
+
 Delete model
 ------------
 

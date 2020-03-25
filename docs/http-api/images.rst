@@ -118,6 +118,34 @@ Response
 * `400`: if image with given name already exists for given model
 
 
+Update image
+------------
+
+Request
+^^^^^^^
+
+.. code-block::
+
+  PUT /images/<:id>
+
+* `id`: id of image to update
+
+.. code-block:: json
+
+  {
+    "name": "first image",
+    "author": "user_name",
+    "creation_date": "1970-01-01 00:00:00.000000 "
+  }
+
+Response
+^^^^^^^^^^^^^^
+
+* `204`: OK
+* `403`: if caller has no rights to update fields they passed
+* `404`: if given image doesn't exist
+
+
 Delete image
 ------------
 
