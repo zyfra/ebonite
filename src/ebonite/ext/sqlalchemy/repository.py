@@ -44,19 +44,27 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         self._active_session = None
 
     @contextlib.contextmanager
-    def _session(self, commit=True) -> Session:
+    def _session(self) -> Session:
         if self._active_session is None:
             logger.debug('Creating session for %s', self.db_uri)
             self._active_session = self._Session()
             new_session = True
         else:
             new_session = False
-        yield self._active_session
-        if commit:
-            self._active_session.commit()
-        if new_session:
-            self._active_session.close()
-            self._active_session = None
+
+        try:
+            yield self._active_session
+
+            if new_session:
+                self._active_session.commit()
+        except:  # noqa
+            if new_session:
+                self._active_session.rollback()
+            raise
+        finally:
+            if new_session:
+                self._active_session.close()
+                self._active_session = None
 
     def _get_objects(self, object_type: Type[Attaching], add_filter=None) -> List:
         with self._session() as s:
@@ -97,7 +105,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return sql_obj.to_obj() if sql_obj is not None else None
 
     def _create_object(self, object_type: Type[Attaching], obj: T, error_type) -> T:
-        with self._session(False) as s:
+        with self._session() as s:
             p = object_type.from_obj(obj, new=True)
             s.add(p)
             try:
@@ -134,15 +142,14 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.projects, project, ExistingProjectError)
 
     def update_project(self, project: Project) -> Project:
-        with self._session() as s:
+        with self._session():
             p: SProject = self._get_sql_object_by_id(self.projects, project.id)
             if p is None:
                 raise NonExistingProjectError(project)
             kwargs = SProject.get_kwargs(project)
             kwargs.pop('tasks', None)
-
             update_attrs(p, **kwargs)
-            s.commit()
+
             for t in p.tasks:
                 if t.id in project.tasks:
                     self.update_task(project.tasks.get(t.id))
@@ -176,14 +183,14 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.tasks, task, ExistingTaskError)
 
     def update_task(self, task: Task) -> Task:
-        with self._session(False) as s:
+        with self._session():
             t: STask = self._get_sql_object_by_id(self.tasks, task.id)
             if t is None:
                 raise NonExistingTaskError(task)
             kwargs = STask.get_kwargs(task)
             kwargs.pop('models', None)
             update_attrs(t, **kwargs)
-            s.commit()
+
             for m in t.models:
                 if m.id in task.models:
                     self.update_model(task.models.get(m.id))
@@ -217,12 +224,19 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.models, model, ExistingModelError)
 
     def update_model(self, model: Model) -> Model:
-        with self._session(False) as s:
-            m = self._get_sql_object_by_id(self.models, model.id)
+        with self._session():
+            m: SModel = self._get_sql_object_by_id(self.models, model.id)
             if m is None:
                 raise NonExistingModelError(model)
-            update_attrs(m, **SModel.get_kwargs(model))
-            s.commit()
+            kwargs = SModel.get_kwargs(model)
+            kwargs.pop('images', None)
+            update_attrs(m, **kwargs)
+
+            for i in m.images:
+                if i.id in model.images:
+                    self.update_image(model.images.get(i.id))
+                else:
+                    model._images.add(i.to_obj())
             return model
 
     def delete_model(self, model: Model):
@@ -251,12 +265,11 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.images, image, ExistingImageError)
 
     def update_image(self, image: Image) -> Image:
-        with self._session(False) as s:
+        with self._session():
             i = self._get_sql_object_by_id(self.images, image.id)
             if i is None:
                 raise NonExistingImageError(image)
             update_attrs(i, **SImage.get_kwargs(image))
-            s.commit()
             return image
 
     def delete_image(self, image: Image):
@@ -281,12 +294,11 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.environments, environment, ExistingEnvironmentError)
 
     def update_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
-        with self._session(False) as s:
+        with self._session():
             i = self._get_sql_object_by_id(self.environments, environment.id)
             if i is None:
                 raise NonExistingEnvironmentError(environment)
             update_attrs(i, **SRuntimeEnvironment.get_kwargs(environment))
-            s.commit()
             return environment
 
     def delete_environment(self, environment: RuntimeEnvironment):
@@ -320,12 +332,11 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._create_object(self.instances, instance, ExistingInstanceError)
 
     def update_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
-        with self._session(False) as s:
+        with self._session():
             i = self._get_sql_object_by_id(self.instances, instance.id)
             if i is None:
                 raise NonExistingInstanceError(instance)
             update_attrs(i, **SRuntimeInstance.get_kwargs(instance))
-            s.commit()
             return instance
 
     def delete_instance(self, instance: RuntimeInstance):
