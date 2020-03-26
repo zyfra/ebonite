@@ -63,9 +63,14 @@ def created_model(meta, project, task, model):
     return meta.create_model(model)
 
 
+class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params):
+    def __init__(self, key: int):
+        self.key = key
+
+
 @pytest.fixture
 def image():
-    return Image("Test Image", params={'test': 123})
+    return Image("Test Image", params=TestParams(123))
 
 
 @pytest.fixture
@@ -77,7 +82,7 @@ def created_image(meta, created_model, image):
 
 @pytest.fixture
 def environment():
-    return RuntimeEnvironment("Test Environment", host='168.132.157.0', port=8558)
+    return RuntimeEnvironment("Test Environment", params=TestParams(123))
 
 
 @pytest.fixture
@@ -88,7 +93,7 @@ def created_environment(meta, environment):
 
 @pytest.fixture
 def instance():
-    return RuntimeInstance("Test Instance", params={'test': 123})
+    return RuntimeInstance("Test Instance", params=TestParams(123))
 
 
 @pytest.fixture

@@ -194,7 +194,7 @@ class SImage(Base, Attaching):
                       creation_date=self.creation_date,
                       id=self.id,
                       model_id=self.model_id,
-                      params=safe_loads(self.params, Dict[str, Any]))
+                      params=safe_loads(self.params, Image.Params))
         return self.attach(image)
 
     @classmethod
@@ -216,8 +216,7 @@ class SRuntimeEnvironment(Base, Attaching):
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
-    host = Column(String)
-    port = Column(Integer)
+    params = Column(Text)
 
     def to_obj(self) -> RuntimeEnvironment:
         environment = RuntimeEnvironment(
@@ -225,8 +224,7 @@ class SRuntimeEnvironment(Base, Attaching):
             author=self.author,
             creation_date=self.creation_date,
             id=self.id,
-            host=self.host,
-            port=self.port)
+            params=safe_loads(self.params, RuntimeEnvironment.Params))
         return self.attach(environment)
 
     @classmethod
@@ -235,8 +233,7 @@ class SRuntimeEnvironment(Base, Attaching):
                     name=environment.name,
                     author=environment.author,
                     creation_date=environment.creation_date,
-                    host=environment.host,
-                    port=environment.port)
+                    params=dumps(environment.params))
 
 
 class SRuntimeInstance(Base, Attaching):
@@ -263,7 +260,7 @@ class SRuntimeInstance(Base, Attaching):
             id=self.id,
             image_id=self.image_id,
             environment_id=self.environment_id,
-            params=safe_loads(self.params, Dict[str, Any]))
+            params=safe_loads(self.params, RuntimeInstance.Params))
         return self.attach(instance)
 
     @classmethod

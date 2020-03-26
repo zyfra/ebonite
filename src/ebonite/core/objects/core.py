@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
-from pyjackson.decorators import make_string
+from pyjackson.decorators import make_string, type_field
 
 import ebonite.repository
 from ebonite.core import errors
@@ -588,12 +588,16 @@ def _generate_model_name(wrapper: ModelWrapper):
 
 @make_string('id', 'name')
 class Image(EboniteObject):
+    @type_field('type')
+    class Params(Comparable):
+        pass
+
     def __init__(self, name: str, id: int = None,
-                 model_id: int = None, params: Dict[str, Any] = None,
+                 model_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.model_id = model_id
-        self.params = params or {}
+        self.params = params
 
     @property
     @_with_meta
@@ -611,25 +615,53 @@ class Image(EboniteObject):
 
 
 class RuntimeEnvironment(EboniteObject):
-    def __init__(self, name: str, id: int = None,
-                 host: str = None, port: int = None,
+    @type_field('type')
+    class Params(Comparable):
+        default_runner = None
+
+        def get_runner(self):
+            """
+            :return: Runner for this environment
+            """
+            return self.default_runner
+
+    def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
-        self.host = host
-        self.port = port
+        self.params = params
 
-    def get_uri(self) -> str:
-        return f'{self.host}:{self.port}' if self.host else ''
+
+def _with_runner(method):
+    """
+       Decorator for methods to check that object is binded to runner
+
+       :param method: method to apply decorator
+       :return: decorated method
+       """
+
+    @wraps(method)
+    def inner(self, *args, **kwargs):
+        if not self.has_runner:
+            raise ValueError(f'{self} has no binded runner')
+        return method(self, *args, **kwargs)
+
+    return inner
 
 
 class RuntimeInstance(EboniteObject):
+    runner = None
+
+    @type_field('type')
+    class Params(Comparable):
+        pass
+
     def __init__(self, name: str, id: int = None,
-                 image_id: int = None, environment_id: int = None, params: Dict[str, Any] = None,
+                 image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.image_id = image_id
         self.environment_id = environment_id
-        self.params = params or {}
+        self.params = params
 
     @property
     @_with_meta
@@ -647,7 +679,7 @@ class RuntimeInstance(EboniteObject):
 
     @property
     @_with_meta
-    def environment(self) -> RuntimeEnvironment:
+    def environment(self) -> RuntimeEnvironment:  # TODO caching
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
@@ -658,3 +690,35 @@ class RuntimeInstance(EboniteObject):
         if not isinstance(environment, RuntimeEnvironment):
             raise ValueError(f'{environment} is not RuntimeEnvironment')
         self.environment_id = environment.id
+
+    def bind_runner(self, runner):
+        self.runner = runner
+        return self
+
+    def unbind_runner(self):
+        del self.runner
+
+    @property
+    def has_runner(self):
+        return self.runner is not None
+
+    @_with_runner
+    def logs(self, **kwargs):
+        """
+
+        :param kwargs: parameters for runner `logs` method
+        :yields: str logs from running instance
+        """
+        yield from self.runner.logs(self.params, self.environment.params, **kwargs)
+
+    @_with_runner
+    def is_running(self, **kwargs) -> bool:
+        """
+        Checks whether instance is running
+
+        :param kwargs: params for runner `is_running` method
+        :return: "is running" flag
+        """
+        if not self.has_meta_repo:
+            return False  # TODO separate repo logic from runner logic and remove this check
+        return self.runner.is_running(self.params, self.environment.params, **kwargs)

@@ -1,8 +1,8 @@
 import sys
 import time
-from typing import Dict, Generator
+from typing import Dict, Generator, Type
 
-from ebonite.build.docker import DockerImage, create_docker_client, login_to_registry
+from ebonite.build.docker import DockerContainer, DockerHost, DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
 from ebonite.utils.log import logger
 
@@ -11,31 +11,25 @@ class DockerRunnerException(Exception):
     pass
 
 
-class DockerRuntimeInstance:
-    def __init__(self, name: str, image: DockerImage, target_uri: str = '', ports_mapping: Dict[int, int] = None):
-        self.name = name
-        self.image = image
-        self.target_uri = target_uri
-        self.ports_mapping = ports_mapping or {}
-
-    @staticmethod
-    def from_core_instance(instance):
-        return DockerRuntimeInstance(instance.name,
-                                     DockerImage.from_core_image(instance.image),
-                                     instance.environment.get_uri(),
-                                     instance.params['ports_mapping'])
-
-
 class DockerRunner(RunnerBase):
+    def instance_type(self) -> Type[DockerContainer]:
+        return DockerContainer
 
-    def run(self, instance: DockerRuntimeInstance, rm=True, detach=True):
-        with create_docker_client(instance.target_uri) as client:
-            login_to_registry(client, instance.image.registry)
+    def create_instance(self, name: str, ports_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
+        return DockerContainer(name, ports_mapping)
+
+    def run(self, instance: DockerContainer, image: DockerImage, env: DockerHost, rm=True, detach=True, **kwargs):
+        if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
+                isinstance(env, DockerHost)):
+            raise TypeError('DockerRunner works with DockerContainer, DockerImage and DockerHost only')
+
+        with create_docker_client(env.host) as client:
+            login_to_registry(client, image.registry)
 
             from docker.errors import ContainerError  # FIXME
             try:
                 # always detach from container and just stream logs if detach=False
-                container = client.containers.run(instance.image.get_uri(),
+                container = client.containers.run(image.get_uri(),
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
@@ -69,13 +63,15 @@ class DockerRunner(RunnerBase):
                     print(e.stderr.decode(), file=sys.stderr)
                 raise
 
-    def logs(self, instance: DockerRuntimeInstance, **kwargs) -> Generator[str, None, None]:
-        with create_docker_client(instance.target_uri) as client:
+    def logs(self, instance: DockerContainer, env: DockerHost, **kwargs) -> Generator[str, None, None]:
+        self._validate(instance, env)
+
+        with create_docker_client(env.host) as client:
             container = client.containers.get(instance.name)
             yield from self._logs(container, **kwargs)
 
     def _logs(self, container, stdout=True, stderr=True, stream=False,
-              tail='all', since=None, follow=None, until=None) -> Generator[str, None, None]:
+              tail='all', since=None, follow=None, until=None, **kwargs) -> Generator[str, None, None]:
 
         log = container.logs(stdout=stdout, stderr=stderr, stream=stream,
                              tail=tail, since=since, follow=follow, until=until)
@@ -96,11 +92,19 @@ class DockerRunner(RunnerBase):
         except NotFound:
             return False
 
-    def is_running(self, instance: DockerRuntimeInstance) -> bool:
-        with create_docker_client(instance.target_uri) as client:
+    def is_running(self, instance: DockerContainer, env: DockerHost, **kwargs) -> bool:
+        self._validate(instance, env)
+
+        with create_docker_client(env.host) as client:
             return self._is_service_running(client, instance.name)
 
-    def stop(self, instance: DockerRuntimeInstance):
-        with create_docker_client(instance.target_uri) as client:
+    def stop(self, instance: DockerContainer, env: DockerHost, **kwargs):
+        self._validate(instance, env)
+
+        with create_docker_client(env.host) as client:
             container = client.containers.get(instance.name)
             container.stop()
+
+    def _validate(self, instance: DockerContainer, env: DockerHost):
+        if not (isinstance(instance, DockerContainer) and isinstance(env, DockerHost)):
+            raise TypeError('DockerRunner works with DockerContainer and DockerHost only')
