@@ -153,6 +153,8 @@ class SModel(Base, Attaching):
                       params=safe_loads(self.params, Dict[str, Any]),
                       id=self.id,
                       task_id=self.task_id)
+        for image in self.images:
+            model._images.add(image.to_obj())
         return self.attach(model)
 
     @classmethod
@@ -166,7 +168,8 @@ class SModel(Base, Attaching):
                     requirements=dumps(model.requirements),
                     description=model.description,
                     params=dumps(model.params),
-                    task_id=model.task_id)
+                    task_id=model.task_id,
+                    images=[SImage.from_obj(i) for i in model.images.values()])
 
 
 class SImage(Base, Attaching):
@@ -186,13 +189,13 @@ class SImage(Base, Attaching):
     __table_args__ = (UniqueConstraint('name', 'model_id', name='image_name_and_ref'),)
 
     def to_obj(self) -> Image:
-        model = Image(name=self.name,
+        image = Image(name=self.name,
                       author=self.author,
                       creation_date=self.creation_date,
                       id=self.id,
                       model_id=self.model_id,
                       params=safe_loads(self.params, Image.Params))
-        return self.attach(model)
+        return self.attach(image)
 
     @classmethod
     def get_kwargs(cls, image: Image) -> dict:
