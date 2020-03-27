@@ -97,7 +97,7 @@ Request
 
 .. code-block::
 
-  PUT /projects/<:id>
+  PATCH /projects/<:id>
 
 * `id`: id of project to update
 

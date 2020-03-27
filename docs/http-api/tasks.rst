@@ -106,7 +106,7 @@ Request
 
 .. code-block::
 
-  PUT /tasks/<:id>
+  PATCH /tasks/<:id>
 
 * `id`: id of task to update
 

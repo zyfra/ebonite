@@ -126,7 +126,7 @@ Request
 
 .. code-block::
 
-  PUT /images/<:id>
+  PATCH /images/<:id>
 
 * `id`: id of image to update
 

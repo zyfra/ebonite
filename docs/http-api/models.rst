@@ -110,7 +110,7 @@ Request
 
 .. code-block::
 
-  PUT /models/<:id>
+  PATCH /models/<:id>
 
 * `id`: id of model to update
 
