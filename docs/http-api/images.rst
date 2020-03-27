@@ -133,16 +133,13 @@ Request
 .. code-block:: json
 
   {
-    "name": "first image",
-    "author": "user_name",
-    "creation_date": "1970-01-01 00:00:00.000000 "
+    "name": "first image"
   }
 
 Response
 ^^^^^^^^^^^^^^
 
 * `204`: OK
-* `403`: if caller has no rights to update fields they passed
 * `404`: if given image doesn't exist
 
 
