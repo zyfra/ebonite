@@ -48,7 +48,7 @@ Request
 
 .. code-block::
 
-  GET /image/<:id>
+  GET /images/<:id>
 
 * `id`: id of image to get
 
@@ -151,7 +151,7 @@ Request
 
 .. code-block::
 
-  DELETE /image/<:id>?cascade=1
+  DELETE /images/<:id>?cascade=1
 
 * `id`: id of image to delete
 * `cascade`: (optional, default - `0`) delete cascadely (stops and deletes running instances of image)
