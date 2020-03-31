@@ -106,7 +106,7 @@ Request
 
 .. code-block::
 
-  PUT /tasks/<:id>
+  PATCH /tasks/<:id>
 
 * `id`: id of task to update
 
@@ -114,16 +114,13 @@ Request
 
   {
     "name": "first task",
-    "project_id": 1,
-    "author": "user_name",
-    "creation_date": "1970-01-01 00:00:00.000000 "
+    "project_id": 1
   }
 
 Response
 ^^^^^^^^^^^^^^
 
 * `204`: OK
-* `403`: if caller has no rights to update fields they passed
 * `404`: if given task doesn't exist
 
 
