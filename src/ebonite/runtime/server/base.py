@@ -19,6 +19,7 @@ class Server(_ServerBase):
     additional_sources: List[str] = []
     additional_binaries: List[str] = []
     additional_envs: Dict[str, str] = {}
+    additional_options: Dict[str, str] = {}
 
     @staticmethod
     def get(class_path) -> 'Server':

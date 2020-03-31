@@ -9,6 +9,7 @@ from ebonite.ext.flask.server import FlaskServer
 TEMPLATES_DIR = 'build_templates'
 
 
+# TODO this will be removed
 def build_model_flask_docker(image_params: Union[str, DockerImage], model: Model,
                              force_overwrite=False, debug=False) -> Image:
     """
@@ -26,3 +27,5 @@ def build_model_flask_docker(image_params: Union[str, DockerImage], model: Model
     return build_model_docker(
         image_params, model, FlaskServer(), force_overwrite, debug, **kwargs
     )
+
+import os # FIXME this to fail flake8 on purpose

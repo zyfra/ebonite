@@ -26,6 +26,11 @@ class ProviderBase:
         """Abstract method for environment variables"""
         pass  # pragma: no cover
 
+    @abstractmethod
+    def get_options(self) -> Dict[str, str]:
+        # TODO docs
+        pass
+
 
 SERVER_ENV = 'EBONITE_SERVER'
 LOADER_ENV = 'EBONITE_LOADER'
@@ -73,3 +78,6 @@ class PythonProvider(ProviderBase):
         if len(used_extensions) > 0:
             envs['EBONITE_EXTENSIONS'] = ','.join(used_extensions)
         return envs
+
+    def get_options(self) -> Dict[str, str]:
+        return self.server.additional_options
