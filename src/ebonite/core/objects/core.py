@@ -2,6 +2,7 @@ import datetime
 import getpass
 import json
 import tempfile
+from abc import abstractmethod
 from copy import copy
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
@@ -16,6 +17,7 @@ from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
+from ebonite.runtime.server import Server
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_object_requirements, get_python_version
 
@@ -624,6 +626,13 @@ class RuntimeEnvironment(EboniteObject):
             :return: Runner for this environment
             """
             return self.default_runner
+
+        @abstractmethod
+        def get_builder(self, name: str, model: Model, server: Server, **kwargs):
+            """
+            :return: Runner for this environment
+            """
+            pass  # pragma: no cover
 
     def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):

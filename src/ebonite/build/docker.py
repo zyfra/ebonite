@@ -12,7 +12,9 @@ from docker import errors
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 
-from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
+from ebonite.build.provider import MLModelProvider
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance, Model
+from ebonite.runtime.server import Server
 from ebonite.utils.log import logger
 
 # TODO check
@@ -87,6 +89,19 @@ class DockerHost(RuntimeEnvironment.Params):
             from ebonite.build import DockerRunner
             self.default_runner = DockerRunner()
         return self.default_runner
+
+
+    # TODO not sure about signature, maybe pass provider here. also, need to separate kwargs for provider, for builder, and for builder kwargs
+    def get_builder(self, name: str, model: Model, server: Server, **kwargs):
+        """
+        :return: docker builder
+        """
+        debug = kwargs.pop('debug')
+        tag = kwargs.pop('tag', 'latest')
+        force_overwrite = kwargs.pop('force_overwrite')
+        provider = MLModelProvider(model, server, debug)
+        from ebonite.build import DockerBuilder
+        return DockerBuilder(provider, DockerImage(name, tag), force_overwrite, **kwargs)
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):

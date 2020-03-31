@@ -8,7 +8,7 @@ from ebonite.core.objects import Image, Model
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
 
-
+# TODO this will be removed
 def build_model_docker(image_params: Union[str, DockerImage], model: Model, server: Server = None,
                        force_overwrite=False, debug=False, **kwargs) -> Image:
     """
