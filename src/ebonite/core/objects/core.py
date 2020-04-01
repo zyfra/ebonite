@@ -17,7 +17,6 @@ from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
-from ebonite.runtime.server import Server
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_object_requirements, get_python_version
 
@@ -628,9 +627,9 @@ class RuntimeEnvironment(EboniteObject):
             return self.default_runner
 
         @abstractmethod
-        def get_builder(self, name: str, model: Model, server: Server, **kwargs):
+        def get_builder(self, name: str, model: Model, server, debug=False, **kwargs):
             """
-            :return: Runner for this environment
+            :return: builder for this environment
             """
             pass  # pragma: no cover
 
