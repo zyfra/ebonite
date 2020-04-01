@@ -125,14 +125,12 @@ def test_push_model_project_contains_two_tasks(ebnt: Ebonite, model: Model):
 def test_build_and_run_instance(ebnt, container_name):
     reg, data = train_model()
 
-    task = ebnt.get_or_create_task("Test Project", "Test Task")
-    model = task.create_and_push_model(reg, data, "Test Model")
-
-    instance = ebnt.build_and_run_instance(container_name, model)
+    instance = ebnt.create_instance_from_model("Test Model", reg, data, project_name="Test Project",
+                                               task_name="Test Task", instance_name=container_name, run_instance=True)
     time.sleep(.1)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment
-    assert ebnt.get_image(instance.image.name, model) == instance.image
+    assert ebnt.get_image(instance.image.name, instance.image.model) == instance.image
     assert ebnt.get_instance(instance.name, instance.image, instance.environment) == instance
     assert instance.is_running()
 
