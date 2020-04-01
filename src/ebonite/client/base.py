@@ -14,6 +14,7 @@ from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
 from ebonite.runtime.server import Server
+from ebonite.utils.importing import module_importable
 from ebonite.utils.log import logger
 
 
@@ -113,7 +114,7 @@ class Ebonite:
         return model
 
     def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
-                    **kwargs) -> Image:
+                    debug=False, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
@@ -121,6 +122,8 @@ class Ebonite:
         :param model: model to wrap into service
         :param server: server to build image with
         :param environment: env to build for
+        :param debug: flag to build debug image
+        :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
         if server is None:
@@ -128,7 +131,7 @@ class Ebonite:
 
         if environment is None:
             environment = self.get_default_environment()
-        builder = environment.params.get_builder(name, model, server, **kwargs)
+        builder = environment.params.get_builder(name, model, server, debug, **kwargs)
         image = builder.build()
         image.model = model
         return self.meta_repo.create_image(image)
@@ -306,6 +309,10 @@ class Ebonite:
         env_name = 'docker_localhost'
         self.default_env = self.get_environment(env_name)
         if self.default_env is None:
+            if not module_importable('docker'):
+                raise RuntimeError("Can't build docker container: docker module is not installed. Install it "
+                                   "with 'pip install docker'")
+
             from ebonite.build import DockerHost
             self.default_env = RuntimeEnvironment(env_name, params=DockerHost())
             self.default_env = self.push_environment(self.default_env)
