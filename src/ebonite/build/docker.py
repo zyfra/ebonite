@@ -175,4 +175,3 @@ def create_docker_client(docker_host: str = '') -> Generator[docker.DockerClient
         yield client
     finally:
         client.close()
-
