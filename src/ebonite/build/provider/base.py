@@ -28,8 +28,8 @@ class ProviderBase:
 
     @abstractmethod
     def get_options(self) -> Dict[str, str]:
-        # TODO docs
-        pass
+        """Abstract method for additional build options"""
+        pass  # pragma: no cover
 
 
 SERVER_ENV = 'EBONITE_SERVER'
