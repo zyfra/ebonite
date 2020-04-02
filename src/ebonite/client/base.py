@@ -224,6 +224,33 @@ class Ebonite:
 
         self.meta_repo.delete_instance(instance)
 
+    def create_instance_from_model(self, model_name: str, model_object, model_input, *,
+                                   project_name: str = 'default_project', task_name: str = 'default_task',
+                                   instance_name: str = None, run_instance: bool = False, **kwargs):
+        """
+        This function does full default Ebonite's pipeline.
+        Creates model, pushes it, wraps with a server, builds the image and runs it locally (if needed).
+
+        :param model_name: model name to create.
+        :param model_object: object containing model.
+        :param model_input: model input.
+        :param project_name: project name.
+        :param task_name: task name.
+        :param instance_name: instance name. Use model_name if not provided.
+        :param run_instance: run built image if `True`.
+        :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
+          if `run_service` is `True` or `None` otherwise
+        """
+        instance_name = instance_name or model_name
+
+        task = self.get_or_create_task(project_name, task_name)
+        model = task.create_and_push_model(model_object, model_input, model_name)
+
+        if run_instance:
+            return self.build_and_run_instance(instance_name, model, **kwargs)
+        else:
+            self.build_image(instance_name, model, **kwargs)
+
     @classmethod
     def local(cls, path=None, clear=False) -> 'Ebonite':
         """
