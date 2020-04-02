@@ -3,11 +3,11 @@ import time
 import pytest
 
 from ebonite.build.builder.base import use_local_installation
-from ebonite.build.helpers import build_model_docker, is_docker_container_running, run_docker_img
+from ebonite.build.helpers import is_docker_container_running, run_docker_img
 
 from ebonite.ext.flask import FlaskServer
 
-from tests.build.conftest import has_docker, has_local_image, rm_container, rm_image
+from tests.build.conftest import has_docker, rm_container, rm_image
 
 
 @pytest.fixture
@@ -37,14 +37,6 @@ def service_name():
     yield service_name
     rm_container(service_name)
     rm_image(service_name + ":latest")
-
-
-@pytest.mark.docker
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_build_model_docker(model, server, img_name):
-    with use_local_installation():
-        build_model_docker(img_name, model, server)
-    assert has_local_image(img_name)
 
 
 @pytest.mark.docker

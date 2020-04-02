@@ -2,6 +2,7 @@ import datetime
 import getpass
 import json
 import tempfile
+from abc import abstractmethod
 from copy import copy
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
@@ -624,6 +625,13 @@ class RuntimeEnvironment(EboniteObject):
             :return: Runner for this environment
             """
             return self.default_runner
+
+        @abstractmethod
+        def get_builder(self, name: str, model: Model, server, debug=False, **kwargs):
+            """
+            :return: builder for this environment
+            """
+            pass  # pragma: no cover
 
     def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):

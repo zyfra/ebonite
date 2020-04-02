@@ -14,6 +14,7 @@ from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
 from ebonite.runtime.server import Server
+from ebonite.utils.importing import module_importable
 from ebonite.utils.log import logger
 
 
@@ -112,26 +113,27 @@ class Ebonite:
             model.load()
         return model
 
-    def build_image(self, name: str, model: Model, server: Server = None, **kwargs) -> Image:
+    def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
+                    debug=False, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
         :param name: name of image to build
         :param model: model to wrap into service
         :param server: server to build image with
+        :param environment: env to build for
+        :param debug: flag to build debug image
+        :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
         if server is None:
             server = self.get_default_server()
 
-        from ebonite.ext.flask import FlaskServer
-        if isinstance(server, FlaskServer):  # FIXME temporary until EBNT-253 is in place
-            from ebonite.ext.flask.helpers import build_model_flask_docker
-            kwargs = {k: v for k, v in kwargs.items() if k in {'force_overwrite', 'debug'}}
-            image = build_model_flask_docker(name, model, **kwargs)
-        else:
-            from ebonite.build import build_model_docker
-            image = build_model_docker(name, model, **kwargs)
+        if environment is None:
+            environment = self.get_default_environment()
+        builder = environment.params.get_builder(name, model, server, debug, **kwargs)
+        image = builder.build()
+        image.model = model
         return self.meta_repo.create_image(image)
 
     def get_image(self, name: str, model: Model) -> Image:
@@ -334,6 +336,10 @@ class Ebonite:
         env_name = 'docker_localhost'
         self.default_env = self.get_environment(env_name)
         if self.default_env is None:
+            if not module_importable('docker'):
+                raise RuntimeError("Can't build docker container: docker module is not installed. Install it "
+                                   "with 'pip install docker'")
+
             from ebonite.build import DockerHost
             self.default_env = RuntimeEnvironment(env_name, params=DockerHost())
             self.default_env = self.push_environment(self.default_env)

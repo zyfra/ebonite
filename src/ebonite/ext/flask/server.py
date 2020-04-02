@@ -1,4 +1,5 @@
 import itertools
+import os
 import uuid
 
 import flask
@@ -14,6 +15,7 @@ from ebonite.utils.fs import current_module_path
 from ebonite.utils.log import rlogger
 
 current_app = None
+TEMPLATES_DIR = 'build_templates'
 
 
 def create_executor_function(interface: Interface, method: str):
@@ -83,6 +85,12 @@ class FlaskServer(BaseHTTPServer):
         current_module_path('build_templates', 'supervisord.conf'),
         current_module_path('build_templates', 'uwsgi.ini')
     ]
+
+    # TODO somehow make this depend on builder implementation?
+    additional_options = {
+        'templates_dir': os.path.join(os.path.dirname(__file__), TEMPLATES_DIR),
+        'run_cmd': '["/usr/bin/supervisord"]'
+    }
 
     def __init__(self):
         # we do not reference real Flask/Flasgger objects here and this breaks `get_object_requirements`

@@ -11,8 +11,11 @@ from docker import errors
 
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
+from pyjackson.utils import get_class_field_names
 
-from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
+from ebonite.build.provider import MLModelProvider
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance, Model
+from ebonite.runtime.server import Server
 from ebonite.utils.log import logger
 
 # TODO check
@@ -88,6 +91,24 @@ class DockerHost(RuntimeEnvironment.Params):
             self.default_runner = DockerRunner()
         return self.default_runner
 
+    def get_builder(self, name: str, model: Model, server: Server, debug=False, **kwargs):
+        """
+        :param name: name for image
+        :param model: model to build
+        :param server: server to build
+        :param debug: flag to build debug image
+        :param kwargs: additional arguments for image parameters and docker builder
+
+        :return: docker builder instance
+        """
+        from ebonite.build import DockerBuilder
+
+        image_arg_names = set(get_class_field_names(DockerImage))
+        params = DockerImage(name, **{k: v for k, v in kwargs.items() if k in image_arg_names})
+        provider = MLModelProvider(model, server, debug)
+        kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
+        return DockerBuilder(provider, params, **kwargs)
+
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
     """
@@ -117,14 +138,17 @@ def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
                            registry.host, username_var, password_var)
 
 
-def is_docker_running() -> bool:
+def is_docker_running(client=None) -> bool:
     """
     Check if docker binary and docker daemon are available
 
     :return: true or false
     """
     try:
-        with create_docker_client() as client:
+        if client is None:
+            with create_docker_client() as client:
+                client.images.list()
+        else:
             client.images.list()
         return True
     except (ImportError, requests.exceptions.ConnectionError, errors.DockerException):
@@ -145,6 +169,8 @@ def create_docker_client(docker_host: str = '') -> Generator[docker.DockerClient
     with _docker_host_lock:
         os.environ["DOCKER_HOST"] = docker_host  # The env var DOCKER_HOST is used to configure docker.from_env()
         client = docker.from_env()
+    if not is_docker_running(client):
+        raise RuntimeError("Docker daemon is unavailable")
     try:
         yield client
     finally:

@@ -54,6 +54,9 @@ class ProviderMock(PythonProvider):
     def get_artifacts(self):
         return Blobs({'test.bin': InMemoryBlob(b'test_bytes')})
 
+    def get_options(self):
+        return {}
+
 
 @pytest.fixture
 def python_builder_mock() -> PythonBuilder:
