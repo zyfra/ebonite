@@ -12,6 +12,8 @@ aiohttp-swagger==1.0.14
 pyyaml==5.1.2
 boto3==1.10.28
 imageio==2.6.1
+# PNG plugin is broken in Pillow 7.1.x
+Pillow==7.0.0
 responses==0.10.6
 psutil==5.6.3
 testcontainers==2.5
