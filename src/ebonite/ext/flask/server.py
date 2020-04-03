@@ -1,6 +1,7 @@
 import itertools
 import os
 import uuid
+from io import BytesIO
 
 import flask
 from flasgger import Swagger, swag_from
@@ -36,8 +37,8 @@ def create_executor_function(interface: Interface, method: str):
 
             result = BaseHTTPServer._execute_method(interface, method, request_data, flask.g.ebonite_id)
 
-            if hasattr(result, 'read'):
-                return send_file(result, attachment_filename=getattr(result, 'name', None))
+            if isinstance(result, bytes):
+                return send_file(BytesIO(result), mimetype='image/png')
             return jsonify(result)
         except MalformedHTTPRequestException as e:
             return jsonify(e.response_body()), e.code()
