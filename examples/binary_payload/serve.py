@@ -8,7 +8,7 @@ import scipy.stats
 from imageio import imread
 
 import ebonite
-from ebonite.ext.imageio import filelike_image_input, filelike_image_output
+from ebonite.ext.imageio import bytes_image_input, bytes_image_output
 from ebonite.runtime import run_model_server
 
 
@@ -29,16 +29,16 @@ OVERLAY = imread(os.path.join(os.path.dirname(__file__), 'ebaklya.png'))
 OVERLAY = add_alpha(OVERLAY)
 
 
-# use this decorator to mark that function consumes file-like objects
-@filelike_image_input
+# use this decorator to mark that function consumes bytes objects
+@bytes_image_input
 def shape_model(im):
     """Returns image shape"""
     return np.array(im.shape)
 
 
-# use this decorators to mark that function consumes and returns file-like objects
-@filelike_image_input
-@filelike_image_output
+# use these decorators to mark that function consumes and returns bytes objects
+@bytes_image_input
+@bytes_image_output
 def overlay_model(im):
     """Puts OVERLAY on top of image """
     if im.shape[2] == 4:
@@ -62,9 +62,9 @@ def overlay_model(im):
 
 
 def main():
-    # create model from function and file-like object as sample data
+    # create model from function and bytes object as sample data
     with open(os.path.join(os.path.dirname(__file__), 'ebaklya.png'), 'rb') as f:
-        model = ebonite.create_model(overlay_model, f)
+        model = ebonite.create_model(overlay_model, f.read())
 
     # run flask service with this model
     run_model_server(model)

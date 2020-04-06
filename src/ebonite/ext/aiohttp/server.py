@@ -33,8 +33,8 @@ def create_executor_function(interface: Interface, method: str, spec: dict):
 
             result = BaseHTTPServer._execute_method(interface, method, request_data, ebonite_id)
 
-            if hasattr(result, 'read'):
-                return web.Response(body=result.read())
+            if isinstance(result, bytes):
+                return web.Response(body=result, content_type='image/png')
             return web.json_response(result)
         except MalformedHTTPRequestException as e:
             return web.json_response(e.response_body(), status=e.code())

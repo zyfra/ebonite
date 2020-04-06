@@ -3,7 +3,7 @@ from typing import Dict, List, Type
 from pyjackson.utils import (Field, Signature, get_class_fields, get_collection_internal_type, get_mapping_types,
                              is_collection, is_generic, is_mapping)
 
-from ebonite.core.objects.dataset_type import FilelikeDatasetType, PrimitiveDatasetType
+from ebonite.core.objects.dataset_type import BytesDatasetType, PrimitiveDatasetType
 from ebonite.core.objects.typing import TypeWithSpec
 
 BUILTIN_TYPES: Dict[Type, str] = {
@@ -133,10 +133,10 @@ def create_spec(method_name: str, signature: Signature):
             'error': {'type': 'string'}
         }
     }
-    value_args = [a for a in signature.args if not issubclass(a.type, FilelikeDatasetType)]
-    file_args = [a for a in signature.args if issubclass(a.type, FilelikeDatasetType)]
+    value_args = [a for a in signature.args if not issubclass(a.type, BytesDatasetType)]
+    file_args = [a for a in signature.args if issubclass(a.type, BytesDatasetType)]
 
-    if issubclass(signature.output.type, FilelikeDatasetType):
+    if issubclass(signature.output.type, BytesDatasetType):
         good_response = {"description": "successful response",
                          'content': {"multipart/form-data": {
                              'type': 'string',
