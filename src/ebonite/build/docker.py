@@ -149,7 +149,7 @@ def is_docker_running(client=None) -> bool:
         else:
             client.images.list()
         return True
-    except:  # noqa
+    except Exception:
         return False
 
 
