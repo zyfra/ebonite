@@ -17,6 +17,8 @@ Main model analysis API abstractions are
 
 * :class:`~ebonite.core.objects.wrapper.ModelWrapper` - model wrapper for different ml libraries
 
+* :class:`~ebonite.core.objects.wrapper.ModelIO` - model input / output for different ml model serializers
+
 Main model persisting abstractions are
 
 * :class:`~ebonite.repository.MetadataRepository` - Repository to store model metadata (like sql database)

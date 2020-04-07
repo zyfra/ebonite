@@ -10,7 +10,7 @@ Here are runtime abstractions:
 
 * :class:`~ebonite.runtime.InterfaceLoader` - loads :class:`~ebonite.runtime.Interface` instance. Builtin implementation: :class:`~ebonite.runtime.interface.ml_model.ModelLoader`
 
-* :class:`~ebonite.runtime.server.Server` - gets an instance of :class:`~ebonite.runtime.Interface` and exposes it's methods via some protocol. Builtin implementation: :class:`~ebonite.ext.flask.FlaskServer` - exposes methods as http POST endpoints.
+* :class:`~ebonite.runtime.server.Server` - gets an instance of :class:`~ebonite.runtime.Interface` and exposes it's methods via some protocol. Builtin implementations: :class:`~ebonite.ext.flask.FlaskServer` and :class:`~ebonite.ext.aiohttp.AIOHTTPServer` - all expose methods as http POST endpoints.
 
 Also, these helper functions are available:
 
