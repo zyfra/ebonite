@@ -47,6 +47,12 @@ class MLModelProvider(PythonProvider):
         sources = {}
         for cr in self.get_requirements().custom:
             sources.update(cr.to_sources_dict())
+
+        # add __init__.py for all dirs that doesnt have it already
+        packages = set(os.path.join(os.path.dirname(p), '__init__.py') for p in sources if os.path.dirname(p) != '')
+        sources.update({
+            p: '' for p in packages if p not in sources
+        })
         return sources
 
     def get_sources(self):

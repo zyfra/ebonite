@@ -3,7 +3,7 @@ graft src
 graft ci
 graft tests
 graft examples
-graft requirements_tests
+graft tests_requirements
 
 include .bumpversion.cfg
 include .coveragerc
