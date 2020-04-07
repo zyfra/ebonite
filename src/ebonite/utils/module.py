@@ -356,7 +356,7 @@ def add_closure_inspection(f):
                     pickler.save(o)
 
         # to add from local imports
-        tree = ast.parse(inspect.getsource(obj))
+        tree = ast.parse(inspect.getsource(obj).strip())
 
         class ImportFromVisitor(ast.NodeVisitor):
             def visit_ImportFrom(self, node: ast.ImportFrom):
