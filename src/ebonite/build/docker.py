@@ -6,6 +6,7 @@ from threading import Lock
 from typing import Dict, Generator
 
 import docker
+from docker.errors import DockerException
 
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
@@ -149,7 +150,7 @@ def is_docker_running(client=None) -> bool:
         else:
             client.images.list()
         return True
-    except Exception:
+    except (RuntimeError, ImportError, IOError, DockerException):
         return False
 
 
