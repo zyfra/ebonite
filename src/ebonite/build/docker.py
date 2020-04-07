@@ -6,8 +6,7 @@ from threading import Lock
 from typing import Dict, Generator
 
 import docker
-import requests
-from docker import errors
+from docker.errors import DockerException
 
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
@@ -138,38 +137,46 @@ def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
                            registry.host, username_var, password_var)
 
 
-def is_docker_running(client=None) -> bool:
+def _is_docker_running(client) -> bool:
+    """
+    Check if docker binary and docker daemon are available
+
+    :param client: DockerClient instance
+    :return: true or false
+    """
+    try:
+        client.images.list()
+        return True
+    except (ImportError, IOError, DockerException):
+        return False
+
+
+def is_docker_running() -> bool:
     """
     Check if docker binary and docker daemon are available
 
     :return: true or false
     """
-    try:
-        if client is None:
-            with create_docker_client() as client:
-                client.images.list()
-        else:
-            client.images.list()
-        return True
-    except (ImportError, requests.exceptions.ConnectionError, errors.DockerException):
-        return False
+    with create_docker_client(check=False) as c:
+        return _is_docker_running(c)
 
 
 _docker_host_lock = Lock()
 
 
 @contextmanager
-def create_docker_client(docker_host: str = '') -> Generator[docker.DockerClient, None, None]:
+def create_docker_client(docker_host: str = '', check=True) -> Generator[docker.DockerClient, None, None]:
     """
     Context manager for DockerClient creation
 
     :param docker_host: DOCKER_HOST arg for DockerClient
+    :param check: check if docker is available
     :return: DockerClient instance
     """
     with _docker_host_lock:
         os.environ["DOCKER_HOST"] = docker_host  # The env var DOCKER_HOST is used to configure docker.from_env()
         client = docker.from_env()
-    if not is_docker_running(client):
+    if check and not _is_docker_running(client):
         raise RuntimeError("Docker daemon is unavailable")
     try:
         yield client
