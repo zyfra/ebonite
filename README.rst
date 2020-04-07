@@ -121,7 +121,7 @@ e.g., create a Docker image named `my_service` with an HTTP service wrapping you
   ebnt = Ebonite.local()
   task = ebnt.get_or_create_task('my_project', 'my_task')
   model = client.get_model('my_clf', task)
-  client.build_service('my_service', model)
+  client.build_image('my_service', model)
 
 Check out examples (in `examples` directory) and documentation to learn more.
 

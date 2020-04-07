@@ -1,7 +1,6 @@
 """This module loads created ebonite model and then creates and runs docker container made from this model"""
 
 import ebonite
-from ebonite.build import run_docker_img
 from ebonite.build.builder.base import use_local_installation
 from ebonite.core.objects.core import Model, Task
 
@@ -17,13 +16,12 @@ def main():
     model: Model = ebnt.get_model(task=task, model_name='custom_code_model')
 
     #  this changes docker image builder behaviour to get ebonite from local installation instead of pip
-    #  1. for developing reasons 2. we dont have ebonite on pip yet
     with use_local_installation():
         # build docker container from model
-        ebnt.build_image('custom_code_model_container', model, force_overwrite=True)
+        image = ebnt.build_image('custom_code_model_container', model, force_overwrite=True)
 
-    # run docker conatainer
-    run_docker_img('custom_code_model_container', 'custom_code_model_container', ports_mapping={9000: 9000})
+    # run docker container
+    ebnt.run_instance('custom_code_model_container', image, detach=False)
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 
 
