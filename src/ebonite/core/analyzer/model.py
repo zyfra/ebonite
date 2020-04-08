@@ -1,9 +1,7 @@
 from abc import abstractmethod
 
 from ebonite.core.analyzer.base import Hook, analyzer_class
-from ebonite.core.objects.requirements import Requirements
 from ebonite.core.objects.wrapper import CallableMethodModelWrapper, ModelWrapper
-from ebonite.utils.module import get_object_requirements
 
 
 class ModelHook(Hook):
@@ -15,9 +13,6 @@ class ModelHook(Hook):
     @abstractmethod
     def process(self, obj, **kwargs) -> ModelWrapper:
         pass  # pragma: no cover
-
-    def get_requirements(self, obj) -> Requirements:
-        return get_object_requirements(obj)
 
 
 ModelAnalyzer = analyzer_class(ModelHook, ModelWrapper)
