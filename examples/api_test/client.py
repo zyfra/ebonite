@@ -1,11 +1,13 @@
 import requests
 
-resp_1 = requests.get('http://127.0.0.1:5000/healthcheck/docker')
-print(resp_1.status_code)
-print(resp_1.content)
-resp_2 = requests.get('http://127.0.0.1:5000/healthcheck/metadata')
-print(resp_2.status_code)
-print(resp_2.content)
-resp_3 = requests.get('http://127.0.0.1:5000/healthcheck/artifact')
-print(resp_3.status_code)
-print(resp_3.content)
+#Healthchecks
+docker_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/docker')
+print(docker_healthcheck.status_code)
+print(docker_healthcheck.content)
+metadata_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/metadata')
+print(metadata_healthcheck.status_code)
+print(metadata_healthcheck.content)
+artifact_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/artifact')
+print(artifact_healthcheck.status_code)
+print(artifact_healthcheck.content)
+

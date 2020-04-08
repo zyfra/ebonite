@@ -1,7 +1,7 @@
 from typing import List, Callable
-
+import json
 from flask import Flask, Response
-
+import pyjackson as pj
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
 from ebonite.repository.artifact.base import NoSuchArtifactError
@@ -40,6 +40,9 @@ class EboniteApi:
         self.add_endpoint(endpoint='/healthcheck/artifact',
                           endpoint_name='artifact_healthcheck',
                           handler=self.artifact_healthcheck)
+        self.add_endpoint(endpoint='/projects',
+                          endpoint_name='get_all_projects',
+                          handler=self.get_all_projects)
 
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
@@ -54,7 +57,7 @@ class EboniteApi:
     @staticmethod
     def docker_healthcheck() -> Response:
         """
-        Function which checks if Docker daemon is ready to use
+        Checks if Docker daemon is ready to use
         :return: Response object which signifies if daemon is healthy
         """
         if is_docker_running():
@@ -89,3 +92,7 @@ class EboniteApi:
         except Exception as e:
             return Response(status=404, response=f'Error {e} while trying to '
                                                  f'establish connection to artifact repository')
+
+    def get_all_projects(self):
+        projects = self.ebonite.meta_repo.get_projects()
+        return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
