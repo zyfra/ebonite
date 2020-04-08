@@ -1,3 +1,4 @@
+import ast
 import inspect
 import io
 import os
@@ -17,6 +18,7 @@ from isort.settings import default
 from ebonite.core.objects.requirements import (MODULE_PACKAGE_MAPPING, CustomRequirement, InstallableRequirement,
                                                Requirements)
 from ebonite.utils import importing
+from ebonite.utils.importing import import_module
 from ebonite.utils.log import logger
 from ebonite.utils.pickling import EbonitePickler
 
@@ -218,6 +220,16 @@ def is_builtin_module(mod: ModuleType):
     return ISortModuleFinder.is_stdlib(mod.__name__)
 
 
+def is_ebonite_module(mod: ModuleType):
+    """
+    Determines that given module object is ebonite module
+
+    :param mod: module object to use
+    :return: boolean flag
+    """
+    return mod.__name__ == 'ebonite' or mod.__name__.startswith('ebonite.')
+
+
 def is_local_module(mod: ModuleType):
     """
     Determines that given module object represents local module.
@@ -226,7 +238,8 @@ def is_local_module(mod: ModuleType):
     :param mod: module object to use
     :return: boolean flag
     """
-    return not is_builtin_module(mod) and not is_installable_module(mod) and not is_extension_module(mod)
+    return (not is_pseudo_module(mod) and not is_ebonite_module(mod) and not is_builtin_module(mod) and
+            not is_installable_module(mod) and not is_extension_module(mod))
 
 
 def is_from_installable_module(obj: object):
@@ -310,6 +323,27 @@ def get_module_as_requirement(mod: ModuleType, validate_pypi=False) -> Installab
     return InstallableRequirement(mod.__name__, mod_version)
 
 
+def get_local_module_reqs(mod):
+    tree = ast.parse(inspect.getsource(mod))
+    imports = []
+    for statement in tree.body:
+        if isinstance(statement, ast.Import):
+            imports += [(n.name, None) for n in statement.names]
+        elif isinstance(statement, ast.ImportFrom):
+            if statement.level == 0:
+                imp = (statement.module, None)
+            else:
+                imp = ('.' + statement.module, mod.__package__)
+            imports.append(imp)
+
+    result = [import_module(i, p) for i, p in imports]
+    if mod.__file__.endswith('__init__.py'):
+        # add loaded subpackages
+        prefix = mod.__name__ + '.'
+        result += [mod for name, mod in sys.modules.items() if name.startswith(prefix)]
+    return result
+
+
 def add_closure_inspection(f):
     @wraps(f)
     def wrapper(pickler: '_EboniteRequirementAnalyzer', obj):
@@ -320,6 +354,21 @@ def add_closure_inspection(f):
                     pickler._add_requirement(o)
                 else:
                     pickler.save(o)
+
+        # to add from local imports
+        tree = ast.parse(inspect.getsource(obj).strip())
+
+        class ImportFromVisitor(ast.NodeVisitor):
+            def visit_ImportFrom(self, node: ast.ImportFrom):
+                warnings.warn(f'Detected local import in {obj.__module__}.{obj.__name__}')
+                if node.level == 0:
+                    mod = import_module(node.module)
+                else:
+                    mod = import_module('.' + node.module, get_object_module(obj).__package__)
+                pickler._add_requirement(mod)
+
+        ImportFromVisitor().visit(tree)
+
         return f(pickler, obj)
 
     return wrapper
@@ -353,20 +402,11 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
     def to_requirements(self):
         r = Requirements()
 
-        for mod in list(sys.modules.values()):
-            if not isinstance(mod, ModuleType):
-                # EBNT-177 coverage 5.0.0 adds spurious non-module objects to `sys.modules`
-                continue
-
-            if not self._should_ignore(mod) and is_local_module(mod):
-                r.add(CustomRequirement.from_module(mod))
-
-                # add imports of this local module
-                for obj in mod.__dict__.values():
-                    self._add_requirement(obj)
-
         for mod in self._modules:
-            r.add(get_module_as_requirement(get_base_module(mod)))
+            if is_installable_module(mod):
+                r.add(get_module_as_requirement(get_base_module(mod)))
+            elif is_local_module(mod):
+                r.add(CustomRequirement.from_module(mod))
         return r
 
     def _should_ignore(self, mod: ModuleType):
@@ -379,8 +419,12 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
         else:
             module = obj_or_module
 
-        if module is not None and not self._should_ignore(module) and is_installable_module(module):
+        if module is not None and not self._should_ignore(module):
             self._modules.add(module)
+            if is_local_module(module):
+                # add imports of this module
+                for local_req in get_local_module_reqs(module):
+                    self._add_requirement(local_req)
 
     def save(self, obj, save_persistent_id=True):
         if id(obj) in self.seen:

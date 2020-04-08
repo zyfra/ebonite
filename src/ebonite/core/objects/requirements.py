@@ -1,9 +1,11 @@
 import base64
+import glob
 import itertools
+import json
 import os
 import zlib
 from types import ModuleType
-from typing import List, Union
+from typing import Dict, List, Union
 
 from pyjackson.decorators import make_string, type_field
 
@@ -15,6 +17,11 @@ MODULE_PACKAGE_MAPPING = {
     'skimage': 'scikit-image'
 }
 PACKAGE_MODULE_MAPPING = {v: k for k, v in MODULE_PACKAGE_MAPPING.items()}
+
+
+def read(path):
+    with open(path, 'r') as f:
+        return f.read()
 
 
 @type_field('type')
@@ -79,12 +86,14 @@ class CustomRequirement(Requirement):
 
     :param name: filename of this code
     :param source64zip: zipped and base64-encoded source
+    :param is_package: whether this code should be in %name%/__init__.py
     """
     type = 'custom'
 
-    def __init__(self, name: str, source64zip: str):
+    def __init__(self, name: str, source64zip: str, is_package: bool):
         self.source64zip = source64zip
         self.name = name
+        self.is_package = is_package
 
     @staticmethod
     def from_module(mod: ModuleType) -> 'CustomRequirement':
@@ -94,9 +103,16 @@ class CustomRequirement(Requirement):
         :param mod: module object
         :return: :class:`CustomRequirement`
         """
-        with open(mod.__file__, 'r', encoding='utf-8') as f:
-            src = CustomRequirement.compress(f.read())
-            return CustomRequirement(mod.__name__, src)
+        is_package = mod.__file__.endswith('__init__.py')
+        if is_package:
+            pkg_dir = os.path.dirname(mod.__file__)
+            par = os.path.dirname(pkg_dir)
+            sources = {os.path.relpath(p, par): read(p) for p in glob.glob(os.path.join(pkg_dir, '**', '*.py'),
+                                                                           recursive=True)}
+            src = CustomRequirement.compress(json.dumps(sources))
+        else:
+            src = CustomRequirement.compress(read(mod.__file__))
+        return CustomRequirement(mod.__name__, src, is_package)
 
     @staticmethod
     def compress(s: str) -> str:
@@ -127,14 +143,15 @@ class CustomRequirement(Requirement):
         """
         Source code of this requirement
         """
-        return CustomRequirement.decompress(self.source64zip)
+        if not self.is_package:
+            return CustomRequirement.decompress(self.source64zip)
+        raise AttributeError("package requirement does not have source attribute")
 
     @property
-    def module(self):
-        """
-        Module name for this requirement
-        """
-        return self.name.split('.')[0]
+    def sources(self) -> Dict[str, str]:
+        if self.is_package:
+            return json.loads(CustomRequirement.decompress(self.source64zip))
+        raise AttributeError("non package requirement does not have sources attribute")
 
     def to_sources_dict(self):
         """
@@ -142,14 +159,10 @@ class CustomRequirement(Requirement):
 
         :return: dict path -> source
         """
-        res = {
-            self.name.replace('.', '/') + '.py': self.source
-        }
-        paths = self.name.split('.')
-        res.update({
-            os.path.join(*paths[:i + 1], '__init__.py'): '' for i in range(len(paths) - 1)
-        })
-        return res
+        if self.is_package:
+            return self.sources
+        else:
+            return {self.name.replace('.', '/') + '.py': self.source}
 
 
 class Requirements(EboniteParams):
@@ -158,6 +171,7 @@ class Requirements(EboniteParams):
 
     :param requirements: list of :class:`Requirement` instances
     """
+
     def __init__(self, requirements: List[Requirement] = None):
         self.requirements = requirements or []
 
@@ -199,11 +213,26 @@ class Requirements(EboniteParams):
             else:
                 self.requirements.append(requirement)
         elif isinstance(requirement, CustomRequirement):
-            for r in self.custom:
-                if r.name == requirement.name:
-                    break
+            if requirement.is_package:
+                for r in self.custom:
+                    if r.name.startswith(requirement.name + '.') or r.name == requirement.name:
+                        # existing req is subpackage or equals to new req
+                        self.requirements.remove(r)
+                    if requirement.name.startswith(r.name + '.'):
+                        # new req is subpackage of existing
+                        break
+                else:
+                    self.requirements.append(requirement)
             else:
-                self.requirements.append(requirement)
+                for r in self.custom:
+                    if r.is_package and requirement.name.startswith(r.name + '.'):
+                        # new req is from existing package
+                        break
+                    if not r.is_package and r.name == requirement.name:
+                        # new req equals to existing
+                        break
+                else:
+                    self.requirements.append(requirement)
 
     def to_pip(self) -> List[str]:
         """
