@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import ebonite
 from ebonite import Ebonite
@@ -10,6 +11,8 @@ def add_one(data):
 
 def main():
     #  create remote ebonite client. This client stores metadata in postgres and artifacts in s3
+    os.environ['S3_ACCESS_KEY'] = 'eboniteAccessKey'
+    os.environ['S3_SECRET_KEY'] = 'eboniteSecretKey'
     ebnt = Ebonite.custom_client('sqlalchemy', 's3',
                                  meta_kwargs={'db_uri': 'postgresql://postgres:postgres@localhost:5435/ebonite'},
                                  artifact_kwargs={'endpoint': 'http://localhost:8008', 'bucket_name': 'ebonite'})
