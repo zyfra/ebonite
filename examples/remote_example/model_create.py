@@ -1,5 +1,6 @@
-import numpy as np
 import os
+
+import numpy as np
 
 import ebonite
 from ebonite import Ebonite
