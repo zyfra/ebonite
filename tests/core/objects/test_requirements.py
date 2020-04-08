@@ -1,7 +1,7 @@
 import pytest
 
-from ebonite.core.objects.requirements import InstallableRequirement, Requirements, resolve_requirements, \
-    CustomRequirement
+from ebonite.core.objects.requirements import (CustomRequirement, InstallableRequirement, Requirements,
+                                               resolve_requirements)
 
 
 def test_resolve_requirements_arg():
