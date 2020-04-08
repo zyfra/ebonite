@@ -43,6 +43,9 @@ class EboniteApi:
         self.add_endpoint(endpoint='/projects',
                           endpoint_name='get_all_projects',
                           handler=self.get_all_projects)
+        self.add_endpoint(endpoint='/projects/<id>',
+                          endpoint_name='get_project_by_id',
+                          handler=self.get_project_by_id)
 
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
@@ -96,3 +99,10 @@ class EboniteApi:
     def get_all_projects(self):
         projects = self.ebonite.meta_repo.get_projects()
         return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
+
+    def get_project_by_id(self, id):
+        project = self.ebonite.meta_repo.get_project_by_id(int(id))
+        if project:
+            return Response(status=200, response=pj.dumps(project))
+        else:
+            return Response(status=404, response=f'Project with id {id} does not exist')
