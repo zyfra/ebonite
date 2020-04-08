@@ -11,6 +11,11 @@ services:
       POSTGRES_DB: ebonite
 
   artifact_store:
-    image: scality/s3server:mem-latest
+    image: minio/minio:latest
     ports:
-      - 8008:8000
+      - 8008:9000
+    environment:
+      MINIO_ACCESS_KEY: 'eboniteAccessKey'
+      MINIO_SECRET_KEY: 'eboniteSecretKey'
+    command:
+      "server /data"
