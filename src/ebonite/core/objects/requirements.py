@@ -145,18 +145,13 @@ class CustomRequirement(Requirement):
         """
         if not self.is_package:
             return CustomRequirement.decompress(self.source64zip)
+        raise AttributeError("package requirement does not have source attribute")
 
     @property
     def sources(self) -> Dict[str, str]:
         if self.is_package:
             return json.loads(CustomRequirement.decompress(self.source64zip))
-
-    @property
-    def module(self):
-        """
-        Module name for this requirement
-        """
-        return self.name.split('.')[0]
+        raise AttributeError("non package requirement does not have sources attribute")
 
     def to_sources_dict(self):
         """
