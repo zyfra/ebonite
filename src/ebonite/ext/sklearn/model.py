@@ -1,9 +1,9 @@
 from typing import Dict
 
 from pyjackson.decorators import make_string
-from sklearn.base import ClassifierMixin
+from sklearn.base import ClassifierMixin, RegressorMixin
 
-from ebonite.core.analyzer.base import LibHookMixin
+from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.wrapper import ModelWrapper, PickleModelIO
 
@@ -25,13 +25,12 @@ class SklearnModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class SklearnHook(BindingModelHook, LibHookMixin):
+class SklearnHook(BindingModelHook, TypeHookMixin):
     """
     :class:`ebonite.core.analyzer.model.ModelHook` implementation for `scikit-learn` models
     which uses :class:`SklearnModelWrapper`
     """
-
-    base_module_name = 'sklearn'
+    valid_types = [ClassifierMixin, RegressorMixin]
 
     def _wrapper_factory(self) -> ModelWrapper:
         return SklearnModelWrapper()

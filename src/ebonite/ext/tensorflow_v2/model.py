@@ -7,7 +7,7 @@ from typing import Dict
 import tensorflow as tf
 from pyjackson.decorators import make_string
 
-from ebonite.core.analyzer import CanIsAMustHookMixin
+from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects import ModelIO, ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
@@ -54,19 +54,11 @@ class TFKerasModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class TFKerasModelHook(BindingModelHook, CanIsAMustHookMixin):
+class TFKerasModelHook(BindingModelHook, TypeHookMixin):
     """
     Hook for Tensorflow Keras models
     """
-
-    def must_process(self, obj) -> bool:
-        """
-        Returns `True` if object is :class:`tensorflow.keras.Model`
-
-        :param obj: obj to check
-        :return: `True` or `False`
-        """
-        return isinstance(obj, tf.keras.Model)
+    valid_types = [tf.keras.Model]
 
     def _wrapper_factory(self) -> ModelWrapper:
         """

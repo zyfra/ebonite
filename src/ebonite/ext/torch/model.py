@@ -6,7 +6,7 @@ from io import BytesIO
 import torch
 from pyjackson.decorators import make_string
 
-from ebonite.core.analyzer.base import CanIsAMustHookMixin
+from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
 from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
@@ -70,19 +70,11 @@ class TorchModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class TorchModelHook(BindingModelHook, CanIsAMustHookMixin):
+class TorchModelHook(BindingModelHook, TypeHookMixin):
     """
     Hook for PyTorch models
     """
-
-    def must_process(self, obj) -> bool:
-        """
-        Returns `True` if object is `torch.nn.Module`
-
-        :param obj: obj to check
-        :return: `True` or `False`
-        """
-        return isinstance(obj, torch.nn.Module)
+    valid_types = [torch.nn.Module]
 
     def _wrapper_factory(self) -> ModelWrapper:
         """
