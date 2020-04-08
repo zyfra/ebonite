@@ -1,16 +1,15 @@
 import inspect
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from types import ModuleType
 from typing import List, Type
 
-from ebonite.utils.abc_utils import is_abstract_method
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_object_base_module
 
 ANALYZER_FIELD = '_analyzer'
 
 
-class Hook:
+class Hook(ABC):
     """
     Base class for Hooks
     """
@@ -54,7 +53,7 @@ class Hook:
             if len(argspec.args) > 1:
                 raise ValueError('Hook type [{}] cannot have __init__ with arguments'.format(cls.__name__))
 
-        if not is_abstract_method(cls.process):
+        if not inspect.isabstract(cls):
             for b in reversed(cls.__bases__):
                 analyzer = getattr(b, ANALYZER_FIELD, None)
                 if analyzer is not None:
