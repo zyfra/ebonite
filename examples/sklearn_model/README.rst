@@ -14,6 +14,9 @@ Then, run either `python start_service.py` to run
 flask service, or `python model_create_image.py` to create
 and run docker container.
 
-After that, you can run `python client.py %some_number%`
+After that, you can run `python client.py %some_number% %some_other_number%`
 to call your model or go to `http://localhost:9000/apidocs`
 to view swagger UI
+
+Alternatively you can run `python smart_client.py %some_number% %some_other_number%`.
+It calls your model in a more Pythonic HTTP-agnostic way via `HTTPClient` class.

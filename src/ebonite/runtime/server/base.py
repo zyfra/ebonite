@@ -111,7 +111,7 @@ class BaseHTTPServer(Server):
         except (ExecutionError, SerializationError) as e:
             raise MalformedHTTPRequestException(e.args[0])
 
-        if hasattr(result, 'read'):
+        if isinstance(result, bytes):
             rlogger.debug('Got response for [%s]: <binary content>', ebonite_id)
             return result
 

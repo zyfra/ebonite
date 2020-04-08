@@ -13,7 +13,7 @@ class Extension:
     """
     Extension descriptor
 
-    :param module: main extenstion module
+    :param module: main extension module
     :param reqs: list of extension dependencies
     :param force: if True, disable lazy loading for this extension
     :param validator: boolean predicate which should evaluate to True for this extension to be loaded

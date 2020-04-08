@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 from ebonite.core.analyzer.base import Hook, analyzer_class
-from ebonite.core.objects.dataset_type import (PRIMITIVES, DatasetType, DictDatasetType, FilelikeDatasetType,
+from ebonite.core.objects.dataset_type import (PRIMITIVES, BytesDatasetType, DatasetType, DictDatasetType,
                                                ListDatasetType, PrimitiveDatasetType, TupleDatasetType,
                                                TupleLikeListDatasetType)
 
@@ -84,15 +84,15 @@ class DictHookDelegator(DatasetHook):
         return DictDatasetType(items)
 
 
-class FilelikeDatasetHook(DatasetHook):
+class BytesDatasetHook(DatasetHook):
     """
-    Hook for file-like objects
+    Hook for bytes objects
     """
     def process(self, obj, **kwargs) -> DatasetType:
-        return FilelikeDatasetType()
+        return BytesDatasetType()
 
     def can_process(self, obj) -> bool:
-        return hasattr(obj, 'read') and callable(obj.read)
+        return isinstance(obj, bytes)
 
     def must_process(self, obj) -> bool:
         return False

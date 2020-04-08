@@ -152,11 +152,11 @@ class DictDatasetType(DatasetType):
             raise exc_type(f'given dict has keys: {set(obj.keys())}, expected: {set(self.item_types.keys())}')
 
 
-class FilelikeDatasetType(DatasetType):
+class BytesDatasetType(DatasetType):
     """
-    DatasetType for file-like objects
+    DatasetType for bytes objects
     """
-    type = 'filelike'
+    type = 'bytes'
     real_type = None
 
     def __init__(self):
