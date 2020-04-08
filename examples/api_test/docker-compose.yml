@@ -13,7 +13,9 @@ services:
   artifact_store:
     image: minio/minio:latest
     ports:
-      - 8008:8000
+      - 8008:9000
     environment:
-      ACCESS_KEY: eboniteAccessKey
-      SECRET_KEY: eboniteSecretKey
+      MINIO_ACCESS_KEY: 'eboniteAccessKey'
+      MINIO_SECRET_KEY: 'eboniteSecretKey'
+    command:
+      "server /data"
