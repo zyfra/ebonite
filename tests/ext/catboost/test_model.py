@@ -28,6 +28,8 @@ def test_catboost_model_wrapper(catboost_model, pandas_data, tmpdir, request):
     import ebonite.ext.catboost  # noqa
 
     cbmw = ModelAnalyzer.analyze(catboost_model, input_data=pandas_data)
+    expected_requirements = {'catboost', 'pandas', 'numpy'}
+    assert set(cbmw.requirements.modules) == expected_requirements
     assert cbmw.model is catboost_model
 
     with cbmw.dump() as artifact:
@@ -39,6 +41,7 @@ def test_catboost_model_wrapper(catboost_model, pandas_data, tmpdir, request):
 
     cbmw.load(tmpdir)
     assert cbmw.model is not catboost_model
+    assert set(cbmw.requirements.modules) == expected_requirements
 
     np.testing.assert_array_almost_equal(catboost_model.predict(pandas_data), cbmw.call_method('predict', pandas_data))
 

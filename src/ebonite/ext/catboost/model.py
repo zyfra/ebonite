@@ -2,13 +2,14 @@ import contextlib
 import os
 import tempfile
 
+import catboost
 from catboost import CatBoostClassifier, CatBoostRegressor
 from pyjackson.decorators import make_string
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
+from ebonite.core.objects.wrapper import LibModelWrapperMixin, ModelIO, ModelWrapper
 
 
 class CatBoostModelIO(ModelIO):
@@ -54,11 +55,13 @@ class CatBoostModelIO(ModelIO):
         return model
 
 
-class CatBoostModelWrapper(ModelWrapper):
+class CatBoostModelWrapper(LibModelWrapperMixin):
     """
     :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
     `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
     """
+    libraries = [catboost]
+
     def __init__(self):
         super().__init__(CatBoostModelIO())
 

@@ -36,6 +36,9 @@ def test_wrapper__predict_not_dataset(wrapper):
 
 
 def test_wrapper__dump_load(tmpdir, wrapper: ModelWrapper, dataset_np):
+    expected_requirements = {'lightgbm', 'numpy'}
+    assert set(wrapper.requirements.modules) == expected_requirements
+
     with wrapper.dump() as d:
         d.materialize(tmpdir)
     wrapper.unbind()
@@ -44,3 +47,5 @@ def test_wrapper__dump_load(tmpdir, wrapper: ModelWrapper, dataset_np):
 
     wrapper.load(tmpdir)
     test_wrapper__predict(wrapper, dataset_np)
+
+    assert set(wrapper.requirements.modules) == expected_requirements

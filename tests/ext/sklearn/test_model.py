@@ -65,6 +65,9 @@ def test_wrapper__dump_load(tmpdir, model, inp_data, request):
     model = request.getfixturevalue(model)
     wrapper = ModelAnalyzer.analyze(model, input_data=inp_data)
 
+    expected_requirements = {'sklearn', 'numpy'}
+    assert set(wrapper.requirements.modules) == expected_requirements
+
     with wrapper.dump() as d:
         d.materialize(tmpdir)
     wrapper.unbind()
@@ -73,3 +76,4 @@ def test_wrapper__dump_load(tmpdir, model, inp_data, request):
 
     wrapper.load(tmpdir)
     np.testing.assert_array_almost_equal(model.predict(inp_data), wrapper.call_method('predict', inp_data))
+    assert set(wrapper.requirements.modules) == expected_requirements
