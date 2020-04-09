@@ -8,7 +8,7 @@ import threading
 import warnings
 from collections import namedtuple
 from functools import wraps
-from pickle import PicklingError
+from pickle import PickleError
 from types import FunctionType, LambdaType, MethodType, ModuleType
 
 import requests
@@ -433,7 +433,7 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
         self._add_requirement(obj)
         try:
             return super(EbonitePickler, self).save(obj, save_persistent_id)
-        except (ValueError, TypeError, PicklingError) as e:
+        except (ValueError, TypeError, PickleError) as e:
             # if object cannot be serialized, it's probably a C object and we don't need to go deeper
             logger.debug('Skipping dependency analysis for %s because of %s: %s', obj, type(e).__name__, e)
 
