@@ -1,12 +1,15 @@
-from typing import List, Callable
 import json
-from flask import Flask, Response, request
+from typing import List, Callable
+
 import pyjackson as pj
+from flask import Flask, Response, request
+
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
-from ebonite.repository.artifact.base import NoSuchArtifactError
-from ebonite.core.objects.core import Project
 from ebonite.core.errors import ExistingProjectError, NonExistingProjectError
+from ebonite.core.objects.core import Project
+from ebonite.repository.artifact.base import NoSuchArtifactError
+
 
 class EboniteApi:
     """
@@ -47,7 +50,7 @@ class EboniteApi:
                           methods=['GET', 'POST'])
         self.add_endpoint(endpoint='/projects/<int:id>',
                           endpoint_name='get_update_project_by_id',
-                          handler=self.get_update_project_by_id,
+                          handler=self.get_update_delete_project_by_id,
                           methods=['GET', 'PATCH', 'DELETE'])
 
     def run(self):
@@ -98,7 +101,11 @@ class EboniteApi:
             return Response(status=404, response=f'Error {e} while trying to '
                                                  f'establish connection to artifact repository')
 
-    def projects(self):
+    def projects(self) -> Response:
+        """
+        Implements functionality to get all or create one project in metadata repository
+        :return: Response with either all projects in json-format or deleted project
+        """
         if request.method == 'GET':
             projects = self.ebonite.meta_repo.get_projects()
             return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
@@ -110,11 +117,16 @@ class EboniteApi:
                 return Response(status=404, response='Can not parse request body')
             try:
                 proj = self.ebonite.meta_repo.create_project(proj)
-                return  Response(status=201, response=pj.dumps(proj), content_type='application/json')
+                return Response(status=201, response=pj.dumps(proj), content_type='application/json')
             except ExistingProjectError:
-                return  Response(status=400, response='Project with given name already exists')
+                return Response(status=400, response='Project with given name already exists')
 
-    def get_update_project_by_id(self, id):
+    def get_update_delete_project_by_id(self, id: int) -> Response:
+        """
+        Implements functionality to get, update or delete project from metadata repository
+        :param id: id of the project
+        :return: Response object with method-specific contents
+        """
         if request.method == 'GET':
             project = self.ebonite.meta_repo.get_project_by_id(id)
             if project:
@@ -133,6 +145,7 @@ class EboniteApi:
             except NonExistingProjectError:
                 return Response(status=400, response=f'Project with id {id} does not exist')
         elif request.method == 'DELETE':
+            # TODO: Test cascade deletion after implementing tasks api
             cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
             proj = self.ebonite.meta_repo.get_project_by_id(id)
             if not proj:
@@ -143,5 +156,3 @@ class EboniteApi:
             else:
                 self.ebonite.meta_repo.delete_project(proj)
                 return Response(status=204)
-
-

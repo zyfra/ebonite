@@ -346,6 +346,9 @@ class Ebonite:
         return self.default_env
 
     def delete_proj_cascade(self, proj):
+        """
+        Deletes project and all tasks, models and images associated with it from metadata repository
+        """
         tasks = self.meta_repo.get_tasks(proj)
         for task in tasks:
             for model in task.models:
