@@ -355,7 +355,10 @@ def add_closure_inspection(f):
                 else:
                     pickler.save(o)
 
-        # to add from local imports
+        if is_from_installable_module(obj):
+            return f(pickler, obj)
+
+        # to add from local imports inside user (non PIP package) code
         tree = ast.parse(inspect.getsource(obj).strip())
 
         class ImportFromVisitor(ast.NodeVisitor):
