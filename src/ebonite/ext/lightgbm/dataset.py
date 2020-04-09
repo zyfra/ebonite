@@ -4,7 +4,8 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
-from ebonite.core.objects import DatasetType
+from ebonite.core.objects.dataset_type import DatasetType
+from ebonite.core.objects.requirements import InstallableRequirement, Requirements
 
 
 class LightGBMDatasetType(DatasetType):
@@ -38,6 +39,10 @@ class LightGBMDatasetType(DatasetType):
             return lgb.Dataset(v, free_raw_data=False)
         except ValueError:
             raise DeserializationError(f'object: {obj} could not be converted to lightgbm dataset')
+
+    @property
+    def requirements(self) -> Requirements:
+        return Requirements([InstallableRequirement.from_module(lgb)]) + self.inner.requirements
 
     @classmethod
     def from_dataset(cls, dataset: lgb.Dataset):

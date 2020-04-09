@@ -6,11 +6,11 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
-from ebonite.core.objects import DatasetType
+from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
 from ebonite.ext.numpy.dataset import _python_type_from_np_string_repr
 
 
-class DMatrixDatasetType(DatasetType):
+class DMatrixDatasetType(LibDatasetTypeMixin):
     """
     :class:`~.DatasetType` implementation for xgboost.DMatrix type
 
@@ -20,6 +20,7 @@ class DMatrixDatasetType(DatasetType):
     """
 
     real_type = xgboost.DMatrix
+    libraries = [xgboost]
 
     def __init__(self, is_from_list: bool, feature_type_names: List[str], feature_names: List[str] = None):
         self.is_from_list = is_from_list
