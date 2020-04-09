@@ -1,11 +1,12 @@
 from typing import List, Callable
 import json
-from flask import Flask, Response
+from flask import Flask, Response, request
 import pyjackson as pj
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
 from ebonite.repository.artifact.base import NoSuchArtifactError
-
+from ebonite.core.objects.core import Project
+from ebonite.core.errors import ExistingProjectError, NonExistingProjectError
 
 class EboniteApi:
     """
@@ -41,11 +42,13 @@ class EboniteApi:
                           endpoint_name='artifact_healthcheck',
                           handler=self.artifact_healthcheck)
         self.add_endpoint(endpoint='/projects',
-                          endpoint_name='get_all_projects',
-                          handler=self.get_all_projects)
-        self.add_endpoint(endpoint='/projects/<id>',
-                          endpoint_name='get_project_by_id',
-                          handler=self.get_project_by_id)
+                          endpoint_name='projects',
+                          handler=self.projects,
+                          methods=['GET', 'POST'])
+        self.add_endpoint(endpoint='/projects/<int:id>',
+                          endpoint_name='get_update_project_by_id',
+                          handler=self.get_update_project_by_id,
+                          methods=['GET', 'PATCH', 'DELETE'])
 
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
@@ -76,7 +79,6 @@ class EboniteApi:
         try:
             self.ebonite.meta_repo.get_project_by_id(1)
             return Response(status=200, response='Metadata repository is healthy')
-        # TODO: Надо ограничить список ошибок
         except Exception as e:
             return Response(status=404, response=f'Error {e} while trying to '
                                                  f'establish connection to metadata repository')
@@ -96,13 +98,50 @@ class EboniteApi:
             return Response(status=404, response=f'Error {e} while trying to '
                                                  f'establish connection to artifact repository')
 
-    def get_all_projects(self):
-        projects = self.ebonite.meta_repo.get_projects()
-        return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
+    def projects(self):
+        if request.method == 'GET':
+            projects = self.ebonite.meta_repo.get_projects()
+            return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
+        elif request.method == 'POST':
+            proj = request.get_json(force=True)
+            if (proj and isinstance(proj, dict)) and proj.get('name'):
+                proj = Project(name=proj['name'])
+            else:
+                return Response(status=404, response='Can not parse request body')
+            try:
+                proj = self.ebonite.meta_repo.create_project(proj)
+                return  Response(status=201, response=pj.dumps(proj), content_type='application/json')
+            except ExistingProjectError:
+                return  Response(status=400, response='Project with given name already exists')
 
-    def get_project_by_id(self, id):
-        project = self.ebonite.meta_repo.get_project_by_id(int(id))
-        if project:
-            return Response(status=200, response=pj.dumps(project))
-        else:
-            return Response(status=404, response=f'Project with id {id} does not exist')
+    def get_update_project_by_id(self, id):
+        if request.method == 'GET':
+            project = self.ebonite.meta_repo.get_project_by_id(id)
+            if project:
+                return Response(status=201, response=pj.dumps(project), content_type='application/json')
+            else:
+                return Response(status=404, response=f'Project with id {id} does not exist')
+        elif request.method == 'PATCH':
+            proj = request.get_json(force=True)
+            if (proj and isinstance(proj, dict)) and proj.get('name'):
+                proj = Project(id=id, name=proj['name'])
+            else:
+                return Response(status=404, response='Can not parse request body')
+            try:
+                self.ebonite.meta_repo.update_project(proj)
+                return Response(status=204)
+            except NonExistingProjectError:
+                return Response(status=400, response=f'Project with id {id} does not exist')
+        elif request.method == 'DELETE':
+            cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
+            proj = self.ebonite.meta_repo.get_project_by_id(id)
+            if not proj:
+                return Response(status=404, response=f'Project with id {id} does not exist')
+            if cascade:
+                self.ebonite.delete_proj_cascade(proj)
+                return Response(status=204)
+            else:
+                self.ebonite.meta_repo.delete_project(proj)
+                return Response(status=204)
+
+

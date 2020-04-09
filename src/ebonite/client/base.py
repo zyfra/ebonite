@@ -344,3 +344,13 @@ class Ebonite:
             self.default_env = RuntimeEnvironment(env_name, params=DockerHost())
             self.default_env = self.push_environment(self.default_env)
         return self.default_env
+
+    def delete_proj_cascade(self, proj):
+        tasks = self.meta_repo.get_tasks(proj)
+        for task in tasks:
+            for model in task.models:
+                for image in model.images:
+                    self.meta_repo.delete_image(image)
+                self.meta_repo.delete_model(model)
+            self.meta_repo.delete_task(task)
+        self.meta_repo.delete_project(proj)
