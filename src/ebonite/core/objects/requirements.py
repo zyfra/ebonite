@@ -64,6 +64,18 @@ class InstallableRequirement(Requirement):
         return self.package
 
     @classmethod
+    def from_module(cls, mod: ModuleType, package_name: str = None) -> 'InstallableRequirement':
+        """
+        Factory method to create :class:`InstallableRequirement` from module object
+
+        :param mod: module object
+        :param package_name: PIP package name if it is not equal to module name
+        :return: :class:`InstallableRequirement`
+        """
+        version = mod.__version__ if hasattr(mod, '__version__') else None
+        return InstallableRequirement(mod.__name__, version, package_name)
+
+    @classmethod
     def from_str(cls, name):
         """
         Factory method for creating :class:`InstallableRequirement` from string
