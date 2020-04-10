@@ -386,7 +386,10 @@ class _ModelPickler(EbonitePickler):
         # we couldn't import analyzer at top as it leads to circular import failure
         from ebonite.core.analyzer.model import ModelAnalyzer
         try:
-            return ModelAnalyzer._find_hook(obj)._wrapper_factory().io
+            hook = ModelAnalyzer._find_hook(obj)
+            io = hook._wrapper_factory().io
+            print(obj, hook, io)
+            return io
         except ValueError:
             return None
 
