@@ -72,8 +72,8 @@ class InstallableRequirement(Requirement):
         :param package_name: PIP package name if it is not equal to module name
         :return: :class:`InstallableRequirement`
         """
-        version = mod.__version__ if hasattr(mod, '__version__') else None
-        return InstallableRequirement(mod.__name__, version, package_name)
+        from ebonite.utils.module import get_module_version
+        return InstallableRequirement(mod.__name__, get_module_version(mod), package_name)
 
     @classmethod
     def from_str(cls, name):
