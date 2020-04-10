@@ -418,7 +418,12 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
 
     def _add_requirement(self, obj_or_module):
         if not isinstance(obj_or_module, ModuleType):
-            module = get_object_module(obj_or_module)
+            try:
+                module = get_object_module(obj_or_module)
+            except AttributeError as e:
+                # Some internal Tensorflow 2.x object crashes `inspect` module on Python 3.6
+                logger.debug('Skipping dependency analysis for %s because of %s: %s', obj_or_module, type(e).__name__, e)
+                return
         else:
             module = obj_or_module
 
