@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import List, Type
 
 from ebonite.core.analyzer.base import Hook, analyzer_class
 from ebonite.core.objects.wrapper import CallableMethodModelWrapper, ModelWrapper
@@ -9,6 +10,7 @@ class ModelHook(Hook):
     Base hook type for :py:class:`ModelAnalyzer`.
     Analysis result is an instance of :class:`~ebonite.core.objects.ModelWrapper`
     """
+    valid_types: List[Type] = None
 
     @abstractmethod
     def process(self, obj, **kwargs) -> ModelWrapper:
