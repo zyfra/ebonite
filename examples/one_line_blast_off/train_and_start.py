@@ -3,8 +3,8 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
+from ebonite import Ebonite
 from ebonite.build.builder.base import use_local_installation
-from ebonite.build.helpers import create_service_from_model
 
 
 def train_model():
@@ -20,11 +20,11 @@ def main():
     #  obtain trained model and data sample
     reg, data = train_model()
 
+    ebnt = Ebonite.inmemory()
     #  this changes docker image builder behaviour to get ebonite from local installation instead of pip
-    #  1. for developing reasons 2. we dont have ebonite on pip yet
     with use_local_installation():
-        create_service_from_model('my_model', reg, data, task_name='my_task',
-                                  service_name='magic-one-line-ebnt-service', run_service=True)
+        ebnt.create_instance_from_model('my_model', reg, data, task_name='my_task',
+                                        instance_name='magic-one-line-ebnt-service', run_instance=True, detach=False)
 
 
 if __name__ == '__main__':

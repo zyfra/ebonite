@@ -1,9 +1,13 @@
+import os
+
 from ebonite import Ebonite
 from ebonite.runtime.helpers import run_model_server
 
 
 def main():
     #  create remote ebonite client from saved configuration
+    os.environ['S3_ACCESS_KEY'] = 'eboniteAccessKey'
+    os.environ['S3_SECRET_KEY'] = 'eboniteSecretKey'
     ebnt = Ebonite.from_config_file('client_config.json')
     model = ebnt.get_model('add_one_model', 'my_task', 'my_project')
 

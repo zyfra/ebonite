@@ -2,26 +2,25 @@ import contextlib
 import os
 import tempfile
 
+import catboost
 from catboost import CatBoostClassifier, CatBoostRegressor
 from pyjackson.decorators import make_string
 
-from ebonite.core.analyzer.base import CanIsAMustHookMixin
-from ebonite.core.analyzer.model import ModelHook
+from ebonite.core.analyzer import TypeHookMixin
+from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import ModelWrapper
+from ebonite.core.objects.wrapper import LibModelWrapperMixin, ModelIO, ModelWrapper
 
 
-class CatBoostModelWrapper(ModelWrapper):
+class CatBoostModelIO(ModelIO):
     """
-    :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
-    `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
+    :class:`ebonite.core.objects.ModelIO` for CatBoost models.
     """
     classifier_file_name = 'clf.cb'
     regressor_file_name = 'rgr.cb'
 
-    @ModelWrapper.with_model
     @contextlib.contextmanager
-    def _dump(self) -> ArtifactCollection:
+    def dump(self, model) -> ArtifactCollection:
         """
         Dumps `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance to :class:`.LocalFileBlob` and
         creates :class:`.ArtifactCollection` from it
@@ -30,17 +29,17 @@ class CatBoostModelWrapper(ModelWrapper):
         """
         model_file = tempfile.mktemp()
         try:
-            self.model.save_model(model_file)
-            yield Blobs({self._get_model_file_name(): LocalFileBlob(model_file)})
+            model.save_model(model_file)
+            yield Blobs({self._get_model_file_name(model): LocalFileBlob(model_file)})
         finally:
             os.remove(model_file)
 
-    def _get_model_file_name(self):
-        if isinstance(self.model, CatBoostClassifier):
+    def _get_model_file_name(self, model):
+        if isinstance(model, CatBoostClassifier):
             return self.classifier_file_name
         return self.regressor_file_name
 
-    def _load(self, path):
+    def load(self, path):
         """
         Loads `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance from path
 
@@ -51,8 +50,20 @@ class CatBoostModelWrapper(ModelWrapper):
         else:
             model_type = CatBoostRegressor
 
-        self.model = model_type()
-        self.model.load_model(os.path.join(path, self._get_model_file_name()))
+        model = model_type()
+        model.load_model(os.path.join(path, self._get_model_file_name(model)))
+        return model
+
+
+class CatBoostModelWrapper(LibModelWrapperMixin):
+    """
+    :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
+    `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
+    """
+    libraries = [catboost]
+
+    def __init__(self):
+        super().__init__(CatBoostModelIO())
 
     def _exposed_methods_mapping(self):
         ret = {
@@ -64,25 +75,16 @@ class CatBoostModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class CatBoostModelHook(ModelHook, CanIsAMustHookMixin):
+class CatBoostModelHook(BindingModelHook, TypeHookMixin):
     """
     Hook for CatBoost models
     """
+    valid_types = [CatBoostClassifier,  CatBoostRegressor]
 
-    def must_process(self, obj) -> bool:
-        """
-        Returns `True` if object is `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor`
-
-        :param obj: obj to check
-        :return: `True` or `False`
-        """
-        return isinstance(obj, (CatBoostClassifier,  CatBoostRegressor))
-
-    def process(self, obj, **kwargs) -> ModelWrapper:
+    def _wrapper_factory(self) -> ModelWrapper:
         """
         Creates :class:`CatBoostModelWrapper` for CatBoost model object
 
-        :param obj: obj to process
         :return: :class:`CatBoostModelWrapper` instance
         """
-        return CatBoostModelWrapper().bind_model(obj, **kwargs)
+        return CatBoostModelWrapper()

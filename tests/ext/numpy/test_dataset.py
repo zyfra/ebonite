@@ -16,6 +16,7 @@ def nat():
 def test_number():
     ndt = DatasetAnalyzer.analyze(np.float32(.5))
     assert issubclass(ndt, NumpyNumberDatasetType)
+    assert ndt.requirements.modules == ['numpy']
     payload = dumps(ndt)
     ndt2 = loads(payload, DatasetType)
     assert ndt == ndt2
@@ -23,6 +24,7 @@ def test_number():
 
 def test_ndarray(nat):
     assert issubclass(nat, NumpyNdarrayDatasetType)
+    assert nat.requirements.modules == ['numpy']
     payload = dumps(nat)
     nat2 = loads(payload, DatasetType)
 

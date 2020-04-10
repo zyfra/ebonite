@@ -7,8 +7,8 @@ from pyjackson.generics import Serializer
 
 from ebonite.core.analyzer.base import CanIsAMustHookMixin, TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
-from ebonite.core.objects.dataset_type import DatasetType
-from ebonite.runtime.interface.typing import ListTypeWithSpec, SizedTypedListType
+from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
+from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
 def _python_type_from_np_string_repr(string_repr: str) -> type:
@@ -30,13 +30,14 @@ def _np_type_from_string(string_repr):
         raise ValueError('Unknown numpy type {}'.format(string_repr))
 
 
-class NumpyNumberDatasetType(DatasetType):
+class NumpyNumberDatasetType(LibDatasetTypeMixin):
     """
     :class:`.DatasetType` implementation for `numpy.number` objects which
     converts them to built-in Python numbers and vice versa.
 
     :param dtype: `numpy.number` data type as string
     """
+    libraries = [np]
 
     def __init__(self, dtype: str):
         self.dtype = dtype
@@ -91,7 +92,7 @@ class NumpyDTypeSerializer(Serializer):
         return str(instance)
 
 
-class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
+class NumpyNdarrayDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
     """
     :class:`.DatasetType` implementation for `np.ndarray` objects
     which converts them to built-in Python lists and vice versa.
@@ -101,6 +102,7 @@ class NumpyNdarrayDatasetType(DatasetType, ListTypeWithSpec):
     """
 
     real_type = np.ndarray
+    libraries = [np]
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         # TODO assert shape and dtypes len

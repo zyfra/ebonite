@@ -34,6 +34,9 @@ def _check_model_wrapper(net, input_data, tmpdir):
 
     assert tmw.model is net
 
+    expected_requirements = {'torch'}
+    assert set(tmw.requirements.modules) == expected_requirements
+
     prediction = tmw.call_method('predict', input_data)
 
     with tmw.dump() as artifact:
@@ -50,3 +53,5 @@ def _check_model_wrapper(net, input_data, tmpdir):
     prediction2 = tmw.call_method('predict', input_data)
 
     assert torch.equal(prediction, prediction2)
+
+    assert set(tmw.requirements.modules) == expected_requirements

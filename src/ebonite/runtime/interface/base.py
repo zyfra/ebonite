@@ -175,7 +175,7 @@ class InterfaceLoader(_InterfaceLoaderBase):
 
     @abstractmethod
     def load(self) -> Interface:
-        pass
+        pass  # pragma: no cover
 
     @staticmethod
     def get(class_path) -> 'InterfaceLoader':

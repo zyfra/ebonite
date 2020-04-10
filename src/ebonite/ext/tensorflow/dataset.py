@@ -6,6 +6,7 @@ from pyjackson.errors import SerializationError
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
 from ebonite.core.analyzer.dataset import DatasetAnalyzer, DatasetHook
 from ebonite.core.objects.dataset_type import DatasetType, DictDatasetType
+from ebonite.core.objects.requirements import InstallableRequirement, Requirements
 
 
 class FeedDictDatasetType(DictDatasetType):
@@ -42,6 +43,10 @@ class FeedDictDatasetType(DictDatasetType):
             return k
         else:
             raise ValueError(f'Unknown key type {type(k).__name__} for key {k} in feed_dict')
+
+    @DictDatasetType.requirements.getter
+    def requirements(self) -> Requirements:
+        return Requirements([InstallableRequirement.from_module(tf)]) + super().requirements.fget(self)
 
 
 class FeedDictHook(CanIsAMustHookMixin, DatasetHook):

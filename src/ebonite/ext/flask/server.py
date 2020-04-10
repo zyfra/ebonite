@@ -1,5 +1,7 @@
 import itertools
+import os
 import uuid
+from io import BytesIO
 
 import flask
 from flasgger import Swagger, swag_from
@@ -14,6 +16,7 @@ from ebonite.utils.fs import current_module_path
 from ebonite.utils.log import rlogger
 
 current_app = None
+TEMPLATES_DIR = 'build_templates'
 
 
 def create_executor_function(interface: Interface, method: str):
@@ -34,8 +37,8 @@ def create_executor_function(interface: Interface, method: str):
 
             result = BaseHTTPServer._execute_method(interface, method, request_data, flask.g.ebonite_id)
 
-            if hasattr(result, 'read'):
-                return send_file(result, attachment_filename=getattr(result, 'name', None))
+            if isinstance(result, bytes):
+                return send_file(BytesIO(result), mimetype='image/png')
             return jsonify(result)
         except MalformedHTTPRequestException as e:
             return jsonify(e.response_body()), e.code()
@@ -83,6 +86,12 @@ class FlaskServer(BaseHTTPServer):
         current_module_path('build_templates', 'supervisord.conf'),
         current_module_path('build_templates', 'uwsgi.ini')
     ]
+
+    # TODO somehow make this depend on builder implementation?
+    additional_options = {
+        'templates_dir': os.path.join(os.path.dirname(__file__), TEMPLATES_DIR),
+        'run_cmd': '["/usr/bin/supervisord"]'
+    }
 
     def __init__(self):
         # we do not reference real Flask/Flasgger objects here and this breaks `get_object_requirements`

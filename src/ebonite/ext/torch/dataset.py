@@ -6,8 +6,8 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
-from ebonite.core.objects.dataset_type import DatasetType
-from ebonite.runtime.interface.typing import ListTypeWithSpec, SizedTypedListType
+from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
+from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
 class TorchTensorHook(TypeHookMixin, DatasetHook):
@@ -20,7 +20,7 @@ class TorchTensorHook(TypeHookMixin, DatasetHook):
         return TorchTensorDatasetType(tuple(obj.shape), str(obj.dtype)[len('torch.'):])
 
 
-class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
+class TorchTensorDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
     """
     :class:`.DatasetType` implementation for `torch.Tensor` objects
     which converts them to built-in Python lists and vice versa.
@@ -30,6 +30,7 @@ class TorchTensorDatasetType(DatasetType, ListTypeWithSpec):
     """
 
     real_type = torch.Tensor
+    libraries = [torch]
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         self.shape = (None, ) + shape[1:]

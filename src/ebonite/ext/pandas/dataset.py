@@ -7,7 +7,7 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
-from ebonite.core.objects.dataset_type import DatasetType
+from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
 
 
 class PandasHook(TypeHookMixin, DatasetHook):
@@ -21,7 +21,7 @@ class PandasHook(TypeHookMixin, DatasetHook):
         return DataFrameType(list(obj.columns))
 
 
-class SeriesType(DatasetType):
+class SeriesType(LibDatasetTypeMixin):
     """
     :class:`.DatasetType` implementation for `pandas.Series` objects which stores them as built-in Python dicts
 
@@ -29,6 +29,7 @@ class SeriesType(DatasetType):
     """
 
     real_type = pd.Series
+    libraries = [pd]
 
     def __init__(self, columns: List[str]):
         self.columns = columns
@@ -43,7 +44,7 @@ class SeriesType(DatasetType):
         return [Field(c, float, False) for c in self.columns]  # TODO typing
 
 
-class DataFrameType(DatasetType):
+class DataFrameType(LibDatasetTypeMixin):
 
     """
     :class:`.DatasetType` implementation for `pandas.DataFrame` objects which stores them as
@@ -52,6 +53,7 @@ class DataFrameType(DatasetType):
     :param columns: list of columns names in dataset
     """
     real_type = pd.DataFrame
+    libraries = [pd]
 
     def __init__(self, columns: List[str]):
         self.columns = columns

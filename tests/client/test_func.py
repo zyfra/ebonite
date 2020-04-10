@@ -1,4 +1,4 @@
 def func(kek: str):
     return "kek"
 
-# FIXME Иначе ебонит тянет все зависимости из файла
+# FIXME otherwise ebonite collects all the dependencies in file with `func` declaration

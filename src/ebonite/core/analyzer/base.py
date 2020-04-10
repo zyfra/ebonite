@@ -1,16 +1,15 @@
 import inspect
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from types import ModuleType
 from typing import List, Type
 
-from ebonite.utils.abc_utils import is_abstract_method
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_object_base_module
 
 ANALYZER_FIELD = '_analyzer'
 
 
-class Hook:
+class Hook(ABC):
     """
     Base class for Hooks
     """
@@ -23,7 +22,7 @@ class Hook:
         :param obj: object to analyze
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def must_process(self, obj) -> bool:
@@ -34,7 +33,7 @@ class Hook:
         :param obj: object to analyze
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def process(self, obj, **kwargs):
@@ -45,7 +44,7 @@ class Hook:
         :param kwargs: additional information to be used for analysis
         :return: analysis result
         """
-        pass
+        pass  # pragma: no cover
 
     def __init_subclass__(cls, **kwargs):
         if hasattr(cls, '__init__'):
@@ -54,7 +53,7 @@ class Hook:
             if len(argspec.args) > 1:
                 raise ValueError('Hook type [{}] cannot have __init__ with arguments'.format(cls.__name__))
 
-        if not is_abstract_method(cls.process):
+        if not inspect.isabstract(cls):
             for b in reversed(cls.__bases__):
                 analyzer = getattr(b, ANALYZER_FIELD, None)
                 if analyzer is not None:
@@ -103,7 +102,7 @@ class BaseModuleHookMixin(CanIsAMustHookMixin, Hook):
         :param module_name: module name
         :return: True or False
         """
-        pass
+        pass  # pragma: no cover
 
     def is_valid_base_module(self, base_module: ModuleType) -> bool:
         """
@@ -157,11 +156,15 @@ def analyzer_class(hook_type: type, return_type: type):
             :param kwargs: additional information to be used for analysis
             :return: Instance of {return_type.__name__}
             """
+            return cls._find_hook(obj).process(obj, **kwargs)
+
+        @classmethod
+        def _find_hook(cls, obj) -> hook_type:
             hooks = []
             for hook in cls.hooks:
                 if hook.must_process(obj):
                     logger.debug('processing class %s with %s', type(obj).__name__, hook.__class__.__name__)
-                    return hook.process(obj, **kwargs)
+                    return hook
                 elif hook.can_process(obj):
                     hooks.append(hook)
 
@@ -172,7 +175,7 @@ def analyzer_class(hook_type: type, return_type: type):
             elif len(hooks) > 1:
                 raise ValueError(f'Multiple suitable hooks for object {obj} ({hooks})')
 
-            return hooks[0].process(obj, **kwargs)
+            return hooks[0]
 
     Analyzer.__name__ = '{}Analyzer'.format(hook_type.__name__)
     setattr(hook_type, ANALYZER_FIELD, Analyzer)

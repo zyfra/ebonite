@@ -29,6 +29,7 @@ def test_project__add_task__new(set_project_id, meta: MetadataRepository, projec
     assert task == meta.get_task_by_id(task_id)
     assert task == project_b.tasks[task_id]
     assert task == project_b.tasks(task.name)
+    assert task.project == project_b
 
 
 def test_project__add_task__wrong_project(meta: MetadataRepository, project_factory, task_factory):
@@ -99,6 +100,7 @@ def test_task__add_model__new(set_task_id, meta: MetadataRepository, task_b: Tas
     assert model == meta.get_model_by_id(model_id)
     assert model == task_b.models[model_id]
     assert model == task_b.models(model.name)
+    assert model.task == task_b
 
 
 def test_task__add_model__wrong_task(meta: MetadataRepository, task_factory, model_factory):
@@ -124,6 +126,7 @@ def test_task__add_models(task_b: Task, model_factory, meta: MetadataRepository)
         assert m == meta.get_model_by_id(model_id)
         assert m == task_b.models[model_id]
         assert m == task_b.models(m.name)
+        assert m.task == task_b
 
 
 def test_task__add_models__empty(task_b: Task):
@@ -219,7 +222,7 @@ def test_create_model_with_additional_artifact(artifact, sklearn_model_obj, pand
     assert model is not None
     model._id = 'test_model'
     artifact_repository.push_artifacts(model)
-    assert len(model.artifact_req_persisted.bytes_dict()) == 3
+    assert len(model.artifact_req_persisted.bytes_dict()) == 4
 
     model_payloads = model.artifact_req_persisted.bytes_dict()
     for name, payload in artifact.bytes_dict().items():
@@ -238,6 +241,65 @@ def test_model_with_wrapper_meta_serde(model):
     model.wrapper_obj = model._wrapper_meta
 
     serde_and_compare(model, Model)
+
+
+def test_model__no_images(model_factory):
+    model = model_factory(True)
+
+    assert len(model.images) == 0
+
+
+def test_model__add_images(model_factory, image_factory):
+    model = model_factory(True)
+    image1 = image_factory()
+    image2 = image_factory()
+
+    assert len(model.images) == 0
+    assert image1.model_id is None
+    assert image1.id is None
+    assert image2.model_id is None
+    assert image2.id is None
+
+    model.add_images([image1, image2])
+
+    assert len(model.images) == 2
+    assert model.images[image1.id] is image1
+    assert image1.model_id is not None
+    assert image1.model == model
+    assert image1.id is not None
+    assert model.images[image2.id] is image2
+    assert image2.model_id is not None
+    assert image2.model == model
+    assert image2.id is not None
+
+
+def test_model__add_image__wrong_model(model_factory, image_factory):
+    model = model_factory(True)
+    image = image_factory(True)
+
+    with pytest.raises(MetadataError):
+        model.add_image(image)
+
+
+def test_model__delete_image(model_factory, image_factory):
+    model = model_factory(True)
+    image = image_factory()
+
+    assert len(model.images) == 0
+    assert image.model_id is None
+    assert image.id is None
+
+    model.add_image(image)
+
+    assert len(model.images) == 1
+    assert image.model_id is not None
+    assert image.id is not None
+
+    model.delete_image(image)
+
+    assert len(model.images) == 0
+    assert image.model_id is None
+    assert image.id is None
 
 
 # ################BASE#####################

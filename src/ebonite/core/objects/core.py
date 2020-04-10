@@ -1,23 +1,24 @@
 import datetime
 import getpass
+import json
 import tempfile
+from abc import abstractmethod
 from copy import copy
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
-from pyjackson.decorators import make_string
+from pyjackson.decorators import make_string, type_field
 
 import ebonite.repository
-from ebonite import client
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
-from ebonite.utils.module import get_object_requirements, get_python_version
+from ebonite.utils.module import get_python_version
 
 
 def _get_current_user():
@@ -37,7 +38,7 @@ class EboniteObject(Comparable):
     _meta: 'ebonite.repository.MetadataRepository' = None
     _art: 'ebonite.repository.ArtifactRepository' = None
 
-    def __init__(self, id: str, name: str, author: str = None, creation_date: datetime.datetime = None):
+    def __init__(self, id: int, name: str, author: str = None, creation_date: datetime.datetime = None):
         self._id = id
         self.name = name
         self.author = author or _get_current_user()
@@ -64,12 +65,8 @@ class EboniteObject(Comparable):
     def has_artifact_repo(self):
         return self._art is not None
 
-    def bind_client(self, cl: 'client.Ebonite'):
-        self.bind_artifact_repo(cl.artifact_repo)
-        self.bind_meta_repo(cl.meta_repo)
-
     @property
-    def id(self):
+    def id(self) -> int:
         return self._id
 
 
@@ -118,7 +115,7 @@ class Project(EboniteObject):
     :param creation_date: date when this project was created
     """
 
-    def __init__(self, name: str, id: str = None, author: str = None, creation_date: datetime.datetime = None):
+    def __init__(self, name: str, id: int = None, author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self._tasks: IndexDict[Task] = IndexDict('id', 'name')
         self.tasks: IndexDictAccessor[Task] = IndexDictAccessor(self._tasks)
@@ -186,7 +183,7 @@ class Task(EboniteObject):
     :param creation_date: date when this task was created
     """
 
-    def __init__(self, name: str, id: str = None, project_id: str = None,
+    def __init__(self, name: str, id: int = None, project_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self.project_id = project_id
@@ -199,8 +196,12 @@ class Task(EboniteObject):
         return self.name
 
     @property
+    @_with_meta
     def project(self):
-        raise AttributeError('Cant access project of unbound task')
+        p = self._meta.get_project_by_id(self.project_id)
+        if p is None:
+            raise errors.NonExistingProjectError(self.project_id)
+        return p
 
     @project.setter
     def project(self, project: Project):
@@ -244,7 +245,8 @@ class Task(EboniteObject):
         if model_id not in self._models:
             raise errors.NonExistingModelError(model)
 
-        client.Ebonite(self._meta, self._art).delete_model(model, force)
+        from ebonite.client import Ebonite
+        Ebonite(self._meta, self._art).delete_model(model, force)
         del self._models[model_id]
 
     #  ##########API############
@@ -272,7 +274,8 @@ class Task(EboniteObject):
         :param model: :class:`Model` to push
         :return: same pushed :class:`Model`
         """
-        model = client.Ebonite(self._meta, self._art).push_model(model, self)
+        from ebonite.client import Ebonite
+        model = Ebonite(self._meta, self._art).push_model(model, self)
         self._models.add(model)
         return model
 
@@ -293,9 +296,11 @@ class Model(EboniteObject):
     Model contains metadata for machine learning model
 
     :param name: model name
-    :param wrapper: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
+    :param wrapper_meta: :class:`~ebonite.core.objects.wrapper.ModelWrapper` instance for this model
     :param artifact: :class:`~ebonite.core.objects.ArtifactCollection` instance with model artifacts
     :param requirements: :class:`~ebonite.core.objects.Requirements` instance with model requirements
+    :param params: dict with arbitrary parameters. Must be json-serializable
+    :param description: text description of this model
     :param id: model id
     :param task_id: parent task_id
     :param author: user that created that model
@@ -309,13 +314,17 @@ class Model(EboniteObject):
                  requirements: Requirements = None,
                  params: Dict[str, Any] = None,
                  description: str = None,
-                 id: str = None,
-                 task_id: str = None,
+                 id: int = None,
+                 task_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
 
         self.description = description
         self.params = params or {}
+        try:
+            json.dumps(self.params)
+        except TypeError:
+            raise ValueError(f'"params" argument must be json-serializable')
         self._wrapper = None
         self._wrapper_meta = None
         if isinstance(wrapper_meta, ModelWrapper):
@@ -328,6 +337,9 @@ class Model(EboniteObject):
         self.task_id = task_id
         self._persisted_artifacts = artifact
         self._unpersisted_artifacts: Optional[ArtifactCollection] = None
+
+        self._images: IndexDict[Image] = IndexDict('id', 'name')
+        self.images: IndexDictAccessor[Image] = IndexDictAccessor(self._images)
 
     def load(self):
         """
@@ -463,6 +475,7 @@ class Model(EboniteObject):
 
     @classmethod
     def create(cls, model_object, input_data, model_name: str = None,
+               params: Dict[str, Any] = None, description: str = None,
                additional_artifacts: ArtifactCollection = None, additional_requirements: AnyRequirements = None,
                custom_wrapper: ModelWrapper = None, custom_artifact: ArtifactCollection = None,
                custom_requirements: AnyRequirements = None) -> 'Model':
@@ -472,6 +485,8 @@ class Model(EboniteObject):
         :param model_object: The model object to analyze.
         :param input_data: Input data sample to determine structure of inputs and outputs for given model object.
         :param model_name: The model name.
+        :param params: dict with arbitrary parameters. Must be json-serializable
+        :param description: text description of this model
         :param additional_artifacts: Additional artifact.
         :param additional_requirements: Additional requirements.
         :param custom_wrapper: Custom model wrapper.
@@ -489,31 +504,72 @@ class Model(EboniteObject):
         if custom_requirements is not None:
             requirements = resolve_requirements(custom_requirements)
         else:
-            requirements = get_object_requirements(model_object)
-            requirements += get_object_requirements(input_data)
-            for method in wrapper.exposed_methods:
-                output_data = wrapper.call_method(method, input_data)
-                requirements += get_object_requirements(output_data)
+            requirements = wrapper.requirements
 
         if additional_requirements is not None:
             requirements += additional_requirements
-        model = Model(name, wrapper, None, requirements, {cls.PYTHON_VERSION: get_python_version()})
+
+        params = params or {}
+        params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
+        model = Model(name, wrapper, None, requirements, params, description)
         model._unpersisted_artifacts = artifact
         return model
 
     @property
-    def id(self):
-        return self._id
-
-    @property
+    @_with_meta
     def task(self):
-        raise AttributeError('Cant access task of unbound model')
+        t = self._meta.get_task_by_id(self.task_id)
+        if t is None:
+            raise errors.NonExistingTaskError(self.task_id)
+        return t
 
     @task.setter
     def task(self, task: Task):
         if not isinstance(task, Task):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
+
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Model, self).bind_meta_repo(repo)
+        for image in self._images.values():
+            image.bind_meta_repo(repo)
+
+    @_with_meta
+    def add_image(self, image: 'Image'):
+        """
+        Add image for model and save it to meta repo
+
+        :param image: image to add
+        """
+        if image.model_id is not None and image.model_id != self.id:
+            raise errors.MetadataError('Image is already in model {}. Delete it first'.format(image.model_id))
+
+        image.model_id = self.id
+        self._meta.save_image(image)
+        self._images.add(image)
+
+    @_with_meta
+    def add_images(self, images: List['Image']):
+        """
+        Add multiple images for model and save them to meta repo
+
+        :param images: images to add
+        """
+        for image in images:
+            self.add_image(image)
+
+    @_with_meta
+    def delete_image(self, image: 'Image'):
+        """
+        Remove image from this model and delete it from meta repo
+
+        :param image: image to delete
+        """
+        if image.id not in self._images:
+            raise errors.NonExistingImageError(image)
+        del self._images[image.id]
+        self._meta.delete_image(image)
+        image.model_id = None
 
 
 def _generate_model_name(wrapper: ModelWrapper):
@@ -525,3 +581,148 @@ def _generate_model_name(wrapper: ModelWrapper):
     """
     now = datetime.datetime.now()
     return '{}_model_{}'.format(wrapper.type, now.strftime('%Y%m%d_%H_%M_%S'))
+
+
+@make_string('id', 'name')
+class Image(EboniteObject):
+    @type_field('type')
+    class Params(Comparable):
+        pass
+
+    def __init__(self, name: str, id: int = None,
+                 model_id: int = None, params: Params = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.model_id = model_id
+        self.params = params
+
+    @property
+    @_with_meta
+    def model(self) -> Model:
+        m = self._meta.get_model_by_id(self.model_id)
+        if m is None:
+            raise errors.NonExistingModelError(self.model_id)
+        return m
+
+    @model.setter
+    def model(self, model: Model):
+        if not isinstance(model, Model):
+            raise ValueError('{} is not Model'.format(model))
+        self.model_id = model.id
+
+
+class RuntimeEnvironment(EboniteObject):
+    @type_field('type')
+    class Params(Comparable):
+        default_runner = None
+
+        def get_runner(self):
+            """
+            :return: Runner for this environment
+            """
+            return self.default_runner
+
+        @abstractmethod
+        def get_builder(self, name: str, model: Model, server, debug=False, **kwargs):
+            """
+            :return: builder for this environment
+            """
+            pass  # pragma: no cover
+
+    def __init__(self, name: str, id: int = None, params: Params = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.params = params
+
+
+def _with_runner(method):
+    """
+       Decorator for methods to check that object is binded to runner
+
+       :param method: method to apply decorator
+       :return: decorated method
+       """
+
+    @wraps(method)
+    def inner(self, *args, **kwargs):
+        if not self.has_runner:
+            raise ValueError(f'{self} has no binded runner')
+        return method(self, *args, **kwargs)
+
+    return inner
+
+
+class RuntimeInstance(EboniteObject):
+    runner = None
+
+    @type_field('type')
+    class Params(Comparable):
+        pass
+
+    def __init__(self, name: str, id: int = None,
+                 image_id: int = None, environment_id: int = None, params: Params = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.image_id = image_id
+        self.environment_id = environment_id
+        self.params = params
+
+    @property
+    @_with_meta
+    def image(self) -> Image:
+        i = self._meta.get_image_by_id(self.image_id)
+        if i is None:
+            raise errors.NonExistingImageError(self.image_id)
+        return i
+
+    @image.setter
+    def image(self, image: Image):
+        if not isinstance(image, Image):
+            raise ValueError(f'{image} is not Image')
+        self.image_id = image.id
+
+    @property
+    @_with_meta
+    def environment(self) -> RuntimeEnvironment:  # TODO caching
+        e = self._meta.get_environment_by_id(self.environment_id)
+        if e is None:
+            raise errors.NonExistingEnvironmentError(self.environment_id)
+        return e
+
+    @environment.setter
+    def environment(self, environment: RuntimeEnvironment):
+        if not isinstance(environment, RuntimeEnvironment):
+            raise ValueError(f'{environment} is not RuntimeEnvironment')
+        self.environment_id = environment.id
+
+    def bind_runner(self, runner):
+        self.runner = runner
+        return self
+
+    def unbind_runner(self):
+        del self.runner
+
+    @property
+    def has_runner(self):
+        return self.runner is not None
+
+    @_with_runner
+    def logs(self, **kwargs):
+        """
+
+        :param kwargs: parameters for runner `logs` method
+        :yields: str logs from running instance
+        """
+        yield from self.runner.logs(self.params, self.environment.params, **kwargs)
+
+    @_with_runner
+    def is_running(self, **kwargs) -> bool:
+        """
+        Checks whether instance is running
+
+        :param kwargs: params for runner `is_running` method
+        :return: "is running" flag
+        """
+        if not self.has_meta_repo:
+            return False  # TODO separate repo logic from runner logic and remove this check
+        return self.runner.is_running(self.params, self.environment.params, **kwargs)

@@ -2,8 +2,8 @@ import pytest
 
 from ebonite.utils.importing import import_module
 from ebonite.utils.module import (analyze_module_imports, check_pypi_module, get_module_repr, get_module_version,
-                                  get_object_module, is_builtin_module, is_extension_module, is_installable_module,
-                                  is_local_module, is_private_module, is_pseudo_module)
+                                  get_object_module, is_builtin_module, is_ebonite_module, is_extension_module,
+                                  is_installable_module, is_local_module, is_private_module, is_pseudo_module)
 
 
 class Obj:
@@ -103,6 +103,21 @@ def test_is_local_module():
     assert not is_local_module(pickle)
     assert not is_local_module(requests)
     assert is_local_module(sys.modules[__name__])
+    assert not is_local_module(sys.modules['__future__'])
+    assert not is_local_module(sys.modules[is_local_module.__module__])
+
+
+def test_is_ebonite_module():
+    import sys
+    import requests
+    import ebonite
+    from ebonite.utils import module
+
+    assert is_ebonite_module(ebonite)
+    assert is_ebonite_module(module)
+
+    assert not is_ebonite_module(sys)
+    assert not is_ebonite_module(requests)
 
 
 def test_module_version():

@@ -4,6 +4,22 @@ Changelog
 Current release candidate
 -------------------------
 
+0.5.0 (2020-04-10)
+------------------
+
+* Built Docker images and running Docker containers along with their metadata are now persisted in metadata repository
+* Added possibility to track running status of Docker container via Ebonite client
+* Implemented support for pushing built images to remote Docker registry
+* Improved testing of metadata repositories and Ebonite client and fixed discovered bugs in them
+* Fixed bug with failed transactions not being rolled back
+* Fixed bug with serialization of complex models some component of which could not be pickled
+* Decomposed model IO from model wrappers
+* bytes are now used for binary datasets instead of file-like objects
+* Eliminated build_model_flask_docker in favor of Server-driven abstraction
+* Sped up PickleModelIO by avoiding ModelAnalyzer calls for non-model objects
+* Sped up Model.create by calling model methods with given input data just once
+* Dataset types and model wrappers expose their runtime requirements
+
 0.4.0 (2020-02-17)
 ------------------
 

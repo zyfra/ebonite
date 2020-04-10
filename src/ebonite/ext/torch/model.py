@@ -6,36 +6,35 @@ from io import BytesIO
 import torch
 from pyjackson.decorators import make_string
 
-from ebonite.core.analyzer.base import CanIsAMustHookMixin
-from ebonite.core.analyzer.model import ModelHook
+from ebonite.core.analyzer import TypeHookMixin
+from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
-from ebonite.core.objects.wrapper import ModelWrapper
+from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
 
 
-class TorchModelWrapper(ModelWrapper):
+class TorchModelIO(ModelIO):
     """
-    :class:`ebonite.core.objects.ModelWrapper` for PyTorch models. `.model` attribute is a `torch.nn.Module` instance
+    :class:`ebonite.core.objects.ModelIO` for PyTorch models
     """
     model_file_name = 'model.pth'
     model_jit_file_name = 'model.jit.pth'
 
-    @ModelWrapper.with_model
     @contextlib.contextmanager
-    def _dump(self) -> ArtifactCollection:
+    def dump(self, model) -> ArtifactCollection:
         """
         Dumps `torch.nn.Module` instance to :class:`.InMemoryBlob` and creates :class:`.ArtifactCollection` from it
 
         :return: context manager with :class:`~ebonite.core.objects.ArtifactCollection`
         """
-        is_jit = isinstance(self.model, torch.jit.ScriptModule)
+        is_jit = isinstance(model, torch.jit.ScriptModule)
         save = torch.jit.save if is_jit else torch.save
         model_name = self.model_jit_file_name if is_jit else self.model_file_name
 
         buffer = BytesIO()
-        save(self.model, buffer)
+        save(model, buffer)
         yield Blobs({model_name: InMemoryBlob(buffer.getvalue())})
 
-    def _load(self, path):
+    def load(self, path):
         """
         Loads `torch.nn.Module` instance from path
 
@@ -48,7 +47,15 @@ class TorchModelWrapper(ModelWrapper):
             load = torch.load
 
         with open(model_path, 'rb') as f:
-            self.model = load(f)
+            return load(f)
+
+
+class TorchModelWrapper(ModelWrapper):
+    """
+    :class:`ebonite.core.objects.ModelWrapper` for PyTorch models. `.model` attribute is a `torch.nn.Module` instance
+    """
+    def __init__(self):
+        super().__init__(TorchModelIO())
 
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         return {
@@ -63,26 +70,16 @@ class TorchModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class TorchModelHook(ModelHook, CanIsAMustHookMixin):
+class TorchModelHook(BindingModelHook, TypeHookMixin):
     """
     Hook for PyTorch models
     """
+    valid_types = [torch.nn.Module]
 
-    def must_process(self, obj) -> bool:
-        """
-        Returns `True` if object is `torch.nn.Module`
-
-        :param obj: obj to check
-        :return: `True` or `False`
-        """
-        return isinstance(obj, torch.nn.Module)
-
-    def process(self, obj, **kwargs) -> ModelWrapper:
+    def _wrapper_factory(self) -> ModelWrapper:
         """
         Creates :class:`TorchModelWrapper` for PyTorch model object
 
-        :param obj: obj to process
-        :param kwargs: additional information to be used for analysis
         :return: :class:`TorchModelWrapper` instance
         """
-        return TorchModelWrapper().bind_model(obj, **kwargs)
+        return TorchModelWrapper()

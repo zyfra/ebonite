@@ -19,6 +19,7 @@ class Server(_ServerBase):
     additional_sources: List[str] = []
     additional_binaries: List[str] = []
     additional_envs: Dict[str, str] = {}
+    additional_options: Dict[str, str] = {}
 
     @staticmethod
     def get(class_path) -> 'Server':
@@ -41,7 +42,7 @@ class Server(_ServerBase):
         :return: nothing
         """
 
-        pass
+        pass  # pragma: no cover
 
     def start(self, loader: InterfaceLoader):
         """
@@ -110,7 +111,7 @@ class BaseHTTPServer(Server):
         except (ExecutionError, SerializationError) as e:
             raise MalformedHTTPRequestException(e.args[0])
 
-        if hasattr(result, 'read'):
+        if isinstance(result, bytes):
             rlogger.debug('Got response for [%s]: <binary content>', ebonite_id)
             return result
 

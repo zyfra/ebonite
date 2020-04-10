@@ -4,6 +4,7 @@ import tensorflow as tf
 from ebonite.core.analyzer.model import ModelAnalyzer
 
 
+@pytest.mark.tf_v1
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '1', reason="requires tensorflow 1.x")
 def test_tf__single_tensor(graph, tensor, tmpdir):
     with graph.as_default():
@@ -12,6 +13,7 @@ def test_tf__single_tensor(graph, tensor, tmpdir):
     _check_model_wrapper(graph, out, {tensor.name: [[1]]}, tmpdir)
 
 
+@pytest.mark.tf_v1
 @pytest.mark.skipif(tf.__version__.split('.')[0] != '1', reason="requires tensorflow 1.x")
 def test_tf__multiple_tensors(graph, tensor, second_tensor, tmpdir):
     with graph.as_default():
@@ -31,7 +33,10 @@ def _check_model_wrapper(graph, model, feed_dict, tmpdir):
         # training here is just random initialization
 
         tmw = ModelAnalyzer.analyze(model, input_data=feed_dict)
-        assert tmw.model is model
+        assert tmw.model.tensors is model
+
+        expected_requirements = {'tensorflow', 'numpy'}
+        assert set(tmw.requirements.modules) == expected_requirements
 
         pred = tmw.call_method('predict', feed_dict)
 
@@ -47,3 +52,5 @@ def _check_model_wrapper(graph, model, feed_dict, tmpdir):
 
     pred2 = tmw.call_method('predict', feed_dict)
     assert pred2 == pred
+
+    assert set(tmw.requirements.modules) == expected_requirements

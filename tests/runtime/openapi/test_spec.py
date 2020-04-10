@@ -3,8 +3,8 @@ from typing import Dict, List
 import pytest
 from pyjackson.core import ArgList, Field, Signature
 
-from ebonite.core.objects.dataset_type import FilelikeDatasetType
-from ebonite.runtime.interface.typing import TypeWithSpec
+from ebonite.core.objects.dataset_type import BytesDatasetType
+from ebonite.core.objects.typing import TypeWithSpec
 from ebonite.runtime.openapi.spec import _field_to_schema, create_spec, make_array, make_object, type_to_schema
 
 
@@ -183,7 +183,7 @@ def test_create_spec__no_file():
 
 
 def test_create_spec__with_file():
-    field = Field('field', FilelikeDatasetType(), False)
+    field = Field('field', BytesDatasetType(), False)
     spec = create_spec('mymethod', Signature([field], field))
 
     assert spec == {

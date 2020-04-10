@@ -1,50 +1,67 @@
 from abc import abstractmethod
-from collections import Generator
+from typing import Generator, Type
 
-from pyjackson.decorators import type_field
-
-
-@type_field('type')
-class TargetHost:
-
-    @abstractmethod
-    def get_host(self) -> str:
-        pass
-
-
-class LocalTargetHost(TargetHost):
-    type = 'local'
-
-    def get_host(self) -> str:
-        return ''
-
-
-class RemoteTargetHost(TargetHost):
-    type = 'remote'
-
-    def __init__(self, host, port):
-        self.host = '{}:{}'.format(host, port)
-
-    def get_host(self) -> str:
-        return self.host
-
-
-@type_field('type')
-class ServiceInstance:
-    def __init__(self, name: str, target_host: TargetHost = None):
-        self.name = name
-        self.target_host = target_host or LocalTargetHost()
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
 
 
 class RunnerBase:
     @abstractmethod
-    def run(self, service_instance: ServiceInstance, **kwargs):
-        pass
+    def instance_type(self) -> Type[RuntimeInstance.Params]:
+        """
+        :return: subtype of :class:`.RuntimeInstance.Params` supported by this runner
+        """
+        pass  # pragma: no cover
 
     @abstractmethod
-    def stop(self, service_instance: ServiceInstance):
-        pass
+    def create_instance(self, name: str, **kwargs) -> RuntimeInstance.Params:
+        """
+        Creates new runtime instance on given name and args
+
+        :param name: name of instance to use
+        :return: created :class:`.RuntimeInstance.Params` subclass instance
+        """
+        pass  # pragma: no cover
 
     @abstractmethod
-    def logs(self, service_instance: ServiceInstance, **kwargs) -> Generator:
-        pass
+    def run(self, instance: RuntimeInstance.Params, image: Image.Params, env: RuntimeEnvironment.Params, **kwargs):
+        """
+        Runs given image on given environment with params given by instance
+
+        :param instance: instance params to use for running
+        :param image: image to base instance on
+        :param env: environment to run on
+        """
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def is_running(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params, **kwargs) -> bool:
+        """
+        Checks that given instance is running on given environment
+
+        :param instance: instance to check running of
+        :param env: environment to check running on
+        :return: "is running" flag
+        """
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def stop(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params, **kwargs):
+        """
+        Stops running of given instance on given environment
+
+        :param instance: instance to stop running of
+        :param env: environment to stop running on
+        """
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def logs(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params,
+             **kwargs) -> Generator[str, None, None]:
+        """
+        Exposes logs produced by given instance while running on given environment
+
+        :param instance: instance to expose logs for
+        :param env: environment to expose logs from
+        :return: generator of log strings
+        """
+        pass  # pragma: no cover

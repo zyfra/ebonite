@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from typing import Dict
 
-from ebonite import ext
 from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.requirements import Requirements
 from ebonite.runtime.interface import InterfaceLoader
@@ -15,17 +14,22 @@ class ProviderBase:
     @abstractmethod
     def get_sources(self) -> Dict[str, str]:
         """Abstract method for text files"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_artifacts(self) -> ArtifactCollection:
         """Abstact method for binaries"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_env(self) -> Dict[str, str]:
         """Abstract method for environment variables"""
-        pass
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def get_options(self) -> Dict[str, str]:
+        """Abstract method for additional build options"""
+        pass  # pragma: no cover
 
 
 SERVER_ENV = 'EBONITE_SERVER'
@@ -52,7 +56,7 @@ class PythonProvider(ProviderBase):
     @abstractmethod
     def get_requirements(self) -> Requirements:
         """Abstract method for python requirements"""
-        pass
+        pass  # pragma: no cover
 
     def get_env(self) -> Dict[str, str]:
         """Get env variables for image"""
@@ -68,8 +72,12 @@ class PythonProvider(ProviderBase):
 
         modules = set(self.get_requirements().modules)
 
-        extensions = ext.ExtensionLoader.loaded_extensions.keys()
+        from ebonite.ext import ExtensionLoader
+        extensions = ExtensionLoader.loaded_extensions.keys()
         used_extensions = [e.module for e in extensions if all(r in modules for r in e.reqs)]
         if len(used_extensions) > 0:
             envs['EBONITE_EXTENSIONS'] = ','.join(used_extensions)
         return envs
+
+    def get_options(self) -> Dict[str, str]:
+        return self.server.additional_options

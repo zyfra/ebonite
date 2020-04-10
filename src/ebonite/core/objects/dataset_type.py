@@ -1,4 +1,5 @@
 import builtins
+from abc import abstractmethod
 from typing import Dict, List, Sized
 
 from pyjackson import deserialize, serialize
@@ -7,7 +8,8 @@ from pyjackson.decorators import type_field
 from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.objects.base import EboniteParams
-from ebonite.runtime.interface.typing import SizedTypedListType, TypeWithSpec
+from ebonite.core.objects.requirements import InstallableRequirement, Requirements
+from ebonite.core.objects.typing import SizedTypedListType, TypeWithSpec
 
 
 # noinspection PyAbstractClass
@@ -23,6 +25,23 @@ class DatasetType(EboniteParams, TypeWithSpec):
     def _check_type(obj, exp_type, exc_type):
         if not isinstance(obj, exp_type):
             raise exc_type(f'given dataset is of type: {type(obj)}, expected: {exp_type}')
+
+    @property
+    @abstractmethod
+    def requirements(self) -> Requirements:
+        pass  # pragma: no cover
+
+
+class LibDatasetTypeMixin(DatasetType):
+    """
+    :class:`.DatasetType` mixin which provides requirements list consisting of
+    PIP packages represented by module objects in `libraries` field.
+    """
+    libraries = None
+
+    @property
+    def requirements(self) -> Requirements:
+        return Requirements([InstallableRequirement.from_module(lib) for lib in self.libraries])
 
 
 PRIMITIVES = {int, str, bool, complex, float}
@@ -60,6 +79,10 @@ class PrimitiveDatasetType(DatasetType):
         self._check_type(instance, self.to_type, SerializationError)
         return instance
 
+    @property
+    def requirements(self) -> Requirements:
+        return Requirements()
+
 
 class ListDatasetType(DatasetType, SizedTypedListType):
     """
@@ -78,6 +101,10 @@ class ListDatasetType(DatasetType, SizedTypedListType):
     def serialize(self, instance: list):
         _check_type_and_size(instance, list, self.size, SerializationError)
         return [serialize(o, self.dtype) for o in instance]
+
+    @property
+    def requirements(self) -> Requirements:
+        return self.dtype.requirements
 
 
 class _TupleLikeDatasetType(DatasetType):
@@ -99,6 +126,10 @@ class _TupleLikeDatasetType(DatasetType):
     def serialize(self, instance: Sized):
         _check_type_and_size(instance, self.actual_type, len(self.items), SerializationError)
         return self.actual_type(serialize(o, t) for t, o in zip(self.items, instance))
+
+    @property
+    def requirements(self) -> Requirements:
+        return sum([i.requirements for i in self.items], Requirements())
 
 
 def _check_type_and_size(obj, dtype, size, exc_type):
@@ -151,12 +182,16 @@ class DictDatasetType(DatasetType):
         if set(obj.keys()) != set(self.item_types.keys()):
             raise exc_type(f'given dict has keys: {set(obj.keys())}, expected: {set(self.item_types.keys())}')
 
+    @property
+    def requirements(self) -> Requirements:
+        return sum([i.requirements for i in self.item_types.values()], Requirements())
 
-class FilelikeDatasetType(DatasetType):
+
+class BytesDatasetType(DatasetType):
     """
-    DatasetType for file-like objects
+    DatasetType for bytes objects
     """
-    type = 'filelike'
+    type = 'bytes'
     real_type = None
 
     def __init__(self):
@@ -170,3 +205,7 @@ class FilelikeDatasetType(DatasetType):
 
     def serialize(self, instance: object) -> dict:
         return instance
+
+    @property
+    def requirements(self) -> Requirements:
+        return Requirements()
