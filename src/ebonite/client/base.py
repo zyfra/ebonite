@@ -349,11 +349,20 @@ class Ebonite:
         """
         Deletes project and all tasks, models and images associated with it from metadata repository
         """
-        tasks = self.meta_repo.get_tasks(proj)
-        for task in tasks:
+        for task in proj.tasks:
             for model in task.models:
                 for image in model.images:
                     self.meta_repo.delete_image(image)
                 self.meta_repo.delete_model(model)
             self.meta_repo.delete_task(task)
         self.meta_repo.delete_project(proj)
+
+    def delete_task_cascade(self, task):
+        """
+        Deletes task and all models and images associated with it
+        """
+        for model in task.models:
+            for image in task.images:
+                self.meta_repo.delete_image(image)
+            self.meta_repo.delete_model(model)
+        self.meta_repo.delete_task(task)
