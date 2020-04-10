@@ -12,6 +12,7 @@ def df_type():
 
 
 def test_dataframe_type(df_type):
+    assert df_type.requirements.modules == ['pandas']
     data = pd.DataFrame([{'a': 1, 'b': 1}, {'a': 2, 'b': 2}])
 
     obj = serialize(data, df_type)

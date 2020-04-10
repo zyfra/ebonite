@@ -21,6 +21,7 @@ def test_torch__single_tensor(first_tensor):
 
     tdt = DatasetAnalyzer.analyze(first_tensor)
 
+    assert tdt.requirements.modules == ['torch']
     assert tdt.shape == (None, 5)
     assert tdt.dtype == 'int32'
     assert type_to_schema(tdt) == {
@@ -39,6 +40,7 @@ def test_torch__single_tensor(first_tensor):
 
 
 def test_torch__tensors_list(tdt_list, first_tensor, second_tensor):
+    assert tdt_list.requirements.modules == ['torch']
     assert len(tdt_list.items) == 2
     assert tdt_list.items[0].shape == (None, 5)
     assert tdt_list.items[0].dtype == 'int32'

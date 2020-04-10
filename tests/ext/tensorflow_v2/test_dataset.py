@@ -31,6 +31,7 @@ def test_feed_dict_type__self_serialization(tftt):
     from ebonite.ext.tensorflow_v2 import TFTensorDatasetType
 
     assert issubclass(tftt, TFTensorDatasetType)
+    assert tftt.requirements.modules == ['tensorflow']
     payload = dumps(tftt)
     tftt2 = loads(payload, DatasetType)
     assert tftt == tftt2

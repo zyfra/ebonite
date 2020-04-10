@@ -7,9 +7,8 @@ import xgboost
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
-from ebonite.core.objects import ModelIO, ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import FilesContextManager
+from ebonite.core.objects.wrapper import FilesContextManager, LibModelWrapperMixin, ModelIO, ModelWrapper
 
 
 class XGBoostModelIO(ModelIO):
@@ -31,10 +30,12 @@ class XGBoostModelIO(ModelIO):
         return model
 
 
-class XGBoostModelWrapper(ModelWrapper):
+class XGBoostModelWrapper(LibModelWrapperMixin):
     """
     :class:`~.ModelWrapper` implementation for XGBoost models
     """
+    libraries = [xgboost]
+
     def __init__(self):
         super().__init__(XGBoostModelIO())
 

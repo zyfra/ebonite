@@ -18,6 +18,8 @@ from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, CompositeArtifactCollection, InMemoryBlob
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
+from ebonite.core.objects.requirements import InstallableRequirement, Requirements
+from ebonite.utils.module import get_object_requirements
 from ebonite.utils.pickling import EbonitePickler
 
 FilesContextManager = typing.ContextManager[ArtifactCollection]
@@ -61,20 +63,26 @@ class ModelWrapper(EboniteParams):
     """
     type = None
     methods_json = 'methods.json'
+    requirements_json = 'requirements.json'
 
     def __init__(self, io: ModelIO):
         self.model = None
         self.methods: typing.Optional[Methods] = None
+        self.requirements: Requirements = None
         self.io = io
 
     @contextlib.contextmanager
     def dump(self) -> FilesContextManager:
         with self.io.dump(self.model) as artifact:
-            yield artifact + Blobs({self.methods_json: InMemoryBlob(dumps(self.methods).encode('utf-8'))})
+            yield artifact + Blobs({
+                self.methods_json: InMemoryBlob(dumps(self.methods).encode('utf-8')),
+                self.requirements_json: InMemoryBlob(dumps(self.requirements).encode('utf-8'))
+            })
 
     def load(self, path):
         self.model = self.io.load(path)
         self.methods = read(os.path.join(path, self.methods_json), typing.Optional[Methods])
+        self.requirements = read(os.path.join(path, self.requirements_json), Requirements)
 
     def bind_model(self, model, input_data=None, **kwargs):
         """
@@ -89,17 +97,24 @@ class ModelWrapper(EboniteParams):
             raise ValueError("Input data sample should be specified as 'input_data' key in order to analyze model")
 
         self.model = model
-        self.methods = self._prepare_methods(input_data)
+        self.methods, self.requirements = self._prepare_methods_and_requirements(input_data)
         return self
 
-    def _prepare_methods(self, input_data):
+    def _prepare_methods_and_requirements(self, input_data):
+        requirements = Requirements()
+        requirements += self._model_requirements()
+
         arg_type = DatasetAnalyzer.analyze(input_data)
+        requirements += arg_type.requirements
+
         methods = {}
         for exposed, wrapped in self._exposed_methods_mapping().items():
             output_data = self._call_method(wrapped, input_data)
             out_type = DatasetAnalyzer.analyze(output_data)
+
             methods[exposed] = (wrapped, arg_type, out_type)
-        return methods
+            requirements += out_type.requirements
+        return methods, requirements
 
     def unbind(self):
         """
@@ -109,6 +124,7 @@ class ModelWrapper(EboniteParams):
         """
         self.model = None
         self.methods = None
+        self.requirements = None
         return self
 
     @property
@@ -152,6 +168,16 @@ class ModelWrapper(EboniteParams):
             return getattr(self, wrapped)(input_data)
         return getattr(self.model, wrapped)(input_data)
 
+    def _model_requirements(self) -> Requirements:
+        """
+        Should return runtime requirements of bound model.
+        By default auto-detects them via Python interpreter internals.
+        This is not 100% robust so we recommend to re-implement this method in subclasses.
+
+        :return: :class:`.Requirements` object representing runtime requirements of bound module object
+        """
+        return get_object_requirements(self.model)
+
     @abstractmethod
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
         """
@@ -187,9 +213,21 @@ class ModelWrapper(EboniteParams):
         obj.io = self.io
         obj.model = self.model
         obj.methods = self.methods
+        obj.requirements = self.requirements
         for field in get_class_fields(cls):
             setattr(obj, field.name, getattr(self, field.name))
         return obj
+
+
+class LibModelWrapperMixin(ModelWrapper):
+    """
+    :class:`.ModelWrapper` mixin which provides model object requirements list consisting of
+    PIP packages represented by module objects in `libraries` field.
+    """
+    libraries = None
+
+    def _model_requirements(self) -> Requirements:
+        return Requirements([InstallableRequirement.from_module(lib) for lib in self.libraries])
 
 
 class WrapperArtifactCollection(ArtifactCollection, Unserializable):
