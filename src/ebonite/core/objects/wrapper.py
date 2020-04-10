@@ -350,6 +350,14 @@ class _ModelPickler(EbonitePickler):
         self.model = model
         self.refs = {}
 
+        # we couldn't import hook and analyzer at top as it leads to circular import failure
+        from ebonite.core.analyzer.model import CallableMethodModelHook, ModelAnalyzer
+        known_types = set()
+        for hook in ModelAnalyzer.hooks:
+            if not isinstance(hook, CallableMethodModelHook):
+                known_types.update(hook.valid_types)
+        self.known_types = tuple(known_types)
+
     # pickle "hook" for overriding serialization of objects
     def save(self, obj, save_persistent_id=True):
         """
@@ -365,9 +373,9 @@ class _ModelPickler(EbonitePickler):
             # at starting point, follow usual path not to fall into infinite loop
             return super().save(obj, save_persistent_id)
 
-        io = self._safe_analyze(obj)
-        if io is None or isinstance(io, PickleModelIO):
-            # no IO or Pickle IO found, follow usual path
+        io = self._get_non_pickle_io(obj)
+        if io is None:
+            # no non-Pickle IO found, follow usual path
             return super().save(obj, save_persistent_id)
 
         # found model with non-pickle serialization:
@@ -376,18 +384,26 @@ class _ModelPickler(EbonitePickler):
         self.refs[obj_uuid] = (io, obj)
         return super().save(_ExternalRef(obj_uuid), save_persistent_id)
 
-    def _safe_analyze(self, obj):
+    def _get_non_pickle_io(self, obj):
         """
-        Checks if obj has io
+        Checks if obj has non-Pickle IO and returns it
 
         :param obj: object to check
-        :return: :class:`ModelIO` instance or None
+        :return: non-Pickle :class:`ModelIO` instance or None
         """
+
+        # avoid calling heavy analyzer machinery for "unknown" objects:
+        # they are either non-models or callables
+        if not isinstance(obj, self.known_types):
+            return None
+
         # we couldn't import analyzer at top as it leads to circular import failure
         from ebonite.core.analyzer.model import ModelAnalyzer
         try:
-            return ModelAnalyzer._find_hook(obj)._wrapper_factory().io
+            io = ModelAnalyzer._find_hook(obj)._wrapper_factory().io
+            return None if isinstance(io, PickleModelIO) else io
         except ValueError:
+            # non-model object
             return None
 
 

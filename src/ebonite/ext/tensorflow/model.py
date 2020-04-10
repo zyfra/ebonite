@@ -193,7 +193,9 @@ class TFTensorHook(CanIsAMustHookMixin, BindingModelHook):
     """
     Hook for tensorflow models
     """
+    valid_types = [tf.Tensor, list]
 
+    # here we couldn't use `TypeHookMixin` as we expect lists of `tf.Tensor`s only
     def must_process(self, obj) -> bool:
         """
         Returns `True` if object is a tf.Tensor or list of tf.Tensors
