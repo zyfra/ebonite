@@ -56,6 +56,9 @@ class EboniteApi:
                           endpoint_name='tasks',
                           handler=self.tasks,
                           methods=['GET','POST'])
+        self.add_endpoint(endpoint='/tasks/<int:id>',
+                          endpoint_name='get_update_delete_tasks_by_id',
+                          handler=self.get_update_delete_tasks_by_id)
 
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
@@ -191,6 +194,42 @@ class EboniteApi:
             else:
                 return Response(status=400,
                                 response={'errormsg':'Request body should contain valid task_name and project_id'})
+
+    def get_update_delete_tasks_by_id(self, id:int):
+        if request.method == 'GET':
+            try:
+                task = self.ebonite.meta_repo.get_task_by_id(id)
+                return Response(status=200, response=pj.dumps(task))
+            except NonExistingTaskError:
+                return Response(status=404, response=json.dumps({'errormsg':f'Task with id {id} does not exist'}))
+        elif request.method == 'PATCH':
+            body = request.get_json(force=True)
+            task_name = body.get('name')
+            proj_id = body.get('project_id')
+            if task_name and proj_id:
+                task = Task(id=id, project_id=int(proj_id), name=task_name)
+                try:
+                    self.ebonite.meta_repo.update_task(task)
+                    return Response(status=204)
+                except NonExistingTaskError:
+                    return Response(status=404, response=json.dumps(
+                        {'errormsg': f'Task with id {id} in project {proj_id} does not exist'}))
+            else:
+                return Response(status=400, response=json.dumps(
+                    {'errormsg':'Request body should contain valid task_name and project id'}))
+        elif request.method == 'DELETE':
+            cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
+            task = self.ebonite.meta_repo.get_task_by_id(id)
+            if not task:
+                return Response(status=404, response=json.dumps({'erromsg':f'Task with id {id} does not exist'}))
+            else:
+                if cascade:
+                    self.ebonite.delete_task_cascade(task)
+                    return Response(status=204)
+                else:
+                    self.ebonite.meta_repo.delete_task(task)
+                    return Response(status=204)
+
 
 
 
