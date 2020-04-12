@@ -2,13 +2,14 @@ import contextlib
 import os
 import tempfile
 
+import catboost
 from catboost import CatBoostClassifier, CatBoostRegressor
 from pyjackson.decorators import make_string
 
-from ebonite.core.analyzer.base import CanIsAMustHookMixin
+from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
+from ebonite.core.objects.wrapper import LibModelWrapperMixin, ModelIO, ModelWrapper
 
 
 class CatBoostModelIO(ModelIO):
@@ -54,11 +55,13 @@ class CatBoostModelIO(ModelIO):
         return model
 
 
-class CatBoostModelWrapper(ModelWrapper):
+class CatBoostModelWrapper(LibModelWrapperMixin):
     """
     :class:`ebonite.core.objects.ModelWrapper` for CatBoost models.
     `.model` attribute is a `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor` instance
     """
+    libraries = [catboost]
+
     def __init__(self):
         super().__init__(CatBoostModelIO())
 
@@ -72,19 +75,11 @@ class CatBoostModelWrapper(ModelWrapper):
 
 
 @make_string(include_name=True)
-class CatBoostModelHook(BindingModelHook, CanIsAMustHookMixin):
+class CatBoostModelHook(BindingModelHook, TypeHookMixin):
     """
     Hook for CatBoost models
     """
-
-    def must_process(self, obj) -> bool:
-        """
-        Returns `True` if object is `catboost.CatBoostClassifier` or `catboost.CatBoostRegressor`
-
-        :param obj: obj to check
-        :return: `True` or `False`
-        """
-        return isinstance(obj, (CatBoostClassifier,  CatBoostRegressor))
+    valid_types = [CatBoostClassifier,  CatBoostRegressor]
 
     def _wrapper_factory(self) -> ModelWrapper:
         """

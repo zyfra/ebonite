@@ -6,11 +6,11 @@ from pyjackson.errors import DeserializationError, SerializationError
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
-from ebonite.core.objects import DatasetType
+from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
 from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
-class TFTensorDatasetType(DatasetType, ListTypeWithSpec):
+class TFTensorDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
     """
     :class:`.DatasetType` implementation for `tensorflow.Tensor` objects
     which converts them to built-in Python lists and vice versa.
@@ -20,6 +20,7 @@ class TFTensorDatasetType(DatasetType, ListTypeWithSpec):
     """
 
     real_type = tf.Tensor
+    libraries = [tf]
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         self.shape = (None, ) + shape[1:]

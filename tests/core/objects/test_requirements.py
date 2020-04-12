@@ -36,6 +36,18 @@ def test_resolve_str_list_arg():
     assert req == [r.to_str() for r in actual_reqs.installable]
 
 
+def test_installable_requirement__from_module():
+    import pandas as pd
+    assert InstallableRequirement.from_module(pd).to_str() == f'pandas=={pd.__version__}'
+
+    import numpy as np
+    assert InstallableRequirement.from_module(np).to_str() == f'numpy=={np.__version__}'
+
+    import sklearn as sk
+    assert InstallableRequirement.from_module(sk).to_str() == f'scikit-learn=={sk.__version__}'
+    assert InstallableRequirement.from_module(sk, 'xyz').to_str() == f'xyz=={sk.__version__}'
+
+
 def test_custom_requirement__source():
     from ebonite.core import objects
     package = CustomRequirement.from_module(objects)

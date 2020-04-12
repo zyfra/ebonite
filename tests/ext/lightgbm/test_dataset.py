@@ -21,11 +21,13 @@ def dtype_df(dataset_df):
 
 
 def test_hook_np(dtype_np):
+    assert set(dtype_np.requirements.modules) == {'lightgbm', 'numpy'}
     assert issubclass(dtype_np, LightGBMDatasetType)
     assert issubclass(dtype_np.inner, NumpyNdarrayDatasetType)
 
 
 def test_hook_df(dtype_df):
+    assert set(dtype_df.requirements.modules) == {'lightgbm', 'pandas'}
     assert issubclass(dtype_df, LightGBMDatasetType)
     assert issubclass(dtype_df.inner, DataFrameType)
 

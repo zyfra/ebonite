@@ -7,9 +7,8 @@ import lightgbm as lgb
 
 from ebonite.core.analyzer.base import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
-from ebonite.core.objects import ModelIO, ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, LocalFileBlob
-from ebonite.core.objects.wrapper import FilesContextManager
+from ebonite.core.objects.wrapper import FilesContextManager, LibModelWrapperMixin, ModelIO, ModelWrapper
 
 
 class LightGBMModelIO(ModelIO):
@@ -30,10 +29,12 @@ class LightGBMModelIO(ModelIO):
         return lgb.Booster(model_file=model_file)
 
 
-class LightGBMModelWrapper(ModelWrapper):
+class LightGBMModelWrapper(LibModelWrapperMixin):
     """
     :class:`.ModelWrapper` implementation for `lightgbm.Booster` type
     """
+    libraries = [lgb]
+
     def __init__(self):
         super().__init__(LightGBMModelIO())
 

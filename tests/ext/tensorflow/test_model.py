@@ -35,6 +35,9 @@ def _check_model_wrapper(graph, model, feed_dict, tmpdir):
         tmw = ModelAnalyzer.analyze(model, input_data=feed_dict)
         assert tmw.model.tensors is model
 
+        expected_requirements = {'tensorflow', 'numpy'}
+        assert set(tmw.requirements.modules) == expected_requirements
+
         pred = tmw.call_method('predict', feed_dict)
 
         with tmw.dump() as artifact:
@@ -49,3 +52,5 @@ def _check_model_wrapper(graph, model, feed_dict, tmpdir):
 
     pred2 = tmw.call_method('predict', feed_dict)
     assert pred2 == pred
+
+    assert set(tmw.requirements.modules) == expected_requirements

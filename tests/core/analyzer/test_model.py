@@ -5,6 +5,7 @@ from typing import Dict, Optional
 import numpy as np
 import pytest
 
+from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook, ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
 from ebonite.core.objects.wrapper import ModelIO, ModelWrapper
@@ -46,15 +47,11 @@ class _SummerModelWrapper(ModelWrapper):
         }
 
 
-class _SummerModelHook(BindingModelHook):
+class _SummerModelHook(BindingModelHook, TypeHookMixin):
+    valid_types = [_SummerModel]
+
     def _wrapper_factory(self) -> ModelWrapper:
         return _SummerModelWrapper()
-
-    def can_process(self, obj) -> bool:
-        return isinstance(obj, _SummerModel)
-
-    def must_process(self, obj) -> bool:
-        return False
 
 
 def _wrap_model(model):
