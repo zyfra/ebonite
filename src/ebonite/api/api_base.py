@@ -1,12 +1,12 @@
 import json
-from typing import List, Callable
+from typing import Callable, List
 
 import pyjackson as pj
 from flask import Flask, Response, request
 
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
-from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ExistingTaskError, NonExistingTaskError
+from ebonite.core.errors import ExistingProjectError, ExistingTaskError, NonExistingProjectError, NonExistingTaskError
 from ebonite.core.objects.core import Project, Task
 from ebonite.repository.artifact.base import NoSuchArtifactError
 

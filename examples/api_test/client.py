@@ -1,57 +1,50 @@
 import json
+from pprint import pprint
 
 import requests
 
-# Healthchecks
-docker_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/docker')
-print(docker_healthcheck.status_code)
-print(docker_healthcheck.content)
-metadata_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/metadata')
-print(metadata_healthcheck.status_code)
-print(metadata_healthcheck.content)
-artifact_healthcheck = requests.get('http://127.0.0.1:5000/healthcheck/artifact')
-print(artifact_healthcheck.status_code)
-print(artifact_healthcheck.content)
 
-# create project with error cases
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': 'proj1'}))
-print(create_project.status_code)
-print(create_project.content)
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': 'proj2'}))
-print(create_project.status_code)
-print(create_project.content)
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': 'proj3'}))
-print(create_project.status_code)
-print(create_project.content)
+def get_next_id():
+    for i in range(1,100):
+        yield i
 
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'asd': 'aaaa'}))
-print(create_project.status_code)
-print(create_project.content)
-
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': 'aaaa'}))
-print(create_project.status_code)
-print(create_project.content)
-
-create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps([{'name': 'b'}, {'name': 'a'}]))
-print(create_project.status_code)
-print(create_project.content)
+t_id_gen = get_next_id()
+for i in range(1,4):
+    proj_name = f'project_{i}'
+    create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': proj_name}))
+    if create_project.status_code == 201:
+        print(f'Project {proj_name} created')
+    for _ in range(1,4):
+        task_name = f'task_{next(t_id_gen)}'
+        create_task = requests.post('http://127.0.0.1:5000/tasks', data=json.dumps({'name': task_name, 'project_id':i}))
+        if create_task.status_code == 201:
+            print(f'Task {task_name} created')
 
 get_all_projects = requests.get('http://127.0.0.1:5000/projects')
-print(get_all_projects.status_code)
-print(get_all_projects.content)
+print('All projects in repository')
+pprint(get_all_projects.json())
+get_all_tasks = requests.get('http://127.0.0.1:5000/tasks?project_id=1')
+print('All tasks in repository for project with id 1')
+pprint(get_all_tasks.json())
 
-# Get, update, delete project
-print('Get project')
+print('Updating project with id 1')
+update_project = requests.patch('http://127.0.0.1:5000/projects/1', data=json.dumps({'name': 'project_updated_1'}))
+print('Getting project with id 1 from repository')
 get_project_by_id = requests.get('http://127.0.0.1:5000/projects/1')
-print(get_project_by_id.status_code)
-print(get_project_by_id.content)
-
-print('Update project')
-update_project = requests.patch('http://127.0.0.1:5000/projects/1', data=json.dumps({'name': 'ddd'}))
-print(update_project.status_code)
-print(update_project.content)
-
-print('Delete project')
+pprint(get_project_by_id.json())
+print('Deleting project with id 3 w/o cascade')
 delete_project = requests.delete('http://127.0.0.1:5000/projects/3?cascade=0')
-print(delete_project.status_code)
-print(delete_project.content)
+pprint(delete_project.content)
+print('All projects in repository')
+get_all_projects = requests.get('http://127.0.0.1:5000/projects')
+pprint(get_all_projects.c)
+print('Deleting project with id 2 with cascade')
+delete_project = requests.delete('http://127.0.0.1:5000/projects/2?cascade=1')
+pprint(delete_project.content)
+print('All projects in repository')
+get_all_projects = requests.get('http://127.0.0.1:5000/projects')
+pprint(get_all_projects.json())
+
+print('Trying to get task with id 7')
+get_task = requests.get('http://127.0.0.1:5000/tasks/7')
+pprint(get_task.json())
