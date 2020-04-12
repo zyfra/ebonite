@@ -11,7 +11,7 @@ from ebonite.core.objects.core import Project, Task
 from ebonite.repository.artifact.base import NoSuchArtifactError
 
 
-class EboniteApi:
+class EboniteAPI:
     """
     API that provides ability to interact with Ebonite object. Based on Flask framework
     :param name: name of the flask application
@@ -185,7 +185,8 @@ class EboniteApi:
         if proj_id and proj_id.isnumeric():
             proj = self.ebonite.meta_repo.get_project_by_id(int(proj_id))
             if proj:
-                return Response(status=200, response=json.dumps([pj.dumps(t) for t in proj.tasks]))
+                return Response(status=200, response=json.dumps(
+                    [pj.dumps(self.ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]))
             else:
                 return Response(status=404, response=json.dumps(
                     {'errormsg': f'Project with id {proj_id} is not found'}))
@@ -247,7 +248,7 @@ class EboniteApi:
             return Response(status=400, response=json.dumps(
                 {'errormsg': 'Request body should contain valid task_name and project id'}))
 
-    def delete_task(self, id:int) -> Response:
+    def delete_task(self, id: int) -> Response:
         """
         Deletes either only task or cascadely deletes everything linked to it from metadata repository
         :param id: id of task
