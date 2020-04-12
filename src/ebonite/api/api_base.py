@@ -247,7 +247,7 @@ class EboniteApi:
             return Response(status=400, response=json.dumps(
                 {'errormsg': 'Request body should contain valid task_name and project id'}))
 
-    def delete_task(self, id):
+    def delete_task(self, id:int) -> Response:
         """
         Deletes either only task or cascadely deletes everything linked to it from metadata repository
         :param id: id of task
