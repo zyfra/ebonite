@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import os
 
 import ebonite
 from ebonite import Ebonite
