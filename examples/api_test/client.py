@@ -5,18 +5,19 @@ import requests
 
 
 def get_next_id():
-    for i in range(1,100):
+    for i in range(1, 100):
         yield i
 
+
 t_id_gen = get_next_id()
-for i in range(1,4):
+for i in range(1, 4):
     proj_name = f'project_{i}'
     create_project = requests.post('http://127.0.0.1:5000/projects', data=json.dumps({'name': proj_name}))
     if create_project.status_code == 201:
         print(f'Project {proj_name} created')
-    for _ in range(1,4):
+    for _ in range(1, 4):
         task_name = f'task_{next(t_id_gen)}'
-        create_task = requests.post('http://127.0.0.1:5000/tasks', data=json.dumps({'name': task_name, 'project_id':i}))
+        create_task = requests.post('http://127.0.0.1:5000/tasks', data=json.dumps({'name': task_name, 'project_id': i}))
         if create_task.status_code == 201:
             print(f'Task {task_name} created')
 
