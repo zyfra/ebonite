@@ -1,12 +1,12 @@
-import json
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import pyjackson as pj
-from flask import Flask, Response, request
+from flask import Flask, Response, jsonify, request
 
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
-from ebonite.core.errors import ExistingProjectError, ExistingTaskError, NonExistingProjectError, NonExistingTaskError
+from ebonite.core.errors import (ExistingProjectError, ExistingTaskError, NonExistingProjectError, NonExistingTaskError,
+                                 ProjectWithRelationshipError, TaskWithRelationshipError)
 from ebonite.core.objects.core import Project, Task
 from ebonite.repository.artifact.base import NoSuchArtifactError
 
@@ -68,30 +68,29 @@ class EboniteAPI:
         self.app.add_url_rule(endpoint, endpoint_name, handler, methods=methods)
 
     @staticmethod
-    def docker_healthcheck() -> Response:
+    def docker_healthcheck() -> Tuple[Response, int]:
         """
         Checks if Docker daemon is ready to use
         :return: Response object which signifies if daemon is healthy
         """
         if is_docker_running():
-            return Response(status=200, response=json.dumps({'msg': 'Docker daemon is healthy'}))
+            return jsonify({'msg': 'Docker daemon is healthy'}), 200
         else:
-            return Response(status=404, response=json.dumps(
-                {'errormsg': 'Failed to establish connection to docker daemon'}))
+            return jsonify({'errormsg': 'Failed to establish connection to docker daemon'}), 404
 
-    def metadata_healthcheck(self) -> Response:
+    def metadata_healthcheck(self) -> Tuple[Response, int]:
         """
         Checks if metadata repository is healthy by trying to get any project from it
         :return: Response object which signifies if metadata repository is healthy
         """
         try:
+            # TODO: Change exception block
             self.ebonite.meta_repo.get_project_by_id(1)
-            return Response(status=200, response=json.dumps({'msg': 'Metadata repository is healthy'}))
+            return jsonify({'msg': 'Metadata repository is healthy'}), 200
         except Exception as e:
-            return Response(status=404, response=json.dumps(
-                {'errormsg': f'Error {e} while trying to establish connection to metadata repository'}))
+            return jsonify({'errormsg': f'Error {e} while trying to establish connection to metadata repository'}), 404
 
-    def artifact_healthcheck(self) -> Response:
+    def artifact_healthcheck(self) -> Tuple[Response, int]:
         """
         Checks if artifact repository is healthy by trying to get any artifact from it.
         Might return NoSuchArtifactError which signifies that repository is ready to use
@@ -99,22 +98,21 @@ class EboniteAPI:
         """
         try:
             self.ebonite.artifact_repo._get_artifact('1')
-            return Response(status=200, response=json.dumps({'msg': 'Artifact repository is healthy'}))
+            return jsonify({'msg': 'Artifact repository is healthy'}), 200
         except NoSuchArtifactError:
-            return Response(status=200, response=json.dumps({'msg': 'Artifact repository is healthy'}))
+            return jsonify({'msg': 'Artifact repository is healthy'}), 200
         except Exception as e:
-            return Response(status=404, response=json.dumps(
-                {'errormsg': f'Error {e} while trying to establish connection to artifact repository'}))
+            return jsonify({'errormsg': f'Error {e} while trying to establish connection to artifact repository'}), 404
 
-    def get_projects(self) -> Response:
+    def get_projects(self) -> Tuple[Response, int]:
         """
         Gets all projects from metadata repository
         :return: All projects in database
         """
         projects = self.ebonite.meta_repo.get_projects()
-        return Response(status=200, response=json.dumps([pj.dumps(p) for p in projects]))
+        return jsonify({'projects': [pj.dumps(p) for p in projects]}), 200
 
-    def create_project(self) -> Response:
+    def create_project(self) -> Tuple[Response, int]:
         """
         Creates project in metadata repository
         :return: Response with created object or error
@@ -123,14 +121,14 @@ class EboniteAPI:
         if (proj and isinstance(proj, dict)) and proj.get('name'):
             proj = Project(name=proj['name'])
         else:
-            return Response(status=404, response=json.dumps({'errormsg': 'Can not parse request body'}))
+            return jsonify({'errormsg': 'Can not parse request body'}), 404
         try:
             proj = self.ebonite.meta_repo.create_project(proj)
-            return Response(status=201, response=pj.dumps(proj), content_type='application/json')
+            return jsonify({'project': pj.dumps(proj)}), 201
         except ExistingProjectError:
-            return Response(status=400, response=json.dumps({'errormsg': 'Project with given name already exists'}))
+            return jsonify({'errormsg': 'Project with given name already exists'}), 400
 
-    def get_project(self, id: int) -> Response:
+    def get_project(self, id: int) -> Tuple[Response, int]:
         """
         Gets single project from metadata repository
         :param id: id of project
@@ -138,11 +136,11 @@ class EboniteAPI:
         """
         project = self.ebonite.meta_repo.get_project_by_id(id)
         if project:
-            return Response(status=201, response=pj.dumps(project), content_type='application/json')
+            return jsonify({'project': pj.dumps(project)}), 200
         else:
-            return Response(status=404, response=json.dumps({'errormsg': f'Project with id {id} does not exist'}))
+            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 
-    def update_project(self, id: int) -> Response:
+    def update_project(self, id: int) -> Tuple[Response, int]:
         """
         Changes name of project in metadata repository
         :param id: id of project
@@ -152,14 +150,14 @@ class EboniteAPI:
         if (proj and isinstance(proj, dict)) and proj.get('name'):
             proj = Project(id=id, name=proj['name'])
         else:
-            return Response(status=404, response=json.dumps({'errormsg': 'Can not parse request body'}))
+            return jsonify({'errormsg': 'Can not parse request body'}), 404
         try:
             self.ebonite.meta_repo.update_project(proj)
-            return Response(status=204)
+            return jsonify({}), 204
         except NonExistingProjectError:
-            return Response(status=400, response=json.dumps({'errormsg': f'Project with id {id} does not exist'}))
+            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 400
 
-    def delete_project(self, id: int) -> Response:
+    def delete_project(self, id: int) -> Tuple[Response, int]:
         """
         Deletes either only project or cascadely deletes everything linked to it from metadata repository
         :param id: id of project
@@ -168,15 +166,18 @@ class EboniteAPI:
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         proj = self.ebonite.meta_repo.get_project_by_id(id)
         if not proj:
-            return Response(status=404, response=json.dumps({'errormsg': f'Project with id {id} does not exist'}))
+            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         if cascade:
             self.ebonite.delete_proj_cascade(proj)
-            return Response(status=204)
+            return jsonify({}), 204
         else:
-            self.ebonite.meta_repo.delete_project(proj)
-            return Response(status=204)
+            try:
+                self.ebonite.meta_repo.delete_project(proj)
+                return jsonify({}), 204
+            except ProjectWithRelationshipError as e:
+                return jsonify({'errormsg': str(e)}), 400
 
-    def get_tasks(self) -> Response:
+    def get_tasks(self) -> Tuple[Response, int]:
         """
         Get all tasks from metadata repository for given project
         :return: Response with all project for given project or error
@@ -185,17 +186,13 @@ class EboniteAPI:
         if proj_id and proj_id.isnumeric():
             proj = self.ebonite.meta_repo.get_project_by_id(int(proj_id))
             if proj:
-                return Response(status=200, response=json.dumps(
-                    [pj.dumps(self.ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]))
+                return jsonify({'tasks': [pj.dumps(self.ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]}), 200
             else:
-                return Response(status=404, response=json.dumps(
-                    {'errormsg': f'Project with id {proj_id} is not found'}))
+                return jsonify({'errormsg': f'Project with id {proj_id} is not found'}), 404
         else:
-            # TODO: Make adequate validation method and error for it
-            return Response(status=400, response=json.dumps(
-                {'errormsg': 'You should provide valid project_id as URL parameter'}))
+            return jsonify({'errormsg': 'You should provide valid project_id as URL parameter'}), 400
 
-    def create_task(self) -> Response:
+    def create_task(self) -> Tuple[Response, int]:
         """
         Creates task in metadata repository
         :return: Response with created task or error
@@ -207,15 +204,13 @@ class EboniteAPI:
             task = Task(name=task_name, project_id=int(proj_id))
             try:
                 task = self.ebonite.meta_repo.create_task(task)
-                return Response(status=201, response=pj.dumps(task))
+                return jsonify({'task': pj.dumps(task)}), 201
             except ExistingTaskError:
-                return Response(status=404, response=json.dumps(
-                    {'errormsg': f'Task with name {task_name} already exists'}))
+                return jsonify({'errormsg': f'Task with name {task_name} already exists'}), 404
         else:
-            return Response(status=400,
-                            response={'errormsg': 'Request body should contain valid task_name and project_id'})
+            return jsonify({'errormsg': 'Request body should contain valid task_name and project_id'}), 400
 
-    def get_task(self, id: int) -> Response:
+    def get_task(self, id: int) -> Tuple[Response, int]:
         """
         Gets task from metadata repository
         :param id: id of the task
@@ -223,11 +218,11 @@ class EboniteAPI:
         """
         try:
             task = self.ebonite.meta_repo.get_task_by_id(id)
-            return Response(status=200, response=pj.dumps(task))
+            return jsonify({'task': pj.dumps(task)}), 200
         except NonExistingTaskError:
-            return Response(status=404, response=json.dumps({'errormsg': f'Task with id {id} does not exist'}))
+            return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
 
-    def update_task(self, id: int) -> Response:
+    def update_task(self, id: int) -> Tuple[Response, int]:
         """
         Changes name of task in metadata repository
         :param id: id of task
@@ -240,15 +235,13 @@ class EboniteAPI:
             task = Task(id=id, project_id=int(proj_id), name=task_name)
             try:
                 self.ebonite.meta_repo.update_task(task)
-                return Response(status=204)
+                return jsonify({}), 204
             except NonExistingTaskError:
-                return Response(status=404, response=json.dumps(
-                    {'errormsg': f'Task with id {id} in project {proj_id} does not exist'}))
+                return jsonify({'errormsg': f'Task with id {id} in project {proj_id} does not exist'}), 404
         else:
-            return Response(status=400, response=json.dumps(
-                {'errormsg': 'Request body should contain valid task_name and project id'}))
+            return jsonify({'errormsg': 'Request body should contain valid task_name and project id'}), 400
 
-    def delete_task(self, id: int) -> Response:
+    def delete_task(self, id: int) -> Tuple[Response, int]:
         """
         Deletes either only task or cascadely deletes everything linked to it from metadata repository
         :param id: id of task
@@ -257,11 +250,14 @@ class EboniteAPI:
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         task = self.ebonite.meta_repo.get_task_by_id(id)
         if not task:
-            return Response(status=404, response=json.dumps({'erromsg': f'Task with id {id} does not exist'}))
+            return jsonify({'erromsg': f'Task with id {id} does not exist'}), 404
         else:
             if cascade:
                 self.ebonite.delete_task_cascade(task)
-                return Response(status=204)
+                return jsonify({}), 204
             else:
-                self.ebonite.meta_repo.delete_task(task)
-                return Response(status=204)
+                try:
+                    self.ebonite.meta_repo.delete_task(task)
+                    return jsonify({}), 204
+                except TaskWithRelationshipError as e:
+                    return jsonify({'errormsg': str(e)}), 404
