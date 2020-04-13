@@ -169,7 +169,7 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
 
 
 @pytest.mark.parametrize(("python_builder", "server_reqs"), [
-    ("python_builder_sync", {'flasgger==0.9.3'}),
+    ("python_builder_sync", {'flasgger==0.9.4'}),
     ("python_builder_async", {'aiohttp_swagger'})
 ])
 def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data, server_reqs, request):
@@ -178,7 +178,7 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data
 
     from setup import setup_args
     _check_requirements(tmpdir, {*setup_args['install_requires'], *server_reqs,
-                                 'pandas==0.25.1', 'scikit-learn==0.22', 'numpy==1.17.3'})  # model reqs
+                                 'pandas==1.0.3', 'scikit-learn==0.22.2', 'numpy==1.18.2'})  # model reqs
 
     # TODO make ModelLoader.load cwd-independent
     server = subprocess.Popen(args, env=env, cwd=tmpdir)

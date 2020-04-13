@@ -29,7 +29,7 @@ def test_wrapper__predict(wrapper, dmatrix_np):
 
 
 def test_wrapper__predict_not_dmatrix(wrapper):
-    data = [1]
+    data = np.asarray([[1]])
     predict = wrapper.call_method('predict', data)
     assert isinstance(predict, np.ndarray)
     assert len(predict) == len(data)
