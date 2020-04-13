@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
                                  ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError)
+                                 ImageWithRelationshipError, ModelWithRelationshipError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingProjectError, NonExistingTaskError, ProjectWithRelationshipError,
+                                 TaskWithRelationshipError)
 from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
@@ -116,13 +118,18 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             obj._id = p.id
             return obj
 
-    def _delete_object(self, object_type: Type[Attaching], obj, error_type):
+    def _delete_object(self, object_type: Type[Attaching], obj, ne_error_type, ie_error_type):
         with self._session() as s:
             p = s.query(object_type).filter(object_type.id == obj.id).first()
             if p is None:
-                raise error_type(obj)
+                raise ne_error_type(obj)
             logger.debug('Deleting object %s', p)
-            s.delete(p)
+            try:
+                s.delete(p)
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                raise ie_error_type(obj)
 
     @bind_to_self
     def get_projects(self) -> List[Project]:
@@ -158,7 +165,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return project
 
     def delete_project(self, project: Project):
-        self._delete_object(self.projects, project, NonExistingProjectError)
+        self._delete_object(self.projects, project, NonExistingProjectError, ProjectWithRelationshipError)
         project.unbind_meta_repo()
 
     @bind_to_self
@@ -199,7 +206,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return task
 
     def delete_task(self, task: Task):
-        self._delete_object(self.tasks, task, NonExistingTaskError)
+        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithRelationshipError)
         task.unbind_meta_repo()
 
     @bind_to_self
@@ -240,7 +247,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return model
 
     def delete_model(self, model: Model):
-        self._delete_object(self.models, model, NonExistingModelError)
+        self._delete_object(self.models, model, NonExistingModelError, ModelWithRelationshipError)
         model.unbind_meta_repo()
 
     @bind_to_self
@@ -273,7 +280,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return image
 
     def delete_image(self, image: Image):
-        self._delete_object(self.images, image, NonExistingImageError)
+        self._delete_object(self.images, image, NonExistingImageError, ImageWithRelationshipError)
         image.unbind_meta_repo()
 
     @bind_to_self

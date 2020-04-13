@@ -78,7 +78,8 @@ class ExistingEnvironmentError(MetadataError):
 class NonExistingEnvironmentError(MetadataError):
     def __init__(self, environment: RuntimeEnvironment):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
-        super(NonExistingEnvironmentError, self).__init__('Environment with name "{}" does not exist'.format(environment))
+        super(NonExistingEnvironmentError, self).__init__(
+            'Environment with name "{}" does not exist'.format(environment))
 
 
 class ExistingInstanceError(MetadataError):
@@ -122,6 +123,30 @@ class ModelWithoutIdError(MetadataError):
     def __init__(self, model: Model):
         model = model.name if isinstance(model, Model) else model
         super(ModelWithoutIdError, self).__init__('Model "{}" id is None'.format(model))
+
+
+class ProjectWithRelationshipError(MetadataError):
+    def __init__(self, project: Project):
+        project = project.name if isinstance(project, Project) else project
+        super(ProjectWithRelationshipError, self).__init__(f'Project {project} has foreign key and can not be deleted')
+
+
+class TaskWithRelationshipError(MetadataError):
+    def __init__(self, task: Task):
+        task = task.name if isinstance(task, Project) else task
+        super(TaskWithRelationshipError, self).__init__(f'Project {task} has foreign key and can not be deleted')
+
+
+class ModelWithRelationshipError(MetadataError):
+    def __init__(self, model: Model):
+        model = model.name if isinstance(model, Model) else model
+        super(ModelWithRelationshipError, self).__init__(f'Model {model} has foreign key and can not be deleted')
+
+
+class ImageWithRelationshipError(MetadataError):
+    def __init__(self, image: Image):
+        image = image.name if isinstance(image, Image) else image
+        super(ImageWithRelationshipError, self).__init__(f'Image {image} has foreign key and can not be deleted')
 
 
 class UnboundObjectError(MetadataError):
