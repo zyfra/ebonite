@@ -2,6 +2,7 @@ from typing import Callable, List, Tuple
 
 import pyjackson as pj
 from flask import Flask, Response, jsonify, request
+from pydantic import BaseModel, ValidationError
 
 from ebonite.build.docker import is_docker_running
 from ebonite.client.base import Ebonite
@@ -9,6 +10,15 @@ from ebonite.core.errors import (ExistingProjectError, ExistingTaskError, NonExi
                                  ProjectWithRelationshipError, TaskWithRelationshipError)
 from ebonite.core.objects.core import Project, Task
 from ebonite.repository.artifact.base import NoSuchArtifactError
+
+
+class ProjectBody(BaseModel):
+    name: str
+
+
+class TaskBody(BaseModel):
+    name: str
+    project_id: int
 
 
 class EboniteAPI:
@@ -32,6 +42,7 @@ class EboniteAPI:
         self.ebonite = None
 
         self.app_route_conf()
+        self.app_error_conf()
 
     def app_route_conf(self):
         self.app.before_first_request(self.init_ebonite)
@@ -57,6 +68,10 @@ class EboniteAPI:
         self.add_endpoint(endpoint='/tasks/<int:id>', endpoint_name='delete_task', handler=self.delete_task,
                           methods=['DELETE'])
 
+    def app_error_conf(self):
+        self.app.register_error_handler(Exception, self.unknown_exception_handler)
+        self.app.register_error_handler(ValidationError, self.validation_exception_handler)
+
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
 
@@ -66,6 +81,20 @@ class EboniteAPI:
     def add_endpoint(self, endpoint: str = None, endpoint_name: str = None, handler: Callable = None,
                      methods: List[str] = ['GET']):
         self.app.add_url_rule(endpoint, endpoint_name, handler, methods=methods)
+
+    @staticmethod
+    def unknown_exception_handler() -> Tuple[Response, int]:
+        """
+        Handles exceptions which aren't covered in methods or by another handlers
+        :return: Response with error message
+        """
+        return jsonify({'errormsg': 'Unknown exception. Check if your request is structured according to the docs. '
+                                    'If that does not help contact Ebonite development team '
+                                    'or create an issue on projects github page'}), 520
+
+    @staticmethod
+    def validation_exception_handler(exception) -> Tuple[Response, int]:
+        return jsonify({'errormsg': exception.json()}), 400
 
     @staticmethod
     def docker_healthcheck() -> Tuple[Response, int]:
@@ -84,7 +113,6 @@ class EboniteAPI:
         :return: Response object which signifies if metadata repository is healthy
         """
         try:
-            # TODO: Change exception block
             self.ebonite.meta_repo.get_project_by_id(1)
             return jsonify({'msg': 'Metadata repository is healthy'}), 200
         except Exception as e:
@@ -117,11 +145,8 @@ class EboniteAPI:
         Creates project in metadata repository
         :return: Response with created object or error
         """
-        proj = request.get_json(force=True)
-        if (proj and isinstance(proj, dict)) and proj.get('name'):
-            proj = Project(name=proj['name'])
-        else:
-            return jsonify({'errormsg': 'Can not parse request body'}), 404
+        proj = ProjectBody(**request.get_json(force=True))
+        proj = Project(name=proj.name)
         try:
             proj = self.ebonite.meta_repo.create_project(proj)
             return jsonify({'project': pj.dumps(proj)}), 201
@@ -197,18 +222,13 @@ class EboniteAPI:
         Creates task in metadata repository
         :return: Response with created task or error
         """
-        body = request.get_json(force=True)
-        proj_id = body.get('project_id')
-        task_name = body.get('name')
-        if proj_id and task_name:
-            task = Task(name=task_name, project_id=int(proj_id))
-            try:
-                task = self.ebonite.meta_repo.create_task(task)
-                return jsonify({'task': pj.dumps(task)}), 201
-            except ExistingTaskError:
-                return jsonify({'errormsg': f'Task with name {task_name} already exists'}), 404
-        else:
-            return jsonify({'errormsg': 'Request body should contain valid task_name and project_id'}), 400
+        body = TaskBody(**request.get_json(force=True))
+        task = Task(name=body.name, project_id=body.project_id)
+        try:
+            task = self.ebonite.meta_repo.create_task(task)
+            return jsonify({'task': pj.dumps(task)}), 201
+        except ExistingTaskError:
+            return jsonify({'errormsg': f'Task with name {body.name} already exists'}), 404
 
     def get_task(self, id: int) -> Tuple[Response, int]:
         """
