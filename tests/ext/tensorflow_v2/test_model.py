@@ -99,6 +99,9 @@ def test_model_wrapper(net, input_data, tmpdir, request):
 
     assert tmw.model is net
 
+    expected_requirements = {'tensorflow', 'numpy'}
+    assert set(tmw.requirements.modules) == expected_requirements
+
     prediction = tmw.call_method('predict', input_data)
 
     np.testing.assert_array_equal(orig_pred, prediction)
@@ -117,3 +120,5 @@ def test_model_wrapper(net, input_data, tmpdir, request):
     prediction2 = tmw.call_method('predict', input_data)
 
     np.testing.assert_array_equal(prediction, prediction2)
+
+    assert set(tmw.requirements.modules) == expected_requirements

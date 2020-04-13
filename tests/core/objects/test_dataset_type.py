@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pyjackson import deserialize, serialize
 from pyjackson.errors import DeserializationError, SerializationError
@@ -45,6 +46,10 @@ def test_inner_primitive_dataset_type(dt):
     assert payload == {'dt': {'type': 'primitive', 'ptype': 'int'}}
 
 
+def test_primitive_type_requirements(dt):
+    assert dt.requirements.modules == []
+
+
 @pytest.fixture
 def tlldt():
     return DatasetAnalyzer.analyze(['a', 1])
@@ -78,6 +83,11 @@ def test_inner_tuple_like_list_dataset_type(tlldt):
 
     assert payload == {'dt': {'type': 'tuple_like_list',
                               'items': [{'type': 'primitive', 'ptype': 'str'}, {'type': 'primitive', 'ptype': 'int'}]}}
+
+
+def test_tuple_like_list_type_requirements():
+    tlldt = DatasetAnalyzer.analyze(['a', 1, np.float32(4.2)])
+    assert tlldt.requirements.modules == ['numpy']
 
 
 @pytest.fixture
@@ -115,6 +125,11 @@ def test_inner_tuple_dataset_type(tdt):
                               'items': [{'type': 'primitive', 'ptype': 'str'}, {'type': 'primitive', 'ptype': 'int'}]}}
 
 
+def test_tuple_type_requirements():
+    tlldt = DatasetAnalyzer.analyze(('a', 1, np.float32(4.2)))
+    assert tlldt.requirements.modules == ['numpy']
+
+
 @pytest.fixture
 def ldt():
     return DatasetAnalyzer.analyze([1, 1])
@@ -150,6 +165,11 @@ def test_inner_list_dataset_type(ldt):
     assert payload == {'dt': {'type': 'list',
                               'dtype': {'type': 'primitive', 'ptype': 'int'},
                               'size': 2}}
+
+
+def test_list_type_requirements():
+    tlldt = DatasetAnalyzer.analyze([np.float32(7.3), np.float32(4.2)])
+    assert tlldt.requirements.modules == ['numpy']
 
 
 @pytest.fixture
@@ -216,3 +236,17 @@ def test_dict_with_list_dataset_type():
                                         'items': [{'type': 'primitive', 'ptype': 'str'}]}
                               }}
                        }
+
+
+def test_dict_type_requirements():
+    tlldt = DatasetAnalyzer.analyze({'a': 10, 'b': np.float32(4.2)})
+    assert tlldt.requirements.modules == ['numpy']
+
+
+def test_bytes_type():
+    b = b'hello'
+    bdt = DatasetAnalyzer.analyze(b)
+
+    assert bdt.serialize(b) == b
+    assert bdt.deserialize(b) == b
+    assert bdt.requirements.modules == []

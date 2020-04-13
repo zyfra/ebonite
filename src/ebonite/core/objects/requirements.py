@@ -64,6 +64,18 @@ class InstallableRequirement(Requirement):
         return self.package
 
     @classmethod
+    def from_module(cls, mod: ModuleType, package_name: str = None) -> 'InstallableRequirement':
+        """
+        Factory method to create :class:`InstallableRequirement` from module object
+
+        :param mod: module object
+        :param package_name: PIP package name if it is not equal to module name
+        :return: :class:`InstallableRequirement`
+        """
+        from ebonite.utils.module import get_module_version
+        return InstallableRequirement(mod.__name__, get_module_version(mod), package_name)
+
+    @classmethod
     def from_str(cls, name):
         """
         Factory method for creating :class:`InstallableRequirement` from string

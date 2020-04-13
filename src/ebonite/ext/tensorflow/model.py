@@ -11,7 +11,7 @@ from pyjackson.decorators import make_string
 from ebonite.core.analyzer.base import CanIsAMustHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob, LocalFileBlob
-from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
+from ebonite.core.objects.wrapper import FilesContextManager, LibModelWrapperMixin, ModelIO, ModelWrapper
 
 TF_MODEL_FILENAME = 'graph'
 
@@ -163,10 +163,12 @@ class TFTensorModelIO(ModelIO):
         return _Protobuf() if is_frozen else _Saver()
 
 
-class TFTensorModelWrapper(ModelWrapper):
+class TFTensorModelWrapper(LibModelWrapperMixin):
     """
     :class:`ebonite.core.objects.ModelWrapper` for tensorflow models. `.model` attribute is a list of output tensors
     """
+    libraries = [tf]
+
     def __init__(self):
         super().__init__(TFTensorModelIO())
 
@@ -193,7 +195,9 @@ class TFTensorHook(CanIsAMustHookMixin, BindingModelHook):
     """
     Hook for tensorflow models
     """
+    valid_types = [tf.Tensor, list]
 
+    # here we couldn't use `TypeHookMixin` as we expect lists of `tf.Tensor`s only
     def must_process(self, obj) -> bool:
         """
         Returns `True` if object is a tf.Tensor or list of tf.Tensors

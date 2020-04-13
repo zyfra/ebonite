@@ -19,11 +19,13 @@ def dtype_df(dmatrix_df):
 
 def test_hook_np(dtype_np):
     assert issubclass(dtype_np, DMatrixDatasetType)
+    assert dtype_np.requirements.modules == ['xgboost']
     assert dtype_np.is_from_list
 
 
 def test_hook_df(dtype_df):
     assert issubclass(dtype_df, DMatrixDatasetType)
+    assert dtype_df.requirements.modules == ['xgboost']
     assert not dtype_df.is_from_list
     assert dtype_df.feature_names == ['a']
 

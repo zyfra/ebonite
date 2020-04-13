@@ -22,6 +22,7 @@ def test_feed_dict_type__self_serialization(fdt, tensor):
     from ebonite.ext.tensorflow import FeedDictDatasetType
 
     assert issubclass(fdt, FeedDictDatasetType)
+    assert set(fdt.requirements.modules) == {'tensorflow', 'numpy'}
     payload = dumps(fdt)
     fdt2 = loads(payload, DatasetType)
     assert fdt == fdt2

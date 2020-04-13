@@ -18,7 +18,7 @@ from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifact
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
-from ebonite.utils.module import get_object_requirements, get_python_version
+from ebonite.utils.module import get_python_version
 
 
 def _get_current_user():
@@ -504,11 +504,7 @@ class Model(EboniteObject):
         if custom_requirements is not None:
             requirements = resolve_requirements(custom_requirements)
         else:
-            requirements = get_object_requirements(model_object)
-            requirements += get_object_requirements(input_data)
-            for method in wrapper.exposed_methods:
-                output_data = wrapper.call_method(method, input_data)
-                requirements += get_object_requirements(output_data)
+            requirements = wrapper.requirements
 
         if additional_requirements is not None:
             requirements += additional_requirements
