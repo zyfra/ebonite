@@ -4,7 +4,8 @@ from collections import Iterable
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
 
-from ebonite.core.objects import DatasetType
+from ebonite.core.analyzer.dataset import DatasetAnalyzer
+from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.base import EboniteParams
 
 
@@ -32,7 +33,7 @@ class DatasetSource(EboniteParams):
         pass
 
 
-class InMemoryDataset(DatasetSource, Unserializable):
+class InMemoryDataset(DatasetSource):  # TODO Unserializable
 
     def __init__(self, dataset_type: DatasetType, data: object, target_type: DatasetType = None, target: object = None):
         super().__init__(dataset_type, target_type)
@@ -47,3 +48,9 @@ class InMemoryDataset(DatasetSource, Unserializable):
 
     def get_target(self):
         return self.target
+
+    @classmethod
+    def from_object(cls, data, target=None):
+        return cls(DatasetAnalyzer.analyze(data), data,
+                   DatasetAnalyzer.analyze(target) if target is not None else None,
+                   target)

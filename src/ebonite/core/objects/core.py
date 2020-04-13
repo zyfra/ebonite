@@ -14,9 +14,12 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
+from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
+from ebonite.core.objects.dataset_source import DatasetSource
+from ebonite.core.objects.metric import Metric
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_python_version
 
@@ -184,11 +187,19 @@ class Task(EboniteObject):
     """
 
     def __init__(self, name: str, id: int = None, project_id: int = None,
-                 author: str = None, creation_date: datetime.datetime = None):
+                 author: str = None, creation_date: datetime.datetime = None,
+                 datasets: Dict[str, DatasetSource] = None,
+                 metrics: Dict[str, Metric] = None,
+                 input_type: DatasetType = None,
+                 output_type: DatasetType = None):
         super().__init__(id, name, author, creation_date)
+        self.output_type = output_type
+        self.input_type = input_type
+        self.datasets = datasets or {}
+        self._main_dataset = None if not len(self.datasets) else next(
+            datasets.values())  # FIXME lil kostyl for model creation
+        self.metrics = metrics or {}
         self.project_id = project_id
-        # self.metrics = metrics TODO
-        # self.sample_data = sample_data
         self._models: IndexDict[Model] = IndexDict('id', 'name')
         self.models: IndexDictAccessor[Model] = IndexDictAccessor(self._models)
 
@@ -252,7 +263,7 @@ class Task(EboniteObject):
     #  ##########API############
     @_with_meta
     @_with_artifact
-    def create_and_push_model(self, model_object, input_data, model_name: str = None, **kwargs) -> 'Model':
+    def create_and_push_model(self, model_object, model_name: str = None, **kwargs) -> 'Model':
         """
         Create :class:`Model` instance from model object and push it to repository
 
@@ -262,7 +273,7 @@ class Task(EboniteObject):
         :param kwargs: other :meth:`~Model.create` arguments
         :return: created :class:`Model`
         """
-        model = Model.create(model_object, input_data, model_name, **kwargs)
+        model = Model.create(model_object, self._main_dataset, model_name, **kwargs)
         return self.push_model(model)
 
     @_with_meta
@@ -288,6 +299,32 @@ class Task(EboniteObject):
         super(Task, self).bind_artifact_repo(repo)
         for model in self._models.values():
             model.bind_artifact_repo(repo)
+
+    def add_dataset(self, name, dataset: DatasetSource):
+        # TODO checks and stuff
+        if self.input_type is None:
+            self.input_type = dataset.dataset_type
+            self.output_type = dataset.target_type
+            self._main_dataset = dataset.get()  # FIXME
+        self.datasets[name] = dataset
+
+    def add_metric(self, name, metric: Metric):
+        # TODO checks
+        self.metrics[name] = metric
+
+    def evaluate_all(self):
+        result = {}
+        for dname, dataset in self.datasets.items():
+            result[dname] = {}
+            data = dataset.get()
+            target = dataset.get_target()
+            for mname, metric in self.metrics.items():
+                result[dname][mname] = {}
+                for model in self.models.values():
+                    predictions = model.wrapper.call_method('predict', data)  # FIXME only works for callable models
+                    score = metric.evaluate(target, predictions)
+                    result[dname][mname][model.name] = score
+        return result
 
 
 @make_string('id', 'name')
