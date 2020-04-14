@@ -93,8 +93,13 @@ class EboniteAPI:
                                     'or create an issue on projects github page'}), 520
 
     @staticmethod
-    def validation_exception_handler(exception) -> Tuple[Response, int]:
-        return jsonify({'errormsg': exception.json()}), 400
+    def validation_exception_handler(exception: ValidationError) -> Tuple[Response, int]:
+        """
+        Handles exception which occures during body validation in POST requests
+        :param exception: ValidationError which is thrown by pydantic
+        :return: Response with description of errors
+        """
+        return jsonify({'errormsg': exception.errors()}), 400
 
     @staticmethod
     def docker_healthcheck() -> Tuple[Response, int]:
