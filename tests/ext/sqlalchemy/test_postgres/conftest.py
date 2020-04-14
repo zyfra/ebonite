@@ -8,7 +8,7 @@ from ebonite.ext.sqlalchemy.repository import SQLAlchemyMetaRepository
 from tests.build.builder.test_docker import has_docker
 from tests.repository.metadata.conftest import create_metadata_hooks
 
-PG_PORT = 5435
+PG_PORT = 5432
 PG_USER = "postgres"
 PG_PASS = PG_USER
 PG_DB = "ebonite"
@@ -21,17 +21,17 @@ def postgres_server(pytestconfig):
         pytest.skip('skipping docker tests')
 
     with DockerContainer('postgres:alpine') \
-            .with_bind_ports(5432, PG_PORT) \
+            .with_exposed_ports(PG_PORT) \
             .with_env("POSTGRES_USER", PG_USER) \
             .with_env("POSTGRES_PASSWORD", PG_PASS) \
-            .with_env("POSTGRES_DB", PG_DB):
+            .with_env("POSTGRES_DB", PG_DB) as container:
         sleep(5)  # wait to ensure that PostgreSQL server has enough time to properly start
-        yield
+        yield container.get_exposed_port(PG_PORT)
 
 
 @pytest.fixture
 def postgres_meta(postgres_server):
-    repo = SQLAlchemyMetaRepository(f"postgresql://{PG_USER}:{PG_PASS}@localhost:{PG_PORT}/{PG_DB}")
+    repo = SQLAlchemyMetaRepository(f"postgresql://{PG_USER}:{PG_PASS}@localhost:{postgres_server}/{PG_DB}")
     yield repo
     Base.metadata.drop_all(repo._engine)
 

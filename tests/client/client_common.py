@@ -6,7 +6,7 @@ from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Model
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import train_model
+from tests.build.conftest import check_ebonite_port_free, train_model
 
 
 def test_get_or_create_task(ebnt: Ebonite):
@@ -124,6 +124,8 @@ def test_push_model_project_contains_two_tasks(ebnt: Ebonite, model: Model):
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_build_and_run_instance(ebnt, container_name):
     reg, data = train_model()
+
+    check_ebonite_port_free()
 
     instance = ebnt.create_instance_from_model("Test Model", reg, data, project_name="Test Project",
                                                task_name="Test Task", instance_name=container_name, run_instance=True)

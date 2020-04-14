@@ -17,7 +17,6 @@ CLEAN = True
 IMAGE_NAME = 'ebonite_test_docker_builder_image'
 
 REGISTRY_PORT = 5000
-REGISTRY_HOST = f'localhost:{REGISTRY_PORT}'
 
 no_docker = pytest.mark.skipif(not has_docker(), reason='docker is unavailable or skipped')
 
@@ -30,9 +29,10 @@ def docker_builder_local_registry():
 
 @pytest.fixture
 def docker_builder_remote_registry():
-    with use_local_installation(), DockerContainer('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
+    with use_local_installation(), DockerContainer('registry:latest').with_exposed_ports(REGISTRY_PORT) as container:
+        host = f'localhost:{container.get_exposed_port(REGISTRY_PORT)}'
         yield DockerBuilder(ProviderMock(),
-                            DockerImage(IMAGE_NAME, registry=RemoteDockerRegistry(REGISTRY_HOST)))
+                            DockerImage(IMAGE_NAME, registry=RemoteDockerRegistry(host)))
 
 
 @contextlib.contextmanager
