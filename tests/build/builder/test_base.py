@@ -20,6 +20,8 @@ from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
 from ebonite.utils.module import get_module_version
 
+from tests.build.conftest import check_ebonite_port_free
+
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
 Pattern = type(re.compile(''))
 
@@ -179,6 +181,8 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data
     from setup import setup_args
     _check_requirements(tmpdir, {*setup_args['install_requires'], *server_reqs,
                                  'pandas==1.0.3', 'scikit-learn==0.22.2', 'numpy==1.18.2'})  # model reqs
+
+    check_ebonite_port_free()
 
     # TODO make ModelLoader.load cwd-independent
     server = subprocess.Popen(args, env=env, cwd=tmpdir)
