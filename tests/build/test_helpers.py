@@ -42,7 +42,7 @@ def service_name():
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_run_docker_img(container_name):
-    run_docker_img(container_name, 'mike0sv/ebaklya', detach=True)
+    run_docker_img(container_name, 'mike0sv/ebaklya', ports_mapping={80: None}, detach=True)
     _assert_docker_container_running(container_name)
 
 

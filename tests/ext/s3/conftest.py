@@ -10,8 +10,7 @@ from tests.repository.artifact.conftest import create_artifact_hooks
 
 ACCESS_KEY = 'eboniteAccessKey'
 BUCKET_NAME = 'testbucket'
-PORT = 9003
-ENDPOINT = f'http://localhost:{PORT}'
+PORT = 9000
 SECRET_KEY = 'eboniteSecretKey'
 
 
@@ -35,16 +34,16 @@ def s3server(pytestconfig):
             .with_command('server /data') \
             .with_env('MINIO_ACCESS_KEY', ACCESS_KEY) \
             .with_env('MINIO_SECRET_KEY', SECRET_KEY) \
-            .with_bind_ports(9000, PORT):
+            .with_exposed_ports(PORT) as container:
         sleep(5)  # wait to ensure that S3 server has enough time to properly start
-        yield
+        yield container.get_exposed_port(PORT)
 
 
 @pytest.fixture
 def s3_artifact(s3server):
     # `config_override` doesn't work here as decorator, probably because of generator
     with config_override(S3_ACCESS_KEY=ACCESS_KEY, S3_SECRET_KEY=SECRET_KEY):
-        repo = S3ArtifactRepository(BUCKET_NAME, ENDPOINT)
+        repo = S3ArtifactRepository(BUCKET_NAME, f'http://localhost:{s3server}')
         delete_bucket(repo)
         yield repo
         delete_bucket(repo)
