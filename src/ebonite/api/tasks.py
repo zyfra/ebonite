@@ -90,14 +90,10 @@ def task_blueprint(ebonite):
         if not task:
             return jsonify({'erromsg': f'Task with id {id} does not exist'}), 404
         else:
-            if cascade:
-                ebonite.delete_task(task, cascade)
+            try:
+                ebonite.delete_project(task, cascade)
                 return jsonify({}), 204
-            else:
-                try:
-                    ebonite.meta_repo.delete_task(task)
-                    return jsonify({}), 204
-                except TaskWithRelationshipError as e:
-                    return jsonify({'errormsg': str(e)}), 404
+            except TaskWithRelationshipError as e:
+                return jsonify({'errormsg': str(e)}), 404
 
     return blueprint

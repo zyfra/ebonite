@@ -76,14 +76,10 @@ def project_blueprint(ebonite):
         proj = ebonite.meta_repo.get_project_by_id(id)
         if not proj:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
-        if cascade:
-            ebonite.delete_proj(proj, cascade)
+        try:
+            ebonite.delete_project(proj, cascade)
             return jsonify({}), 204
-        else:
-            try:
-                ebonite.meta_repo.delete(proj)
-                return jsonify({}), 204
-            except ProjectWithRelationshipError as e:
-                return jsonify({'errormsg': str(e)}), 400
+        except ProjectWithRelationshipError as e:
+            return jsonify({'errormsg': str(e)}), 400
 
     return blueprint
