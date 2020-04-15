@@ -1,0 +1,25 @@
+FROM python:{{ python_version }}-slim
+
+WORKDIR /app
+
+RUN true \
+    && apt update \
+    && apt install -y \
+        bash \
+        nginx \
+        supervisor \
+        gcc \
+    && pip install uwsgi==2.0.18 \
+    && apt remove gcc -y \
+    && apt autoremove -y \
+    && apt clean
+
+RUN pip install flask==1.1.2 flasgger==0.9.3
+
+COPY nginx.conf /etc/nginx/
+COPY flask-site-nginx.conf /etc/nginx/conf.d/
+COPY uwsgi.ini /etc/uwsgi/
+COPY supervisord.conf /etc/supervisord.conf
+COPY app.py /app/app.py
+
+CMD ["/usr/bin/supervisord"]
