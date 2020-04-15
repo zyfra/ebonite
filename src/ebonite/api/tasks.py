@@ -2,15 +2,18 @@ from typing import Tuple
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
-from pyjackson.pydantic_ext import PyjacksonModel
+from pydantic import BaseModel
 
-from ebonite.core.errors import (ExistingTaskError, NonExistingTaskError,
-                                 TaskWithRelationshipError)
+from ebonite.core.errors import ExistingTaskError, NonExistingTaskError, TaskWithRelationshipError
 from ebonite.core.objects.core import Task
 
 
-class TaskBody(PyjacksonModel):
-    __type__ = Task
+class GetTaskBody(BaseModel):
+    project_id: int
+
+
+class TaskBody(GetTaskBody):
+    name: str
 
 
 def task_blueprint(ebonite):
@@ -23,14 +26,12 @@ def task_blueprint(ebonite):
         :return: Response with all project for given project or error
         """
         proj_id = request.args.get('project_id')
-        if proj_id and proj_id.isnumeric():
-            proj = ebonite.meta_repo.get_project_by_id(int(proj_id))
-            if proj:
-                return jsonify({'tasks': [pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]}), 200
-            else:
-                return jsonify({'errormsg': f'Project with id {proj_id} is not found'}), 404
+        task = GetTaskBody(project_id=proj_id)
+        proj = ebonite.meta_repo.get_project_by_id(task.project_id)
+        if proj:
+            return jsonify({'tasks': [pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]}), 200
         else:
-            return jsonify({'errormsg': 'You should provide valid project_id as URL parameter'}), 400
+            return jsonify({'errormsg': f'Project with id {proj_id} is not found'}), 404
 
     @blueprint.route('', methods=['POST'])
     def create_task() -> Tuple[Response, int]:
@@ -38,9 +39,10 @@ def task_blueprint(ebonite):
         Creates task in metadata repository
         :return: Response with created task or error
         """
-        body = TaskBody.from_data(request.get_json(force=True))
+        body = TaskBody(**request.get_json(force=True))
+        task = Task(name=body.name, project_id=body.project_id)
         try:
-            task = ebonite.meta_repo.create_task(body)
+            task = ebonite.meta_repo.create_task(task)
             return jsonify({'task': pj.dumps(task)}), 201
         except ExistingTaskError:
             # TODO: Returns even if task doesn't exist when project_id  does not belong to any project
@@ -68,7 +70,8 @@ def task_blueprint(ebonite):
         """
         body = request.get_json(force=True)
         body['id'] = id
-        task = TaskBody.from_data(body)
+        body = TaskBody(**body)
+        task = Task(id=id,project_id=body.project_id,name=body.name)
         try:
             ebonite.meta_repo.update_task(task)
             return jsonify({}), 204
@@ -88,7 +91,7 @@ def task_blueprint(ebonite):
             return jsonify({'erromsg': f'Task with id {id} does not exist'}), 404
         else:
             if cascade:
-                ebonite.delete_task_cascade(task)
+                ebonite.delete_task(task, cascade)
                 return jsonify({}), 204
             else:
                 try:

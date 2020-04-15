@@ -2,14 +2,14 @@ from typing import Tuple
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
-from pyjackson.pydantic_ext import PyjacksonModel
+from pydantic import BaseModel
 
-from ebonite.core.errors import (ExistingProjectError, NonExistingProjectError, ProjectWithRelationshipError)
+from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithRelationshipError
 from ebonite.core.objects.core import Project
 
 
-class ProjectBody(PyjacksonModel):
-    __type__ = Project
+class ProjectBody(BaseModel):
+    name: str
 
 
 def project_blueprint(ebonite):
@@ -30,7 +30,8 @@ def project_blueprint(ebonite):
         Creates project in metadata repository
         :return: Response with created object or error
         """
-        proj = ProjectBody.from_data(request.get_json(force=True))
+        proj = ProjectBody(**request.get_json(force=True))
+        proj = Project(name=proj.name)
         try:
             proj = ebonite.meta_repo.create_project(proj)
             return jsonify({'project': pj.dumps(proj)}), 201
@@ -57,11 +58,9 @@ def project_blueprint(ebonite):
         :param id: id of project
         :return: Response with code 204 or error
         """
-        body = request.get_json(force=True)
-        body['id'] = id
-        proj = ProjectBody.from_data(body)
+        body = ProjectBody(**request.get_json(force=True))
         try:
-            ebonite.meta_repo.update_project(proj)
+            ebonite.meta_repo.update_project(Project(name=body.name, id=id))
             return jsonify({}), 204
         except NonExistingProjectError:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 400
@@ -78,11 +77,11 @@ def project_blueprint(ebonite):
         if not proj:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         if cascade:
-            ebonite.delete_proj_cascade(proj)
+            ebonite.delete_proj(proj, cascade)
             return jsonify({}), 204
         else:
             try:
-                ebonite.meta_repo.delete_project(proj)
+                ebonite.meta_repo.delete(proj)
                 return jsonify({}), 204
             except ProjectWithRelationshipError as e:
                 return jsonify({'errormsg': str(e)}), 400

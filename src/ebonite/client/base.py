@@ -66,13 +66,17 @@ class Ebonite:
         model = self.meta_repo.save_model(model)
         return model
 
-    def delete_model(self, model: Model, force=False):
+    def delete_model(self, model: Model, force=False, cascade=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
 
         :param model: model instance to delete
         :param force: whether model artifacts' deletion errors should be ignored, default is false
+        :param cascade: whether should model be deleted with all asssociated images
         """
+        if cascade:
+            for image in model.images:
+                self.delete_image(self.meta_repo.get_image_by_id(image))
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
@@ -96,6 +100,15 @@ class Ebonite:
         task = self.meta_repo.get_or_create_task(project_name, task_name)
         task.bind_artifact_repo(self.artifact_repo)
         return task
+
+    def delete_task(self, task, cascade=False):
+        """
+        Deletes task and all models and images associated with it
+        """
+        if cascade:
+            for model in task.models:
+                self.delete_model(self.meta_repo.get_model_by_id(model), cascade)
+        self.meta_repo.delete_task(task)
 
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
                   load_artifacts: bool = True) -> Model:
@@ -145,6 +158,17 @@ class Ebonite:
         :return: loaded :py:class:`~ebonite.core.objects.Image` instance
         """
         return self.meta_repo.get_image_by_name(name, model)
+
+    def delete_image(self, image, cascade):
+        """
+
+        :param image: Image that will be deleted
+        :param cascade: Should
+        """
+        if cascade:
+            for instance in image.instances:
+                self.stop_instance(instance)
+        self.meta_repo.delete_image(image)
 
     def push_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
         """
@@ -345,26 +369,11 @@ class Ebonite:
             self.default_env = self.push_environment(self.default_env)
         return self.default_env
 
-    def delete_proj_cascade(self, proj):
+    def delete_project(self, project, cascade=False):
         """
         Deletes project and all tasks, models and images associated with it from metadata repository
         """
-        for task in proj.tasks:
-            self.delete_task_cascade(self.meta_repo.get_task_by_id(task))
-        self.meta_repo.delete_project(proj)
-
-    def delete_task_cascade(self, task):
-        """
-        Deletes task and all models and images associated with it
-        """
-        for model in task.models:
-            self.delete_model_cascade(self.meta_repo.get_model_by_id(model))
-        self.meta_repo.delete_task(task)
-
-    def delete_model_cascade(self, model):
-        """
-        Deletes model and all of it images
-        """
-        for image in model.images:
-            self.meta_repo.delete_image(self.meta_repo.get_image_by_id(image))
-        self.meta_repo.delete_model(model)
+        if cascade:
+            for task in project.tasks:
+                self.delete_task(self.meta_repo.get_task_by_id(task), cascade)
+        self.meta_repo.delete_project(project)

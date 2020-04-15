@@ -125,28 +125,40 @@ class ModelWithoutIdError(MetadataError):
         super(ModelWithoutIdError, self).__init__('Model "{}" id is None'.format(model))
 
 
-class ProjectWithRelationshipError(MetadataError):
+class ProjectWithTasksError(MetadataError):
     def __init__(self, project: Project):
         project = project.name if isinstance(project, Project) else project
-        super(ProjectWithRelationshipError, self).__init__(f'Project {project} has foreign key and can not be deleted')
+        super(ProjectWithTasksError, self).__init__(f'Project {project} has foreign key and can not be deleted')
 
 
-class TaskWithRelationshipError(MetadataError):
+class TaskWithModelsError(MetadataError):
     def __init__(self, task: Task):
         task = task.name if isinstance(task, Project) else task
-        super(TaskWithRelationshipError, self).__init__(f'Project {task} has foreign key and can not be deleted')
+        super(TaskWithModelsError, self).__init__(f'Project {task} has foreign key and can not be deleted')
 
 
-class ModelWithRelationshipError(MetadataError):
+class ModelWithImagesError(MetadataError):
     def __init__(self, model: Model):
         model = model.name if isinstance(model, Model) else model
-        super(ModelWithRelationshipError, self).__init__(f'Model {model} has foreign key and can not be deleted')
+        super(ModelWithImagesError, self).__init__(f'Model {model} has foreign key and can not be deleted')
 
 
-class ImageWithRelationshipError(MetadataError):
+class ImageWithInstancesError(MetadataError):
     def __init__(self, image: Image):
         image = image.name if isinstance(image, Image) else image
-        super(ImageWithRelationshipError, self).__init__(f'Image {image} has foreign key and can not be deleted')
+        super(ImageWithInstancesError, self).__init__(f'Image {image} has foreign key and can not be deleted')
+
+
+class InstanceWithRelationshipError(MetadataError):
+    def __init__(self, image: Image):
+        image = image.name if isinstance(image, Image) else image
+        super(InstanceWithRelationshipError, self).__init__(f'Instance {image} has foreign key and can not be deleted')
+
+
+class EnvironmentWithRelationshipError(MetadataError):
+    def __init__(self, image: Image):
+        image = image.name if isinstance(image, Image) else image
+        super(EnvironmentWithRelationshipError, self).__init__(f'Environment {image} has foreign key and can not be deleted')
 
 
 class UnboundObjectError(MetadataError):

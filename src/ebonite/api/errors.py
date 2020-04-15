@@ -2,6 +2,7 @@ from typing import Tuple
 
 from flask import Blueprint, Response, jsonify
 from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest, NotFound
 
 
 def errors_blueprint(ebonite):
@@ -20,9 +21,18 @@ def errors_blueprint(ebonite):
     @blueprint.app_errorhandler(ValidationError)
     def validation_exception_handler(exception: ValidationError) -> Tuple[Response, int]:
         """
-        Handles exception which occures during body validation in POST and UPDATE requests
+        Handles exception which occures during body and param validation in requests
         :return: Response with description of errors
         """
         return jsonify({'errormsg': exception.errors()}), 400
+
+    @blueprint.app_errorhandler(NotFound)
+    def not_found_exception_handler(exception: NotFound):
+        return jsonify({'errormsg':'The requested URL was not found on the server. '
+                                   'If you entered the URL manually please check your spelling and try again'}), 404
+
+    @blueprint.app_errorhandler(BadRequest)
+    def bad_request_exception_handler(exception: BadRequest):
+        return jsonify({'errormsg':'Bad Request'}), 404
 
     return blueprint

@@ -1,9 +1,9 @@
 from flask import Flask
 
+from ebonite.api.errors import errors_blueprint
+from ebonite.api.healthchecks import healthcheck_blueprint
 from ebonite.api.projects import project_blueprint
 from ebonite.api.tasks import task_blueprint
-from ebonite.api.healthchecks import healthcheck_blueprint
-from ebonite.api.errors import errors_blueprint
 from ebonite.client.base import Ebonite
 
 
@@ -28,10 +28,9 @@ class EboniteAPI:
         self.config_path = config_path
         self.ebonite = None
 
+    def run(self):
         self.init_ebonite()
         self.configure_app()
-
-    def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
 
     def init_ebonite(self):
