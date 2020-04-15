@@ -1,8 +1,8 @@
 from .artifacts import ArtifactCollection
-from .core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+from .core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task, Pipeline, PipelineStep
 from .dataset_type import DatasetType
 from .requirements import Requirement, Requirements
 from .wrapper import ModelIO, ModelWrapper
 
 __all__ = ['Project', 'Requirements', 'Requirement', 'ArtifactCollection', 'ModelWrapper', 'Task', 'Image', 'Model',
-           'DatasetType', 'RuntimeEnvironment', 'RuntimeInstance', 'ModelIO']
+           'DatasetType', 'RuntimeEnvironment', 'RuntimeInstance', 'ModelIO', 'Pipeline', 'PipelineStep']

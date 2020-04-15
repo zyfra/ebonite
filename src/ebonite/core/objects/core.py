@@ -2,10 +2,11 @@ import datetime
 import getpass
 import json
 import tempfile
+import warnings
 from abc import abstractmethod
 from copy import copy
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
@@ -14,7 +15,9 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
+from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
+from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
@@ -290,6 +293,19 @@ class Task(EboniteObject):
             model.bind_artifact_repo(repo)
 
 
+class _WrapperMethodAccessor:
+    # TODO docs
+    def __init__(self, model: 'Model', method_name: str):
+        if method_name not in model.wrapper.exposed_methods:
+            print(model, method_name)
+            raise AttributeError(f'{model} does not have {method_name} method')
+        self.model = model
+        self.method_name = method_name
+
+    def __call__(self, data):
+        return self.model.wrapper.call_method(self.method_name, data)
+
+
 @make_string('id', 'name')
 class Model(EboniteObject):
     """
@@ -345,6 +361,8 @@ class Model(EboniteObject):
         """
         Load model artifacts into wrapper
         """
+        if get_python_version() != self.params.get(self.PYTHON_VERSION):
+            warnings.warn(f'Loading model from different python version {self.params.get(self.PYTHON_VERSION)}')
         with tempfile.TemporaryDirectory(prefix='ebonite_run_') as tmpdir:
             self.artifact.materialize(tmpdir)
             self.wrapper.load(tmpdir)
@@ -571,6 +589,20 @@ class Model(EboniteObject):
         self._meta.delete_image(image)
         image.model_id = None
 
+    def as_pipeline(self, method_name=None) -> 'Pipeline':
+        # TODO docs
+        method_name = self.wrapper.resolve_method(method_name)
+        method = self.wrapper.methods[method_name]
+        pipeline = Pipeline( f'{self.name}.{method_name}',
+                            [], method[1], method[2],  task_id=self.task_id).append(self, method_name)
+        return pipeline
+
+    def __getattr__(self, item: str):
+        if item.startswith('__') and item.endswith('__') and item != '__call__':
+            # no special dunder attributes
+            raise AttributeError()
+        return _WrapperMethodAccessor(self, item)
+
 
 def _generate_model_name(wrapper: ModelWrapper):
     """
@@ -581,6 +613,73 @@ def _generate_model_name(wrapper: ModelWrapper):
     """
     now = datetime.datetime.now()
     return '{}_model_{}'.format(wrapper.type, now.strftime('%Y%m%d_%H_%M_%S'))
+
+
+class PipelineStep(EboniteParams):
+    # TODO docs
+    def __init__(self, model_name: str, method_name: str):
+        # TODO we use model name because it doesnt require saving model and task always have unique model names
+        self.model_name = model_name
+        self.method_name = method_name
+
+
+class Pipeline(EboniteObject):
+    # TODO docs
+    def __init__(self, name: str,
+                 steps: List[PipelineStep],
+                 input_data: DatasetType,
+                 output_data: DatasetType,
+                 id: int = None,
+                 author: str = None, creation_date: datetime.datetime = None,
+                 task_id: int = None):
+        super().__init__(id, name, author, creation_date)
+        self.output_data = output_data
+        self.input_data = input_data
+        self.task_id = task_id
+        self.steps = steps
+        # TODO not using direct fk to models as it is pain
+        self.models: Dict[str, Model] = {}
+
+    @property
+    @_with_meta
+    def task(self):
+        t = self._meta.get_task_by_id(self.task_id)
+        if t is None:
+            raise errors.NonExistingTaskError(self.task_id)
+        return t
+
+    @task.setter
+    def task(self, task: Task):
+        if not isinstance(task, Task):
+            raise ValueError('{} is not Task'.format(task))
+        self.task_id = task.id
+
+    @_with_meta
+    def load(self):
+        task = self.task
+        for step in self.steps:
+            model = task.models(step.model_name)
+            self.models[model.name] = model
+
+    def run(self, data):
+        # TODO docs
+        for step in self.steps:
+            model = self.models[step.model_name]
+            data = model.wrapper.call_method(step.method_name, data)
+        return data
+
+    def append(self, model: Union[Model, _WrapperMethodAccessor], method_name: str = None):
+        # TODO docs
+        # TODO datatype validaiton
+        if isinstance(model, _WrapperMethodAccessor):
+            method_name = model.method_name
+            model = model.model
+        method_name = model.wrapper.resolve_method(method_name)
+
+        self.steps.append(PipelineStep(model.name, method_name))
+        self.models[model.name] = model
+        self.output_data = model.wrapper.methods[method_name][2]  # TODO change it to namedtuple
+        return self
 
 
 @make_string('id', 'name')

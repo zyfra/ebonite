@@ -43,6 +43,7 @@ class MLModelMultiProvider(MLModelProvider):
 
     def get_artifacts(self) -> ArtifactCollection:
         """Returns binaries of models artifacts"""
+        #TODO additional server binaries
         return CompositeArtifactCollection([
             _RelativePathWrapper(m.artifact_any, os.path.join(MODEL_BIN_PATH, str(i)))
             for i, m in enumerate(self.models)
