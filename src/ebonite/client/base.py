@@ -166,7 +166,7 @@ class Ebonite:
         :param cascade: Should
         """
         if cascade:
-            for instance in image.instances:
+            for instance in self.meta_repo.get_instances(image):
                 self.stop_instance(instance)
         self.meta_repo.delete_image(image)
 
