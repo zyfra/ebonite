@@ -8,7 +8,7 @@ if config.Core.AUTO_IMPORT_EXTENSIONS:
     ExtensionLoader.load_all()
 
 __all__ = ['load_extensions', 'Ebonite', 'EBONITE_DEBUG', 'start_runtime', 'create_model']
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 
 if __name__ == '__main__':
     pass
