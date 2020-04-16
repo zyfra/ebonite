@@ -5,7 +5,7 @@ from typing import Union
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
-from ebonite.core.errors import ExistingModelError
+from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError
 from ebonite.core.objects import Image, Model, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
@@ -126,6 +126,8 @@ class Ebonite:
         :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
+        if self.meta_repo.get_image_by_name(name, model) is not None:
+            raise ExistingImageError(name)
         if server is None:
             server = self.get_default_server()
 
@@ -174,9 +176,12 @@ class Ebonite:
         :param environment: environment to run instance in, if no given `localhost` is used
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-
         if environment is None:
             environment = self.get_default_environment()
+
+        if self.meta_repo.get_instance_by_name(name, image, environment) is not None:
+            raise ExistingInstanceError(name)
+
         runner = environment.params.get_runner()
 
         params = runner.create_instance(name, **kwargs)
