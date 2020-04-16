@@ -23,9 +23,9 @@ EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
 def _print_docker_logs(logs, level=logging.DEBUG):
     for l in logs:
         if 'stream' in l:
-            logger.log(level, l['stream'])
+            logger.log(level, str(l['stream']).strip())
         else:
-            logger.log(level, l)
+            logger.log(level, str(l).strip())
 
 
 class DockerBuilder(PythonBuilder):
@@ -99,7 +99,7 @@ class DockerBuilder(PythonBuilder):
                     client.images.push(tag)
                     logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
 
-                return Image(tag, params=self.params)
+                return Image(self.params.name, params=self.params)
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise

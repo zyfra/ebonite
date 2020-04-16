@@ -1,7 +1,6 @@
 """This module shows how to load extensions from local code"""
 
 import ebonite
-from ebonite.build.builder.base import use_local_installation
 
 
 def main():
@@ -18,10 +17,9 @@ def main():
     # create a model using myext extension
     model = task.create_and_push_model('ahaha', 1, 'model')
 
-    with use_local_installation():
-        # your extension code will be inside docker image in form of files
-        # if you have local files, or requirement if you installed it from pip
-        image = ebnt.build_image('local_ext_model', model, force_overwrite=True)
+    # your extension code will be inside docker image in form of files if you have local files
+    # or requirement if you installed it from pip
+    image = ebnt.build_image('local_ext_model', model, force_overwrite=True)
 
     ebnt.run_instance('local_ext_model', image, detach=False)
 
