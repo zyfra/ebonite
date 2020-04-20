@@ -2,7 +2,7 @@ import argparse
 from abc import abstractmethod
 from typing import Any, Callable, Dict, Type
 
-from everett import NO_VALUE
+from everett import NO_VALUE, ConfigurationMissingError
 from everett.manager import ConfigManager, ConfigOSEnv, ListOf, generate_uppercase_key
 
 _config = ConfigManager([])
@@ -81,8 +81,18 @@ class _ConfigMeta(type):
 
 class Config(metaclass=_ConfigMeta):
     @classmethod
+    def _try__get__(cls, value, default):
+        try:
+            return value.__get__(cls, type(cls))
+        except ConfigurationMissingError:
+            return default
+
+    @classmethod
     def get_params(cls) -> Dict[str, Any]:
-        return {name: value.__get__(cls, type(cls)) for name, value in cls.__dict__.items() if isinstance(value, Param)}
+        return {
+            name: cls._try__get__(value, '--NOT-SET--')
+            for name, value in cls.__dict__.items() if isinstance(value, Param)
+        }
 
     @classmethod
     def log_params(cls):

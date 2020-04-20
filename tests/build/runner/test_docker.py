@@ -17,12 +17,9 @@ from tests.build.conftest import rm_container, rm_image
 IMAGE_NAME = 'mike0sv/ebaklya'
 BROKEN_IMAGE_NAME = 'test-broken-image'
 CONTAINER_NAME = 'ebonite-runner-test-docker-container'
+REPOSITORY_NAME = 'ebonite'
 
 REGISTRY_PORT = 5000
-REGISTRY_HOST = f'localhost:{REGISTRY_PORT}'
-REPOSITORY_NAME = 'ebonite'
-TAG_NAME = f'{REGISTRY_HOST}/{REPOSITORY_NAME}/{IMAGE_NAME}'
-BROKEN_TAG_NAME = f'{REGISTRY_HOST}/{REPOSITORY_NAME}/{BROKEN_IMAGE_NAME}'
 
 
 @pytest.fixture
@@ -47,12 +44,15 @@ def runner(pytestconfig):
 def registry(tmpdir_factory, pytestconfig):
     if not has_docker() or 'not docker' in pytestconfig.getoption('markexpr'):
         pytest.skip('skipping docker tests')
-    with Container('registry:latest').with_bind_ports(REGISTRY_PORT, REGISTRY_PORT):
+    with Container('registry:latest').with_exposed_ports(REGISTRY_PORT) as container:
+        host = f'localhost:{container.get_exposed_port(REGISTRY_PORT)}'
+
         client = DockerClient()
 
         # migrate our image to custom Docker registry
-        client.images.pull(IMAGE_NAME, 'latest').tag(TAG_NAME)
-        client.images.push(TAG_NAME)
+        tag_name = f'{host}/{REPOSITORY_NAME}/{IMAGE_NAME}'
+        client.images.pull(IMAGE_NAME, 'latest').tag(tag_name)
+        client.images.push(tag_name)
 
         tmpdir = str(tmpdir_factory.mktemp("image"))
         # create failing image: alpine is too small to have python inside
@@ -62,10 +62,11 @@ def registry(tmpdir_factory, pytestconfig):
 
                 CMD python
            """)
-        client.images.build(path=tmpdir, tag=BROKEN_TAG_NAME)
-        client.images.push(BROKEN_TAG_NAME)
+        broken_tag_name = f'{host}/{REPOSITORY_NAME}/{BROKEN_IMAGE_NAME}'
+        client.images.build(path=tmpdir, tag=broken_tag_name)
+        client.images.push(broken_tag_name)
 
-        yield RemoteDockerRegistry(REGISTRY_HOST)
+        yield RemoteDockerRegistry(host)
 
 
 @pytest.mark.docker
@@ -111,7 +112,7 @@ def test_run_local_fail_inside_container(runner, registry, detach):
 
 def _check_runner(runner, img, host='', **kwargs):
     runner = runner(host, img, CONTAINER_NAME)
-    instance = DockerContainer(CONTAINER_NAME, ports_mapping={80: 8080})
+    instance = DockerContainer(CONTAINER_NAME, ports_mapping={80: None})
     env = DockerHost(host)
 
     assert not runner.is_running(instance, env)
