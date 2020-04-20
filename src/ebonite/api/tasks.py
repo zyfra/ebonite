@@ -2,21 +2,35 @@ from typing import Tuple
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
-from pydantic import BaseModel
+from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.core.errors import ExistingTaskError, NonExistingTaskError, TaskWithRelationshipError
+from ebonite.client.base import Ebonite
+from ebonite.core.errors import ExistingTaskError, NonExistingTaskError, TaskWithModelsError
 from ebonite.core.objects.core import Task
 
 
-class GetTaskBody(BaseModel):
-    project_id: int
+class GetTaskBody(PyjacksonModel):
+    __type__ = Task
+
+    __exclude__ = ['name', 'id', 'author', 'creation_date']
+    __force_required__ = ['project_id']
 
 
-class TaskBody(GetTaskBody):
-    name: str
+class TaskCreateBody(PyjacksonModel):
+    __type__ = Task
+
+    __exclude__ = ['id', 'author', 'creation_date']
+    __force_required__ = ['project_id']
 
 
-def task_blueprint(ebonite):
+class TaskUpdateBody(PyjacksonModel):
+    __type__ = Task
+
+    __exclude__ = ['author', 'creation_date']
+    __force_required__ = ['id', 'project_id']
+
+
+def task_blueprint(ebonite: Ebonite):
     blueprint = Blueprint('tasks', __name__, url_prefix='/tasks')
 
     @blueprint.route('', methods=['GET'])
@@ -25,13 +39,13 @@ def task_blueprint(ebonite):
         Get all tasks from metadata repository for given project
         :return: Response with all project for given project or error
         """
-        proj_id = request.args.get('project_id')
-        task = GetTaskBody(project_id=proj_id)
+        project_id = request.args.get('project_id')
+        task = GetTaskBody.from_data({'project_id': project_id})
         proj = ebonite.meta_repo.get_project_by_id(task.project_id)
         if proj:
-            return jsonify({'tasks': [pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]}), 200
+            return jsonify([pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]), 200
         else:
-            return jsonify({'errormsg': f'Project with id {proj_id} is not found'}), 404
+            return jsonify({'errormsg': f'Project with id {project_id} is not found'}), 404
 
     @blueprint.route('', methods=['POST'])
     def create_task() -> Tuple[Response, int]:
@@ -39,14 +53,13 @@ def task_blueprint(ebonite):
         Creates task in metadata repository
         :return: Response with created task or error
         """
-        body = TaskBody(**request.get_json(force=True))
-        task = Task(name=body.name, project_id=body.project_id)
+        task = TaskCreateBody.from_data(request.get_json(force=True))
         try:
             task = ebonite.meta_repo.create_task(task)
-            return jsonify({'task': pj.dumps(task)}), 201
+            return jsonify(pj.dumps(task)), 201
         except ExistingTaskError:
             # TODO: Returns even if task doesn't exist when project_id  does not belong to any project
-            return jsonify({'errormsg': f'Task with name {body.name} already exists'}), 404
+            return jsonify({'errormsg': f'Task with name {task.name} already exists'}), 404
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_task(id: int) -> Tuple[Response, int]:
@@ -57,7 +70,7 @@ def task_blueprint(ebonite):
         """
         try:
             task = ebonite.meta_repo.get_task_by_id(id)
-            return jsonify({'task': pj.dumps(task)}), 200
+            return jsonify(pj.dumps(task)), 200
         except NonExistingTaskError:
             return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
 
@@ -70,13 +83,12 @@ def task_blueprint(ebonite):
         """
         body = request.get_json(force=True)
         body['id'] = id
-        body = TaskBody(**body)
-        task = Task(id=id,project_id=body.project_id,name=body.name)
+        task = TaskUpdateBody.from_data(body)
         try:
             ebonite.meta_repo.update_task(task)
             return jsonify({}), 204
         except NonExistingTaskError:
-            return jsonify({'errormsg': f'Task with id {id} in project {body.project_id} does not exist'}), 404
+            return jsonify({'errormsg': f'Task with id {task.id} in project {task.project_id} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_task(id: int) -> Tuple[Response, int]:
@@ -93,7 +105,7 @@ def task_blueprint(ebonite):
             try:
                 ebonite.delete_project(task, cascade)
                 return jsonify({}), 204
-            except TaskWithRelationshipError as e:
+            except TaskWithModelsError as e:
                 return jsonify({'errormsg': str(e)}), 404
 
     return blueprint

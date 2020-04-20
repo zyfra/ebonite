@@ -28,11 +28,11 @@ def errors_blueprint(ebonite):
 
     @blueprint.app_errorhandler(NotFound)
     def not_found_exception_handler(exception: NotFound):
-        return jsonify({'errormsg':'The requested URL was not found on the server. '
-                                   'If you entered the URL manually please check your spelling and try again'}), 404
+        return jsonify({'errormsg': 'The requested URL was not found on the server. '
+                                    'If you entered the URL manually please check your spelling and try again'}), 404
 
     @blueprint.app_errorhandler(BadRequest)
     def bad_request_exception_handler(exception: BadRequest):
-        return jsonify({'errormsg':'Bad Request'}), 404
+        return jsonify({'errormsg': 'Bad Request'}), 400
 
     return blueprint

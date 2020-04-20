@@ -2,17 +2,27 @@ from typing import Tuple
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
-from pydantic import BaseModel
+from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithRelationshipError
+from ebonite.client.base import Ebonite
+from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithTasksError
 from ebonite.core.objects.core import Project
 
 
-class ProjectBody(BaseModel):
-    name: str
+class ProjectCreateBody(PyjacksonModel):
+    __type__ = Project
+
+    __exclude__ = ['creation_date', 'author', 'id']
 
 
-def project_blueprint(ebonite):
+class ProjectUpdateBody(PyjacksonModel):
+    __type__ = Project
+
+    __exclude__ = ['creation_date', 'author']
+    __force_required__ = ['id']
+
+
+def project_blueprint(ebonite: Ebonite):
     blueprint = Blueprint('projects', __name__, url_prefix='/projects')
 
     @blueprint.route('', methods=['GET'])
@@ -22,7 +32,7 @@ def project_blueprint(ebonite):
         :return: All projects in database
         """
         projects = ebonite.meta_repo.get_projects()
-        return jsonify({'projects': [pj.dumps(p) for p in projects]}), 200
+        return jsonify([pj.dumps(p) for p in projects]), 200
 
     @blueprint.route('', methods=['POST'])
     def create_project() -> Tuple[Response, int]:
@@ -30,11 +40,10 @@ def project_blueprint(ebonite):
         Creates project in metadata repository
         :return: Response with created object or error
         """
-        proj = ProjectBody(**request.get_json(force=True))
-        proj = Project(name=proj.name)
+        proj = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
             proj = ebonite.meta_repo.create_project(proj)
-            return jsonify({'project': pj.dumps(proj)}), 201
+            return jsonify({pj.dumps(proj)}), 201
         except ExistingProjectError:
             return jsonify({'errormsg': f'Project with name {proj.name} already exists'}), 400
 
@@ -47,7 +56,7 @@ def project_blueprint(ebonite):
         """
         project = ebonite.meta_repo.get_project_by_id(id)
         if project:
-            return jsonify({'project': pj.dumps(project)}), 200
+            return jsonify(pj.dumps(project)), 200
         else:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 
@@ -58,7 +67,9 @@ def project_blueprint(ebonite):
         :param id: id of project
         :return: Response with code 204 or error
         """
-        body = ProjectBody(**request.get_json(force=True))
+        body = request.get_json(force=True)
+        body['id'] = id
+        body = ProjectUpdateBody.from_data(body)
         try:
             ebonite.meta_repo.update_project(Project(name=body.name, id=id))
             return jsonify({}), 204
@@ -79,7 +90,7 @@ def project_blueprint(ebonite):
         try:
             ebonite.delete_project(proj, cascade)
             return jsonify({}), 204
-        except ProjectWithRelationshipError as e:
+        except ProjectWithTasksError as e:
             return jsonify({'errormsg': str(e)}), 400
 
     return blueprint

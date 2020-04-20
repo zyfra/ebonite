@@ -3,8 +3,9 @@ from typing import Tuple
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
+
 from ebonite.client.base import Ebonite
-from ebonite.core.errors import NonExistingModelError, ModelWithImagesError
+from ebonite.core.errors import ModelWithImagesError, NonExistingModelError
 from ebonite.core.objects.core import Model
 
 
@@ -88,6 +89,4 @@ def models_blueprint(ebonite: Ebonite):
         except ModelWithImagesError as e:
             return jsonify({'errormsg': str(e)}), 400
 
-
-
-
+    return blueprint

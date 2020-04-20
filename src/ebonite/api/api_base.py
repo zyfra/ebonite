@@ -2,6 +2,7 @@ from flask import Flask
 
 from ebonite.api.errors import errors_blueprint
 from ebonite.api.healthchecks import healthcheck_blueprint
+from ebonite.api.models import models_blueprint
 from ebonite.api.projects import project_blueprint
 from ebonite.api.tasks import task_blueprint
 from ebonite.client.base import Ebonite
@@ -18,7 +19,7 @@ class EboniteAPI:
 
     """
     app: Flask = None
-    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint]
+    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint, models_blueprint]
 
     def __init__(self, name: str, config_path: str, host: str = '127.0.0.1', port: str = '5000', debug: bool = True):
         self.app = Flask(name)
@@ -34,6 +35,7 @@ class EboniteAPI:
         self.app.run(host=self.host, port=self.port, debug=self.debug)
 
     def init_ebonite(self):
+        # TODO: Error handling for cases when ebonite object couldn't be created
         self.ebonite = Ebonite.from_config_file(self.config_path)
 
     def configure_app(self):
