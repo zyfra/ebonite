@@ -11,13 +11,16 @@ Project = 'core.Project'
 Task = 'core.Task'
 Model = 'core.Model'
 Image = 'core.Image'
+Pipeline = 'core.Pipeline'
+RuntimeEnvironment = 'core.RuntimeEnvironment'
 
 T = TypeVar('T')
 NameOrIdOrObject = Union[int, str, T]
-ProjectVar = NameOrIdOrObject['core.Project']
-TaskVar = NameOrIdOrObject['core.Task']
-ModelVar = NameOrIdOrObject['core.Model']
-EnvironmentVar = NameOrIdOrObject['core.RuntimeEnvironment']
+ProjectVar = NameOrIdOrObject[Project]
+TaskVar = NameOrIdOrObject[Task]
+ModelVar = NameOrIdOrObject[Model]
+PipelineVar = NameOrIdOrObject[Pipeline]
+EnvironmentVar = NameOrIdOrObject[RuntimeEnvironment]
 
 
 def bind_to_self(method):
@@ -338,6 +341,101 @@ class MetadataRepository:
                 raise errors.ExistingModelError(model)
         return self.update_model(model)
 
+    # ___________________
+
+    @abstractmethod
+    def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List['core.Pipeline']:
+        """
+        Gets a list of pipelines in given project and task
+
+        :param task: task to search for models in
+        :param project: project to search for models in
+        :return: found pipelines
+        """
+
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def get_pipeline_by_name(self, pipeline_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Pipeline']:
+        """
+        Finds model by name in given task and project.
+
+        :param model_name: expected model name
+        :param task: task to search for model in
+        :param project: project to search for model in
+        :return: found model if exists or `None`
+        """
+
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def get_pipeline_by_id(self, id: int) -> Optional['core.Pipeline']:
+        """
+        Finds model by identifier.
+
+        :param id: expected model id
+        :return: found model if exists or `None`
+        """
+
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def create_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Creates model in the repository
+
+        :param model: model to create
+        :return: created model
+        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
+        """
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def update_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Updates model in the repository
+
+        :param model: model to update
+        :return: updated model
+        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
+        """
+
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def delete_pipeline(self, pipeline: Pipeline):
+        """
+        Deletes model from the repository
+
+        :param model: model to delete
+        :return: nothing
+        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
+        """
+
+        pass  # pragma: no cover
+
+    def save_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Saves model in the repository
+
+        :param model: model to save
+        :return: saved model
+        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
+        """
+
+        if pipeline.task_id is None:
+            raise ValueError("A task is not assigned to the pipeline {}".format(pipeline))
+
+        existing_pipeline = self.get_pipeline_by_name(pipeline.name, pipeline.task_id)
+
+        if pipeline.id is None and existing_pipeline is None:
+            return self.create_pipeline(pipeline)
+        elif existing_pipeline is not None:
+            if pipeline.id is None or existing_pipeline.id != pipeline.id:
+                raise errors.ExistingPipelineError(pipeline)
+        return self.update_pipeline(pipeline)
+
+    # _______________
     @abstractmethod
     def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List['core.Image']:
         """
@@ -432,7 +530,7 @@ class MetadataRepository:
         return self.update_image(image)
 
     @abstractmethod
-    def get_environments(self) -> List['core.RuntimeEnvironment']:
+    def get_environments(self) -> List[RuntimeEnvironment]:
         """
         Gets a list of runtime environments
 
@@ -442,7 +540,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_environment_by_name(self, name) -> Optional['core.RuntimeEnvironment']:
+    def get_environment_by_name(self, name) -> Optional[RuntimeEnvironment]:
         """
         Finds runtime environment by name.
 
@@ -453,7 +551,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_environment_by_id(self, id: int) -> Optional['core.RuntimeEnvironment']:
+    def get_environment_by_id(self, id: int) -> Optional[RuntimeEnvironment]:
         """
         Finds runtime environment by identifier.
 
@@ -464,7 +562,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def create_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def create_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Creates runtime environment in the repository
 
@@ -476,7 +574,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def update_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def update_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Updates runtime environment in the repository
 
@@ -499,7 +597,7 @@ class MetadataRepository:
 
         pass  # pragma: no cover
 
-    def save_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def save_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Saves runtime environment in the repository
 
@@ -638,7 +736,7 @@ class MetadataRepository:
             raise ValueError('Cannot resolve model without task')
         return self.get_model_by_name(model, task, project)
 
-    def _resolve_environment(self, environment: EnvironmentVar) -> Optional['core.RuntimeEnvironment']:
+    def _resolve_environment(self, environment: EnvironmentVar) -> Optional[RuntimeEnvironment]:
         if isinstance(environment, core.RuntimeEnvironment):
             environment = environment.id if environment.id is not None else environment.name
         if isinstance(environment, int):
@@ -656,9 +754,12 @@ class MetadataRepository:
         if model.task_id is None:
             raise errors.ModelNotInTaskError(model)
 
+    def _validate_pipeline(self, pipeline: Pipeline):
+        if pipeline.task_id is None:
+            raise errors.PipelineNotInTaskError(pipeline)
+
     def _validate_image(self, image: Image):
-        if image.model_id is None:
-            raise errors.ImageNotInModelError(image)
+        pass
 
     def _validate_environment(self, environment: 'core.RuntimeEnvironment'):
         pass

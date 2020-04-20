@@ -2,10 +2,10 @@ from abc import abstractmethod
 from typing import Dict
 
 from ebonite.core.objects.artifacts import ArtifactCollection
-from ebonite.core.objects.core import ImageSource
 from ebonite.core.objects.requirements import Requirements
 from ebonite.runtime.interface import InterfaceLoader
 from ebonite.runtime.server import Server
+from ebonite.utils.importing import import_string
 from ebonite.utils.module import get_python_version
 
 
@@ -30,10 +30,6 @@ class ProviderBase:
     @abstractmethod
     def get_options(self) -> Dict[str, str]:
         """Abstract method for additional build options"""
-        pass  # pragma: no cover
-
-    @abstractmethod
-    def image_source(self) -> ImageSource:
         pass  # pragma: no cover
 
 
@@ -88,6 +84,3 @@ class PythonProvider(ProviderBase):
         return self.server.additional_options
 
 
-class SourceWithServer(ImageSource):
-    def __init__(self, server: str):
-        self.server = server

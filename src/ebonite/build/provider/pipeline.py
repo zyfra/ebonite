@@ -5,14 +5,15 @@ from functools import reduce
 from typing import List, Dict
 
 from ebonite.build.provider import PythonProvider
-from ebonite.build.provider.base import SourceWithServer
+from ebonite.build.provider.utils import BuildableWithServer
+from ebonite.core.analyzer import TypeHookMixin
+from ebonite.core.analyzer.buildable import BuildableHook
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection, Blobs, LocalFileBlob
 from ebonite.core.objects import ArtifactCollection, Model, Requirements, DatasetType
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
 from ebonite.core.objects import Pipeline, PipelineStep
-from ebonite.core.objects.core import ImageSource
 from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineMeta, PipelineLoader
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
@@ -24,12 +25,6 @@ SERVER_PATH = 'server'
 def read(path):
     with open(path) as f:
         return f.read()
-
-
-class PipelineSource(SourceWithServer):
-    def __init__(self, pipeline_id: int, server: str):
-        super().__init__(server)
-        self.pipeline_id = pipeline_id
 
 
 class PipelineProvider(PythonProvider):
@@ -107,5 +102,24 @@ class PipelineProvider(PythonProvider):
             warnings.warn(f'Inconsistent python version for pipeline models: {versions}')
         return min(versions)  # in backward compatibility we trust
 
-    def image_source(self) -> ImageSource:
-        return PipelineSource(self.pipeline.id, self.server.type)
+
+class PipelineBuildable(BuildableWithServer):
+    def __init__(self, pipeline_id: int, server_type: str, debug: bool = False):
+        super().__init__(server_type)
+        self.debug = debug
+        self.pipeline_id = pipeline_id
+
+    @property
+    def pipeline(self):
+        return self._meta.get_pipeline_by_id(self.pipeline_id)
+
+    def get_provider(self) -> PipelineProvider:
+        return PipelineProvider(self.pipeline, self.server, self.debug)
+
+
+class BuildableModelHook(BuildableHook, TypeHookMixin):
+    valid_types = [Pipeline]
+
+    def process(self, obj, **kwargs):
+        server = kwargs.get('server')  # TODO ???
+        return PipelineBuildable(obj.id, server.type)

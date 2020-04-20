@@ -14,6 +14,7 @@ from pyjackson.utils import get_class_field_names
 
 from ebonite.build.provider import MLModelProvider
 from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance, Model
+from ebonite.core.objects.core import Buildable
 from ebonite.runtime.server import Server
 from ebonite.utils.log import logger
 
@@ -90,7 +91,7 @@ class DockerHost(RuntimeEnvironment.Params):
             self.default_runner = DockerRunner()
         return self.default_runner
 
-    def get_builder(self, name: str, model: Model, server: Server, debug=False, **kwargs):
+    def get_builder(self, name: str, buildable: Buildable, **kwargs):
         """
         :param name: name for image
         :param model: model to build
@@ -104,9 +105,8 @@ class DockerHost(RuntimeEnvironment.Params):
 
         image_arg_names = set(get_class_field_names(DockerImage))
         params = DockerImage(name, **{k: v for k, v in kwargs.items() if k in image_arg_names})
-        provider = MLModelProvider(model, server, debug)
         kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
-        return DockerBuilder(provider, params, **kwargs)
+        return DockerBuilder(buildable, params, **kwargs)
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):

@@ -28,24 +28,8 @@ def _get_current_user():
     return getpass.getuser()
 
 
-class EboniteObject(Comparable):
-    """
-    Base class for high level ebonite objects.
-    These objects can be binded to metadata repository and/or to artifact repository
-
-    :param id: object id
-    :param name: object name
-    :param author: user that created that object
-    :param creation_date: date when this object was created
-    """
+class WithMetadataRepository:
     _meta: 'ebonite.repository.MetadataRepository' = None
-    _art: 'ebonite.repository.ArtifactRepository' = None
-
-    def __init__(self, id: int, name: str, author: str = None, creation_date: datetime.datetime = None):
-        self._id = id
-        self.name = name
-        self.author = author or _get_current_user()
-        self.creation_date = creation_date or datetime.datetime.utcnow()  # TODO local timezone
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         self._meta = repo
@@ -58,6 +42,10 @@ class EboniteObject(Comparable):
     def has_meta_repo(self):
         return self._meta is not None
 
+
+class WithArtifactRepository:
+    _art: 'ebonite.repository.ArtifactRepository' = None
+
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         self._art = repo
 
@@ -67,6 +55,24 @@ class EboniteObject(Comparable):
     @property
     def has_artifact_repo(self):
         return self._art is not None
+
+
+class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
+    """
+    Base class for high level ebonite objects.
+    These objects can be binded to metadata repository and/or to artifact repository
+
+    :param id: object id
+    :param name: object name
+    :param author: user that created that object
+    :param creation_date: date when this object was created
+    """
+
+    def __init__(self, id: int, name: str, author: str = None, creation_date: datetime.datetime = None):
+        self._id = id
+        self.name = name
+        self.author = author or _get_current_user()
+        self.creation_date = creation_date or datetime.datetime.utcnow()  # TODO local timezone
 
     @property
     def id(self) -> int:
@@ -194,6 +200,10 @@ class Task(EboniteObject):
         # self.sample_data = sample_data
         self._models: IndexDict[Model] = IndexDict('id', 'name')
         self.models: IndexDictAccessor[Model] = IndexDictAccessor(self._models)
+        self._pipelines: IndexDict[Pipeline] = IndexDict('id', 'name')
+        self.pipelines: IndexDictAccessor[Pipeline] = IndexDictAccessor(self._pipelines)
+        self._images: IndexDict[Image] = IndexDict('id', 'name')
+        self.images: IndexDictAccessor[Image] = IndexDictAccessor(self._images)
 
     def __str__(self):
         return self.name
@@ -282,15 +292,103 @@ class Task(EboniteObject):
         self._models.add(model)
         return model
 
+    @_with_meta
+    def add_pipeline(self, pipeline: 'Pipeline'):
+        """
+        Add model to task and save it to meta repo
+
+        :param model: model to add
+        """
+        if pipeline.task_id is not None and pipeline.task_id != self.id:
+            raise errors.MetadataError('Pipeline is already in task {}. Delete it first'.format(pipeline.task_id))
+
+        pipeline.task_id = self.id
+        self._meta.save_pipeline(pipeline)
+        self._pipelines.add(pipeline)
+
+    @_with_meta
+    def add_pipelines(self, pipelines: List['Pipeline']):
+        """
+        Add multiple models and save them to meta repo
+
+        :param models: models to add
+        """
+        for m in pipelines:
+            self.add_pipeline(m)
+
+    @_with_meta
+    def delete_pipeline(self, pipeline: 'Pipeline'):
+        """
+        Remove model from this task and delete it from meta repo
+
+        :param model: model to delete
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
+        """
+        pipeline_id = pipeline.id
+        if pipeline_id not in self._pipelines:
+            raise errors.NonExistingPipelineError(pipeline)
+
+        self._meta.delete_pipeline(pipeline)
+        del self._pipelines[pipeline_id]
+
+    @_with_meta
+    def add_image(self, image: 'Image'):
+        """
+        Add image for model and save it to meta repo
+
+        :param image: image to add
+        """
+        if image.model_id is not None and image.model_id != self.id:
+            raise errors.MetadataError('Image is already in model {}. Delete it first'.format(image.model_id))
+
+        image.model_id = self.id
+        self._meta.save_image(image)
+        self._images.add(image)
+
+    @_with_meta
+    def add_images(self, images: List['Image']):
+        """
+        Add multiple images for model and save them to meta repo
+
+        :param images: images to add
+        """
+        for image in images:
+            self.add_image(image)
+
+    @_with_meta
+    def delete_image(self, image: 'Image'):
+        """
+        Remove image from this model and delete it from meta repo
+
+        :param image: image to delete
+        """
+        if image.id not in self._images:
+            raise errors.NonExistingImageError(image)
+        del self._images[image.id]
+        self._meta.delete_image(image)
+        image.model_id = None
+
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         super(Task, self).bind_meta_repo(repo)
         for model in self._models.values():
             model.bind_meta_repo(repo)
 
+        for pipeline in self._pipelines.values():
+            pipeline.bind_meta_repo(repo)
+
+        for image in self._images.values():
+            image.bind_meta_repo(repo)
+
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         super(Task, self).bind_artifact_repo(repo)
         for model in self._models.values():
             model.bind_artifact_repo(repo)
+
+        for pipeline in self._pipelines.values():
+            pipeline.bind_artifact_repo(repo)
+
+        for image in self._images.values():
+            image.bind_artifact_repo(repo)
 
 
 class _WrapperMethodAccessor:
@@ -353,9 +451,6 @@ class Model(EboniteObject):
         self.task_id = task_id
         self._persisted_artifacts = artifact
         self._unpersisted_artifacts: Optional[ArtifactCollection] = None
-
-        self._images: IndexDict[Image] = IndexDict('id', 'name')
-        self.images: IndexDictAccessor[Image] = IndexDictAccessor(self._images)
 
     def load(self):
         """
@@ -547,48 +642,6 @@ class Model(EboniteObject):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
 
-    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
-        super(Model, self).bind_meta_repo(repo)
-        for image in self._images.values():
-            image.bind_meta_repo(repo)
-
-    @_with_meta
-    def add_image(self, image: 'Image'):
-        """
-        Add image for model and save it to meta repo
-
-        :param image: image to add
-        """
-        if image.model_id is not None and image.model_id != self.id:
-            raise errors.MetadataError('Image is already in model {}. Delete it first'.format(image.model_id))
-
-        image.model_id = self.id
-        self._meta.save_image(image)
-        self._images.add(image)
-
-    @_with_meta
-    def add_images(self, images: List['Image']):
-        """
-        Add multiple images for model and save them to meta repo
-
-        :param images: images to add
-        """
-        for image in images:
-            self.add_image(image)
-
-    @_with_meta
-    def delete_image(self, image: 'Image'):
-        """
-        Remove image from this model and delete it from meta repo
-
-        :param image: image to delete
-        """
-        if image.id not in self._images:
-            raise errors.NonExistingImageError(image)
-        del self._images[image.id]
-        self._meta.delete_image(image)
-        image.model_id = None
-
     def as_pipeline(self, method_name=None) -> 'Pipeline':
         # TODO docs
         method_name = self.wrapper.resolve_method(method_name)
@@ -683,8 +736,10 @@ class Pipeline(EboniteObject):
 
 
 @type_field('type')
-class ImageSource(EboniteParams):
-    pass
+class Buildable(WithMetadataRepository):
+    @abstractmethod
+    def get_provider(self):
+        pass  # pragma: no cover
 
 
 @make_string('id', 'name')
@@ -693,12 +748,28 @@ class Image(EboniteObject):
     class Params(Comparable):
         pass
 
-    def __init__(self, name: str, source: ImageSource, id: int = None,
+    def __init__(self, name: str, source: Buildable, id: int = None,
                  params: Params = None,
-                 author: str = None, creation_date: datetime.datetime = None):
+                 author: str = None, creation_date: datetime.datetime = None,
+                 task_id: int = None):
         super().__init__(id, name, author, creation_date)
+        self.task_id = task_id
         self.source = source
         self.params = params
+
+    @property
+    @_with_meta
+    def task(self):
+        t = self._meta.get_task_by_id(self.task_id)
+        if t is None:
+            raise errors.NonExistingTaskError(self.task_id)
+        return t
+
+    @task.setter
+    def task(self, task: Task):
+        if not isinstance(task, Task):
+            raise ValueError('{} is not Task'.format(task))
+        self.task_id = task.id
 
 
 class RuntimeEnvironment(EboniteObject):
@@ -713,7 +784,7 @@ class RuntimeEnvironment(EboniteObject):
             return self.default_runner
 
         @abstractmethod
-        def get_builder(self, name: str, model: Model, server, debug=False, **kwargs):
+        def get_builder(self, name: str, buildable: Buildable, **kwargs):
             """
             :return: builder for this environment
             """

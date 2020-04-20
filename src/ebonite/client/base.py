@@ -113,7 +113,7 @@ class Ebonite:
             model.load()
         return model
 
-    def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
+    def build_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
                     debug=False, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
@@ -126,14 +126,17 @@ class Ebonite:
         :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
+        from ebonite.core.analyzer.buildable import BuildableAnalyzer
         if server is None:
             server = self.get_default_server()
 
         if environment is None:
             environment = self.get_default_environment()
-        builder = environment.params.get_builder(name, model, server, debug, **kwargs)
+        buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug)
+        buildable.bind_meta_repo(self.meta_repo)
+        builder = environment.params.get_builder(name, buildable, **kwargs)
         image = builder.build()
-        image.model = model
+        image.task = task
         return self.meta_repo.create_image(image)
 
     def get_image(self, name: str, model: Model) -> Image:
@@ -190,7 +193,7 @@ class Ebonite:
 
         return instance.bind_runner(runner)
 
-    def build_and_run_instance(self, name: str, model: Model, environment: RuntimeEnvironment = None,
+    def build_and_run_instance(self, name: str, obj, environment: RuntimeEnvironment = None,
                                **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
@@ -200,7 +203,7 @@ class Ebonite:
         :param environment: environment to run instance in, if no given `localhost` is used
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        image = self.build_image(name, model, **kwargs)
+        image = self.build_image(name, obj, **kwargs)
         return self.run_instance(name, image, environment, **kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:

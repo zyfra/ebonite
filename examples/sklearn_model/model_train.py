@@ -22,7 +22,7 @@ def main():
 
     #  create local ebonite client. This client stores metadata and artifacts on local fs.
     #  clear=True means it will erase previous data (this is for demo purposes)
-    ebnt = ebonite.Ebonite.local()
+    ebnt = ebonite.Ebonite.local(clear=True)
 
     #  create a Task, container for models
     task = ebnt.get_or_create_task('my_project', 'regression_is_my_profession')

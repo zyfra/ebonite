@@ -3,10 +3,9 @@ import shutil
 from abc import abstractmethod
 from contextlib import contextmanager
 
-from ebonite.build.provider import PythonProvider
+from ebonite.core.objects import core
 from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
-
 
 REQUIREMENTS = 'requirements.txt'
 EBONITE_FROM_PIP = True
@@ -32,6 +31,7 @@ def use_local_installation():
 
 class BuilderBase:
     """Abstract class for building images from ebonite objects"""
+
     @abstractmethod
     def build(self):
         pass  # pragma: no cover
@@ -44,8 +44,10 @@ class PythonBuilder(BuilderBase):
 
     :param provider: An implementation of PythonProvider to get distribution from
     """
-    def __init__(self, provider: PythonProvider):
-        self.provider = provider
+
+    def __init__(self, buildable: 'core.Buildable'):
+        self.buildable = buildable  # TODO move to build method argument
+        self.provider = self.buildable.get_provider()
 
     def _write_distribution(self, target_dir):
         """

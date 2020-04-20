@@ -12,6 +12,7 @@ from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
 from ebonite.build.provider.base import PythonProvider
 from ebonite.core.objects import Image
+from ebonite.core.objects.core import Buildable
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
@@ -47,15 +48,15 @@ class DockerBuilder(PythonBuilder):
     :param force_overwrite: if false, raise error if image already exists
     """
 
-    def __init__(self, provider: PythonProvider, params: DockerImage, force_overwrite=False, **kwargs):
-        super().__init__(provider)
+    def __init__(self, buildable: Buildable, params: DockerImage, force_overwrite=False, **kwargs):
+        super().__init__(buildable)
         self.params = params
         self.force_overwrite = force_overwrite
 
-        kwargs.update(provider.get_options())
+        kwargs.update(self.provider.get_options())
         kwargs = {k: v for k, v in kwargs.items() if k in
                   {'base_image', 'python_version', 'templates_dir', 'run_cmd'}}
-        kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
+        kwargs['python_version'] = kwargs.get('python_version', self.provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
     def build(self) -> Image:
@@ -99,7 +100,7 @@ class DockerBuilder(PythonBuilder):
                     client.images.push(tag)
                     logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
 
-                return Image(self.params.name, self.provider.image_source(), params=self.params)
+                return Image(self.params.name, self.buildable, params=self.params)
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise

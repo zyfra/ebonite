@@ -1,13 +1,15 @@
 import os
 
 from ebonite.build.provider import PythonProvider
-from ebonite.build.provider.base import SourceWithServer
+from ebonite.build.provider.utils import BuildableWithServer
+from ebonite.core.analyzer import TypeHookMixin
+from ebonite.core.analyzer.buildable import BuildableHook
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection, Blobs, LocalFileBlob
 from ebonite.core.objects import ArtifactCollection, Model, Requirements
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
-from ebonite.core.objects.core import ImageSource
+from ebonite.core.objects.core import WithMetadataRepository
 from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
@@ -19,12 +21,6 @@ SERVER_PATH = 'server'
 def read(path):
     with open(path) as f:
         return f.read()
-
-
-class ModelSource(SourceWithServer):
-    def __init__(self, model_id: int, server: str):
-        super().__init__(server)
-        self.model_id = model_id
 
 
 class MLModelProvider(PythonProvider):
@@ -89,5 +85,24 @@ class MLModelProvider(PythonProvider):
         version = self.model.params.get(Model.PYTHON_VERSION)
         return version or super(MLModelProvider, self).get_python_version()
 
-    def image_source(self) -> ImageSource:
-        return ModelSource(self.model.id, self.server.type)
+
+class ModelBuildable(BuildableWithServer, WithMetadataRepository):
+    def __init__(self, model_id: int, server_type: str, debug: bool = False):
+        super().__init__(server_type)
+        self.debug = debug
+        self.model_id = model_id
+
+    @property
+    def model(self):
+        return self._meta.get_model_by_id(self.model_id)
+
+    def get_provider(self) -> MLModelProvider:
+        return MLModelProvider(self.model, self.server, self.debug)
+
+
+class BuildableModelHook(BuildableHook, TypeHookMixin):
+    valid_types = [Model]
+
+    def process(self, obj, **kwargs):
+        server = kwargs.get('server')  # TODO ???
+        return ModelBuildable(obj.id, server.type)
