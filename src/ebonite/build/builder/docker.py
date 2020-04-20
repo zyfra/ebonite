@@ -53,6 +53,9 @@ class DockerBuilder(PythonBuilder):
         self.force_overwrite = force_overwrite
 
         kwargs.update(provider.get_options())
+
+        self.prebuild_hook = kwargs.get('prebuild_hook', None)
+
         kwargs = {k: v for k, v in kwargs.items() if k in
                   {'base_image', 'python_version', 'templates_dir', 'run_cmd'}}
         kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
@@ -60,6 +63,8 @@ class DockerBuilder(PythonBuilder):
 
     def build(self) -> Image:
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
+            if self.prebuild_hook is not None:
+                self.prebuild_hook(self.dockerfile_gen.python_version)
             self._write_distribution(tempdir)
             return self._build_image(tempdir)
 
@@ -109,7 +114,8 @@ class _DockerfileGenerator:
     """
     Class to generate Dockerfile
 
-    :param base_image:  base image for the built image, default: python:{python_version}
+    :param base_image:  base image for the built image in form of a string or function from python version,
+      default: python:{python_version}
     :param python_version: Python version to use, default: version of running interpreter
     :param templates_dir: directory for Dockerfile templates, default: ./docker_templates
        - `pre_install.j2` - Dockerfile commands to run before pip
@@ -120,6 +126,8 @@ class _DockerfileGenerator:
 
     def __init__(self, base_image=None, python_version=None, templates_dir=None, run_cmd='sh run.sh'):
         self.python_version = python_version or get_python_version()
+        if callable(base_image):
+            base_image = base_image(self.python_version)
         self.base_image = base_image or f'python:{self.python_version}-slim'
         self.templates_dir = templates_dir or os.path.join(os.getcwd(), 'docker_templates')
         self.run_cmd = run_cmd
