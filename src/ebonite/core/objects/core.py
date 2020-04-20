@@ -593,8 +593,8 @@ class Model(EboniteObject):
         # TODO docs
         method_name = self.wrapper.resolve_method(method_name)
         method = self.wrapper.methods[method_name]
-        pipeline = Pipeline( f'{self.name}.{method_name}',
-                            [], method[1], method[2],  task_id=self.task_id).append(self, method_name)
+        pipeline = Pipeline(f'{self.name}.{method_name}',
+                            [], method[1], method[2], task_id=self.task_id).append(self, method_name)
         return pipeline
 
     def __getattr__(self, item: str):
@@ -682,32 +682,23 @@ class Pipeline(EboniteObject):
         return self
 
 
+@type_field('type')
+class ImageSource(EboniteParams):
+    pass
+
+
 @make_string('id', 'name')
 class Image(EboniteObject):
     @type_field('type')
     class Params(Comparable):
         pass
 
-    def __init__(self, name: str, id: int = None,
-                 model_id: int = None, params: Params = None,
+    def __init__(self, name: str, source: ImageSource, id: int = None,
+                 params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
-        self.model_id = model_id
+        self.source = source
         self.params = params
-
-    @property
-    @_with_meta
-    def model(self) -> Model:
-        m = self._meta.get_model_by_id(self.model_id)
-        if m is None:
-            raise errors.NonExistingModelError(self.model_id)
-        return m
-
-    @model.setter
-    def model(self, model: Model):
-        if not isinstance(model, Model):
-            raise ValueError('{} is not Model'.format(model))
-        self.model_id = model.id
 
 
 class RuntimeEnvironment(EboniteObject):

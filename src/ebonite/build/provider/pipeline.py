@@ -5,12 +5,14 @@ from functools import reduce
 from typing import List, Dict
 
 from ebonite.build.provider import PythonProvider
+from ebonite.build.provider.base import SourceWithServer
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection, Blobs, LocalFileBlob
 from ebonite.core.objects import ArtifactCollection, Model, Requirements, DatasetType
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
 from ebonite.core.objects import Pipeline, PipelineStep
+from ebonite.core.objects.core import ImageSource
 from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineMeta, PipelineLoader
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
@@ -22,6 +24,12 @@ SERVER_PATH = 'server'
 def read(path):
     with open(path) as f:
         return f.read()
+
+
+class PipelineSource(SourceWithServer):
+    def __init__(self, pipeline_id: int, server: str):
+        super().__init__(server)
+        self.pipeline_id = pipeline_id
 
 
 class PipelineProvider(PythonProvider):
@@ -98,3 +106,6 @@ class PipelineProvider(PythonProvider):
         elif len(versions) > 1:
             warnings.warn(f'Inconsistent python version for pipeline models: {versions}')
         return min(versions)  # in backward compatibility we trust
+
+    def image_source(self) -> ImageSource:
+        return PipelineSource(self.pipeline.id, self.server.type)

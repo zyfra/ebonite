@@ -99,7 +99,7 @@ class DockerBuilder(PythonBuilder):
                     client.images.push(tag)
                     logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
 
-                return Image(self.params.name, params=self.params)
+                return Image(self.params.name, self.provider.image_source(), params=self.params)
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise

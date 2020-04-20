@@ -4,12 +4,19 @@ from typing import List
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
+from ebonite.build.provider.base import SourceWithServer
 from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.core.objects import ArtifactCollection, Model, Requirements
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection
 from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODELS_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
+
+
+class MultiModelSource(SourceWithServer):
+    def __init__(self, model_ids: List[int], server: str):
+        super().__init__(server)
+        self.model_ids = model_ids
 
 
 class MLModelMultiProvider(MLModelProvider):
@@ -43,8 +50,11 @@ class MLModelMultiProvider(MLModelProvider):
 
     def get_artifacts(self) -> ArtifactCollection:
         """Returns binaries of models artifacts"""
-        #TODO additional server binaries
+        # TODO additional server binaries
         return CompositeArtifactCollection([
             _RelativePathWrapper(m.artifact_any, os.path.join(MODEL_BIN_PATH, str(i)))
             for i, m in enumerate(self.models)
         ])
+
+    def image_source(self) -> MultiModelSource:
+        return MultiModelSource([m.id for m in self.models], self.server.type)
