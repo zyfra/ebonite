@@ -17,11 +17,11 @@ def test_image_exists():
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_image_not_exists():
-    assert not image_exists_at_dockerhub(f'python:100.200.300')
-    assert not image_exists_at_dockerhub('ebonite:forever')
-    assert not image_exists_at_dockerhub('minio:minio')
-    assert not image_exists_at_dockerhub('postgres/alpine:latest')
-    assert not image_exists_at_dockerhub('registry:docker')
+    assert not image_exists_at_dockerhub('python:this_does_not_exist')
+    assert not image_exists_at_dockerhub('ebonite:this_does_not_exist')
+    assert not image_exists_at_dockerhub('minio:this_does_not_exist')
+    assert not image_exists_at_dockerhub('registry:this_does_not_exist')
+    assert not image_exists_at_dockerhub('this_does_not_exist:latest')
 
 
 @pytest.mark.docker
