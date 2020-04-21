@@ -20,6 +20,7 @@ from ebonite.utils.log import logger
 
 class Ebonite:
     """Main entry point for ebonite
+
     This is the client for Ebonite API. It can save, load and build Models, Tasks and Projects.
     Ebonite instance can be obtained from factory methods like :meth:`~ebonite.Ebonite.local` for local client,
     :meth:`~ebonite.Ebonite.inmemory` for inmemory client.
@@ -38,7 +39,10 @@ class Ebonite:
 
     def delete_project(self, project, cascade=False):
         """
-        Deletes project and all tasks, models and images associated with it from metadata repository
+        Deletes project and(if required) all tasks associated with it from metadata repository
+        :param project: project which is meant to be deleted
+        :param cascade: whether should project be deleted with all asssociated tasks
+        :return: Nothing
         """
         if cascade:
             for task in project.tasks:
@@ -77,6 +81,7 @@ class Ebonite:
         :param model: model instance to delete
         :param force: whether model artifacts' deletion errors should be ignored, default is false
         :param cascade: whether should model be deleted with all asssociated images
+        :return: Nothing
         """
         if cascade:
             for image in model.images:
@@ -106,7 +111,10 @@ class Ebonite:
 
     def delete_task(self, task, *, cascade=False):
         """
-        Deletes task and all models and images associated with it
+        Deletes task and(if required) all models associated with it
+        :param task: task which is meant to be deleted
+        :param cascade: whether should task be deleted with all associated models
+        :return: Nothing
         """
         if cascade:
             for model in task.models:
@@ -163,8 +171,10 @@ class Ebonite:
 
     def delete_image(self, image, *, cascade=False):
         """
+        Deletes image and(if required) stops all associated instances
         :param image: Image that will be deleted
-        :param cascade: Should
+        :param cascade: Whether should image be deleted with all associated instances
+        :return: Nothing
         """
         if cascade:
             for instance in self.meta_repo.get_instances(image):
@@ -363,6 +373,12 @@ class Ebonite:
         return self.default_env
 
     def delete_environment(self, environment: RuntimeEnvironment, *, cascade=False):
+        """
+        Deletes environment from metadata repository and(if required) stops associated instances
+        :param environment: Environment which is meant to be deleted
+        :param cascade: Whether should environment be deleted with all associated instances
+        :return: Nothing
+        """
         if cascade:
             instances = self.meta_repo.get_instances(image=None, environment=environment)
             for instance in instances:
