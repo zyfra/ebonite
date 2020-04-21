@@ -5,10 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
-                                 ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError)
+from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
+                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
+                                 TaskWithModelsError)
 from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
@@ -116,13 +118,18 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             obj._id = p.id
             return obj
 
-    def _delete_object(self, object_type: Type[Attaching], obj, error_type):
+    def _delete_object(self, object_type: Type[Attaching], obj, ne_error_type, ie_error_type):
         with self._session() as s:
             p = s.query(object_type).filter(object_type.id == obj.id).first()
             if p is None:
-                raise error_type(obj)
+                raise ne_error_type(obj)
             logger.debug('Deleting object %s', p)
-            s.delete(p)
+            try:
+                s.delete(p)
+                s.commit()
+            except IntegrityError:
+                s.rollback()
+                raise ie_error_type(obj)
 
     @bind_to_self
     def get_projects(self) -> List[Project]:
@@ -158,7 +165,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return project
 
     def delete_project(self, project: Project):
-        self._delete_object(self.projects, project, NonExistingProjectError)
+        self._delete_object(self.projects, project, NonExistingProjectError, ProjectWithTasksError)
         project.unbind_meta_repo()
 
     @bind_to_self
@@ -199,7 +206,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return task
 
     def delete_task(self, task: Task):
-        self._delete_object(self.tasks, task, NonExistingTaskError)
+        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithModelsError)
         task.unbind_meta_repo()
 
     @bind_to_self
@@ -240,7 +247,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return model
 
     def delete_model(self, model: Model):
-        self._delete_object(self.models, model, NonExistingModelError)
+        self._delete_object(self.models, model, NonExistingModelError, ModelWithImagesError)
         model.unbind_meta_repo()
 
     @bind_to_self
@@ -249,7 +256,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._get_objects(self.images, self.images.model_id == model.id)
 
     @bind_to_self
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional[Image]:
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
+            Optional[Image]:
         model = self._resolve_model(model, task, project)
         if model is None:
             return None
@@ -273,7 +281,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return image
 
     def delete_image(self, image: Image):
-        self._delete_object(self.images, image, NonExistingImageError)
+        self._delete_object(self.images, image, NonExistingImageError, ImageWithInstancesError)
         image.unbind_meta_repo()
 
     @bind_to_self
@@ -302,16 +310,24 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return environment
 
     def delete_environment(self, environment: RuntimeEnvironment):
-        self._delete_object(self.environments, environment, NonExistingEnvironmentError)
+        self._delete_object(self.environments, environment, NonExistingEnvironmentError, EnvironmentWithInstancesError)
         environment.unbind_meta_repo()
 
     @bind_to_self
-    def get_instances(self, image: Union[int, Image], environment: Union[int, RuntimeEnvironment]) \
+    def get_instances(self, image: Union[int, Image] = None, environment: Union[int, RuntimeEnvironment] = None) \
             -> List[RuntimeInstance]:
-        image = image.id if isinstance(image, Image) else image
-        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
-        return self._get_objects(self.instances, self.instances.image_id == image and
-                                 self.instances.environment_id == environment)
+        if image is None and environment is None:
+            raise ValueError('Image and environment were not provided to the function')
+
+        filter = True
+        if image is not None:
+            image = image.id if isinstance(image, Image) else image
+            filter = filter and self.instances.image_id == image
+        if environment is not None:
+            environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+            filter = filter and self.instances.environment_id == environment
+
+        return self._get_objects(self.instances, filter)
 
     @bind_to_self
     def get_instance_by_name(self, instance_name, image: Union[int, Image],
@@ -340,5 +356,5 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return instance
 
     def delete_instance(self, instance: RuntimeInstance):
-        self._delete_object(self.instances, instance, NonExistingInstanceError)
+        self._delete_object(self.instances, instance, NonExistingInstanceError, AssertionError)
         instance.unbind_meta_repo()
