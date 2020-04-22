@@ -12,6 +12,8 @@ from tests.build.conftest import check_ebonite_port_free, train_model
 
 def test_delete_project__ok(ebnt: Ebonite):
     project = ebnt.meta_repo.get_or_create_project('Project')
+    
+    assert project is not None
     ebnt.delete_project(project)
 
     assert ebnt.meta_repo.get_project_by_name('Project') is None
@@ -20,6 +22,9 @@ def test_delete_project__ok(ebnt: Ebonite):
 def test_delete_project_cascade__ok(ebnt: Ebonite):
     task = ebnt.get_or_create_task('Project', 'Task')
     project = ebnt.meta_repo.get_project_by_name('Project')
+
+    assert task is not None
+    assert project is not None
     ebnt.delete_project(project, cascade=True)
 
     assert ebnt.meta_repo.get_project_by_name('Project') is None
@@ -29,6 +34,8 @@ def test_delete_project_cascade__ok(ebnt: Ebonite):
 def test_delete_project_cascade_project_with_tasks(ebnt: Ebonite):
     ebnt.get_or_create_task('Project', 'Task')
     project = ebnt.meta_repo.get_project_by_name('Project')
+
+    assert project is not None
 
     with pytest.raises(ProjectWithTasksError):
         ebnt.delete_project(project)
@@ -52,6 +59,8 @@ def test_get_or_create_task_exists(ebnt: Ebonite):
 
 def test_delete_task_ok(ebnt: Ebonite):
     task = ebnt.get_or_create_task('Project', 'Task')
+
+    assert task is not None
     ebnt.delete_task(task)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
@@ -61,6 +70,9 @@ def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = ebnt.push_model(model, task)
     task = ebnt.meta_repo.get_task_by_id(task.id)
+
+    assert task is not None
+    assert model is not None
     ebnt.delete_task(task, cascade=True)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
@@ -70,6 +82,10 @@ def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model):
 def test_delete_task_with_models(ebnt: Ebonite, model: Model):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = ebnt.push_model(model, task)
+
+    assert task is not None
+    assert model is not None
+
     with pytest.raises(TaskWithModelsError):
         ebnt.delete_task(task)
 
@@ -175,6 +191,9 @@ def delete_model_ok(ebnt: Ebonite):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = Model(name='Model', task_id=task.id)
     model = ebnt.meta_repo.create_model(model)
+
+    assert task is not None
+    assert model is not None
     ebnt.delete_model(model)
 
     assert ebnt.meta_repo.get_model_by_id(model.id) is None
@@ -185,6 +204,10 @@ def delete_model_cascade_ok(ebnt: Ebonite, model: Model):
     model = ebnt.push_model(model, task)
     image = Image(model_id=model.id, name='Image')
     image = ebnt.meta_repo.create_image(image)
+
+    assert task is not None
+    assert model is not None
+    assert image is not None
     ebnt.delete_model(model, cascade=True)
 
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
@@ -197,6 +220,10 @@ def delete_model_with_images(ebnt: Ebonite, model: Model):
     image = Image(model_id=model.id, name='Image')
     image = ebnt.meta_repo.create_image(image)
 
+    assert task is not None
+    assert model is not None
+    assert image is not None
+
     with pytest.raises(ModelWithImagesError):
         ebnt.delete_model(model)
 
@@ -206,7 +233,12 @@ def delete_image_ok(ebnt: Ebonite, model: Model):
     model = ebnt.push_model(model, task)
     image = Image(model_id=model.id, name='Image')
     image = ebnt.meta_repo.create_image(image)
+
+    assert task is not None
+    assert model is not None
+    assert image is not None
     ebnt.delete_image(image)
+
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
