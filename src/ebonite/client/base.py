@@ -39,6 +39,19 @@ class Ebonite:
         self.meta_repo = meta_repo
         self.artifact_repo = artifact_repo
 
+    def delete_project(self, project, cascade=False):
+        """
+        Deletes project and(if required) all tasks associated with it from metadata repository
+
+        :param project: project which is meant to be deleted
+        :param cascade: whether should project be deleted with all asssociated tasks
+        :return: Nothing
+        """
+        if cascade:
+            for task in self.meta_repo.get_tasks(project):
+                self.delete_task(task, cascade=cascade)
+        self.meta_repo.delete_project(project)
+
     def push_model(self, model: Model, task: Task = None) -> Model:
         """
         Pushes :py:class:`~ebonite.core.objects.Model` instance into metadata and artifact repositories
@@ -66,17 +79,18 @@ class Ebonite:
         model = self.meta_repo.save_model(model)
         return model
 
-    def delete_model(self, model: Model, force=False, cascade=False):
+    def delete_model(self, model: Model, *, force=False, cascade=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
 
         :param model: model instance to delete
         :param force: whether model artifacts' deletion errors should be ignored, default is false
         :param cascade: whether should model be deleted with all asssociated images
+        :return: Nothing
         """
         if cascade:
-            for image in model.images:
-                self.delete_image(self.meta_repo.get_image_by_id(image))
+            for image in self.meta_repo.get_images(model):
+                self.delete_image(image, cascade=cascade)
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
@@ -101,13 +115,17 @@ class Ebonite:
         task.bind_artifact_repo(self.artifact_repo)
         return task
 
-    def delete_task(self, task, cascade=False):
+    def delete_task(self, task, *, cascade=False):
         """
-        Deletes task and all models and images associated with it
+        Deletes task and(if required) all models associated with it
+
+        :param task: task which is meant to be deleted
+        :param cascade: whether should task be deleted with all associated models
+        :return: Nothing
         """
         if cascade:
-            for model in task.models:
-                self.delete_model(self.meta_repo.get_model_by_id(model), cascade)
+            for model in self.meta_repo.get_models(task):
+                self.delete_model(model, cascade=cascade)
         self.meta_repo.delete_task(task)
 
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
@@ -161,11 +179,13 @@ class Ebonite:
         """
         return self.meta_repo.get_image_by_name(name, model)
 
-    def delete_image(self, image, cascade):
+    def delete_image(self, image, *, cascade=False):
         """
+        Deletes image and(if required) stops all associated instances
 
         :param image: Image that will be deleted
-        :param cascade: Should
+        :param cascade: Whether should image be deleted with all associated instances
+        :return: Nothing
         """
         if cascade:
             for instance in self.meta_repo.get_instances(image):
@@ -358,6 +378,7 @@ class Ebonite:
     def get_default_environment(self):
         """
         Creates (if needed) and returns default runtime environment
+
         :return: saved instance of :class:`.RuntimeEnvironment`
         """
         if self.default_env is not None:
@@ -374,11 +395,16 @@ class Ebonite:
             self.default_env = self.push_environment(self.default_env)
         return self.default_env
 
-    def delete_project(self, project, cascade=False):
+    def delete_environment(self, environment: RuntimeEnvironment, *, cascade=False):
         """
-        Deletes project and all tasks, models and images associated with it from metadata repository
+        Deletes environment from metadata repository and(if required) stops associated instances
+
+        :param environment: Environment which is meant to be deleted
+        :param cascade: Whether should environment be deleted with all associated instances
+        :return: Nothing
         """
         if cascade:
-            for task in project.tasks:
-                self.delete_task(self.meta_repo.get_task_by_id(task), cascade)
-        self.meta_repo.delete_project(project)
+            instances = self.meta_repo.get_instances(image=None, environment=environment)
+            for instance in instances:
+                self.stop_instance(instance)
+        self.meta_repo.delete_environment(environment)

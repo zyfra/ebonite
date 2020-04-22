@@ -352,7 +352,8 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional['core.Image']:
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
+            Optional['core.Image']:
         """
         Finds image by name in given model, task and project.
 
@@ -519,8 +520,8 @@ class MetadataRepository:
         return self.update_environment(environment)
 
     @abstractmethod
-    def get_instances(self, image: Union[int, 'core.Image'], environment: Union[int, 'core.RuntimeEnvironment']) \
-            -> List['core.RuntimeInstance']:
+    def get_instances(self, image: Union[int, 'core.Image'] = None,
+                      environment: Union[int, 'core.RuntimeEnvironment'] = None) -> List['core.RuntimeInstance']:
         """
         Gets a list of instances in given image or environment
 

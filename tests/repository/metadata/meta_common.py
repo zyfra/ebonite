@@ -970,6 +970,30 @@ def test_get_instances__full(meta: MetadataRepository, created_image, created_en
     assert meta.get_instances(created_image, created_environment) == [created_instance]
 
 
+def test_get_instances__empty_only_image(meta: MetadataRepository, created_image):
+    assert meta.get_instances(created_image, None) == []
+
+
+def test_get_instance__only_image(meta: MetadataRepository, created_image, created_instance):
+    assert meta.get_instances(created_image, None) == [created_instance]
+
+
+def test_get_instances__full_only_image(meta: MetadataRepository, created_image, created_instance):
+    assert meta.get_instances(created_image, None) == [created_instance]
+
+
+def test_get_instances__empty_only_environment(meta: MetadataRepository, created_environment):
+    assert meta.get_instances(None, created_environment) == []
+
+
+def test_get_instance__only_environment(meta: MetadataRepository, created_environment, created_instance):
+    assert meta.get_instances(None, created_environment) == [created_instance]
+
+
+def test_get_instances__full_only_environment(meta: MetadataRepository, created_environment, created_instance):
+    assert meta.get_instances(None, created_environment) == [created_instance]
+
+
 def test_get_instance_by_name__empty(meta: MetadataRepository, created_image, created_environment):
     assert meta.get_instance_by_name('qwerty', created_image, created_environment) is None
 

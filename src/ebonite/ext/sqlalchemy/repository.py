@@ -5,12 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.core.errors import (EnvironmentWithRelationshipError, ExistingEnvironmentError, ExistingImageError,
+from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
                                  ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageWithInstancesError, InstanceWithRelationshipError, ModelWithImagesError,
-                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError,
-                                 ProjectWithTasksError, TaskWithModelsError)
+                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
+                                 TaskWithModelsError)
 from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
@@ -126,9 +126,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             logger.debug('Deleting object %s', p)
             try:
                 s.delete(p)
-                s.flush()
+                s.commit()
             except IntegrityError:
-                s.rollback()
                 raise ie_error_type(obj)
 
     @bind_to_self
@@ -256,7 +255,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
         return self._get_objects(self.images, self.images.model_id == model.id)
 
     @bind_to_self
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional[Image]:
+    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
+            Optional[Image]:
         model = self._resolve_model(model, task, project)
         if model is None:
             return None
@@ -309,16 +309,24 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return environment
 
     def delete_environment(self, environment: RuntimeEnvironment):
-        self._delete_object(self.environments, environment, NonExistingEnvironmentError, EnvironmentWithRelationshipError)
+        self._delete_object(self.environments, environment, NonExistingEnvironmentError, EnvironmentWithInstancesError)
         environment.unbind_meta_repo()
 
     @bind_to_self
-    def get_instances(self, image: Union[int, Image], environment: Union[int, RuntimeEnvironment]) \
+    def get_instances(self, image: Union[int, Image] = None, environment: Union[int, RuntimeEnvironment] = None) \
             -> List[RuntimeInstance]:
-        image = image.id if isinstance(image, Image) else image
-        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
-        return self._get_objects(self.instances, self.instances.image_id == image and
-                                 self.instances.environment_id == environment)
+        if image is None and environment is None:
+            raise ValueError('Image and environment were not provided to the function')
+
+        filter = True
+        if image is not None:
+            image = image.id if isinstance(image, Image) else image
+            filter = filter and self.instances.image_id == image
+        if environment is not None:
+            environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+            filter = filter and self.instances.environment_id == environment
+
+        return self._get_objects(self.instances, filter)
 
     @bind_to_self
     def get_instance_by_name(self, instance_name, image: Union[int, Image],
@@ -347,5 +355,5 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return instance
 
     def delete_instance(self, instance: RuntimeInstance):
-        self._delete_object(self.instances, instance, NonExistingInstanceError, InstanceWithRelationshipError)
+        self._delete_object(self.instances, instance, NonExistingInstanceError, AssertionError)
         instance.unbind_meta_repo()
