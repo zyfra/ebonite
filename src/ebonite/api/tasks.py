@@ -30,7 +30,7 @@ class TaskUpdateBody(PyjacksonModel):
     __force_required__ = ['id', 'project_id']
 
 
-def task_blueprint(ebonite: Ebonite):
+def task_blueprint(ebonite: Ebonite) -> Blueprint:
     blueprint = Blueprint('tasks', __name__, url_prefix='/tasks')
 
     @blueprint.route('', methods=['GET'])

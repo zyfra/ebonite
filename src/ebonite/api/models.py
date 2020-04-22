@@ -30,7 +30,7 @@ class UpdateModelBody(PyjacksonModel):
     __force_required__ = ['id', 'task_id', 'name']
 
 
-def models_blueprint(ebonite: Ebonite):
+def models_blueprint(ebonite: Ebonite) -> Blueprint:
     blueprint = Blueprint('models', __name__, url_prefix='/models')
 
     @blueprint.route('', methods=['GET'])
@@ -38,7 +38,7 @@ def models_blueprint(ebonite: Ebonite):
         body = GetModelsListBody.from_data(request.args)
         task = ebonite.meta_repo.get_task_by_id(body.task_id)
         if task:
-            return jsonify([pj.dumps(x) for x in task.models]), 200
+            return jsonify([pj.dumps(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200
         else:
             return jsonify({'errormsg': f'Task with id {body.task_id} does not exist'}), 404
 

@@ -22,7 +22,7 @@ class ProjectUpdateBody(PyjacksonModel):
     __force_required__ = ['id']
 
 
-def project_blueprint(ebonite: Ebonite):
+def project_blueprint(ebonite: Ebonite) -> Blueprint:
     blueprint = Blueprint('projects', __name__, url_prefix='/projects')
 
     @blueprint.route('', methods=['GET'])
@@ -43,7 +43,7 @@ def project_blueprint(ebonite: Ebonite):
         proj = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
             proj = ebonite.meta_repo.create_project(proj)
-            return jsonify({pj.dumps(proj)}), 201
+            return jsonify(pj.dumps(proj)), 201
         except ExistingProjectError:
             return jsonify({'errormsg': f'Project with name {proj.name} already exists'}), 400
 

@@ -2,6 +2,7 @@ from flask import Flask
 
 from ebonite.api.errors import errors_blueprint
 from ebonite.api.healthchecks import healthcheck_blueprint
+from ebonite.api.images import images_blueprint
 from ebonite.api.models import models_blueprint
 from ebonite.api.projects import project_blueprint
 from ebonite.api.tasks import task_blueprint
@@ -19,7 +20,8 @@ class EboniteAPI:
 
     """
     app: Flask = None
-    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint, models_blueprint]
+    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint, models_blueprint,
+                  images_blueprint]
 
     def __init__(self, name: str, config_path: str, host: str = '127.0.0.1', port: str = '5000', debug: bool = True):
         self.app = Flask(name)

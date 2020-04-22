@@ -6,7 +6,7 @@ from ebonite.build.docker import is_docker_running
 from ebonite.repository.artifact.base import NoSuchArtifactError
 
 
-def healthcheck_blueprint(ebonite):
+def healthcheck_blueprint(ebonite) -> Blueprint:
     blueprint = Blueprint('healthcheks', __name__, url_prefix='/healthchecks')
 
     @blueprint.route('/docker', methods=['GET'])

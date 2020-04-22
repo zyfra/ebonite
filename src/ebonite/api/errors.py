@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 
 
-def errors_blueprint(ebonite):
+def errors_blueprint(ebonite) -> Blueprint:
     blueprint = Blueprint('errors', __name__)
 
     @blueprint.app_errorhandler(Exception)
