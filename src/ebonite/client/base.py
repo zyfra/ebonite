@@ -398,7 +398,7 @@ class Ebonite:
     def delete_environment(self, environment: RuntimeEnvironment, *, cascade=False):
         """
         Deletes environment from metadata repository and(if required) stops associated instances
-        
+
         :param environment: Environment which is meant to be deleted
         :param cascade: Whether should environment be deleted with all associated instances
         :return: Nothing
