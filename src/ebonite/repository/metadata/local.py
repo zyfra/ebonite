@@ -261,9 +261,9 @@ class LocalMetadataRepository(MetadataRepository):
         return project
 
     def delete_project(self, project: Project):
-        if self.get_tasks(project):
-            raise ProjectWithTasksError(project)
         try:
+            if self.get_tasks(project):
+                raise ProjectWithTasksError(project)
             self.data.remove_project(project.id)
             self.save()
             project.unbind_meta_repo()
@@ -321,10 +321,10 @@ class LocalMetadataRepository(MetadataRepository):
         return task
 
     def delete_task(self, task: Task):
-        if self.get_models(task):
-            raise TaskWithModelsError(task)
         if task.id is None:
             raise NonExistingTaskError(task)
+        if self.get_models(task):
+            raise TaskWithModelsError(task)
         self.data.remove_task(task.id)
         self.save()
         task.unbind_meta_repo()
@@ -379,10 +379,10 @@ class LocalMetadataRepository(MetadataRepository):
         return model
 
     def delete_model(self, model: Model):
-        if self.get_images(model):
-            raise ModelWithImagesError(model)
         if model.id is None:
             raise NonExistingModelError(model)
+        if self.get_images(model):
+            raise ModelWithImagesError(model)
         self.data.remove_model(model.id)
         self.save()
         model.unbind_meta_repo()
