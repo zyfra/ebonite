@@ -127,7 +127,7 @@ class MetadataRepository:
                 raise errors.ExistingProjectError(existing_project)
         return self.update_project(project)
 
-    def get_or_create_project(self, name: object) -> object:
+    def get_or_create_project(self, name: str) -> Project:
         """
         Creates a project if not exists or gets existing project otherwise.
 
