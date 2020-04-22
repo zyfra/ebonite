@@ -153,6 +153,6 @@ class ImageWithInstancesError(MetadataError):
 
 
 class EnvironmentWithInstancesError(MetadataError):
-    def __init__(self, image: Image):
-        image = image.name if isinstance(image, Image) else image
-        super(EnvironmentWithInstancesError, self).__init__(f'Instance {image} has foreign key and can not be deleted')
+    def __init__(self, environment: RuntimeEnvironment):
+        environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
+        super(EnvironmentWithInstancesError, self).__init__(f'Instance {environment} has foreign key and can not be deleted')
