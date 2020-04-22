@@ -128,7 +128,6 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 s.delete(p)
                 s.commit()
             except IntegrityError:
-                s.rollback()
                 raise ie_error_type(obj)
 
     @bind_to_self
