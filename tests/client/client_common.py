@@ -12,7 +12,7 @@ from tests.build.conftest import check_ebonite_port_free, train_model
 
 def test_delete_project__ok(ebnt: Ebonite):
     project = ebnt.meta_repo.get_or_create_project('Project')
-    
+
     assert project is not None
     ebnt.delete_project(project)
 
