@@ -24,8 +24,10 @@ class Ebonite:
     This is the client for Ebonite API. It can save, load and build Models, Tasks and Projects.
     Ebonite instance can be obtained from factory methods like :meth:`~ebonite.Ebonite.local` for local client,
     :meth:`~ebonite.Ebonite.inmemory` for inmemory client.
+
     You can save client config with :meth:`~ebonite.Ebonite.save_client_config` and
     later restore it with :meth:`~ebonite.Ebonite.from_config_file`
+
     :param meta_repo: :class:`~ebonite.repository.MetadataRepository` instance to save metadata
     :param artifact_repo: :class:`~ebonite.repository.ArtifactRepository` instance to save artifacts
     """
@@ -40,6 +42,7 @@ class Ebonite:
     def delete_project(self, project, cascade=False):
         """
         Deletes project and(if required) all tasks associated with it from metadata repository
+
         :param project: project which is meant to be deleted
         :param cascade: whether should project be deleted with all asssociated tasks
         :return: Nothing
@@ -52,6 +55,7 @@ class Ebonite:
     def push_model(self, model: Model, task: Task = None) -> Model:
         """
         Pushes :py:class:`~ebonite.core.objects.Model` instance into metadata and artifact repositories
+
         :param model: :py:class:`~ebonite.core.objects.Model` instance
         :param task: :py:class:`~ebonite.core.objects.Task` instance to save model to. Optional if model already has task
         :return: same saved :py:class:`~ebonite.core.objects.Model` instance
@@ -78,6 +82,7 @@ class Ebonite:
     def delete_model(self, model: Model, *, force=False, cascade=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
+
         :param model: model instance to delete
         :param force: whether model artifacts' deletion errors should be ignored, default is false
         :param cascade: whether should model be deleted with all asssociated images
@@ -101,6 +106,7 @@ class Ebonite:
     def get_or_create_task(self, project_name: str, task_name: str) -> Task:
         """
         Load task from repository if it exists and create it otherwise
+
         :param project_name: project name to load task from
         :param task_name: task name to load
         :return: :py:class:`~ebonite.core.objects.Task` instance
@@ -112,6 +118,7 @@ class Ebonite:
     def delete_task(self, task, *, cascade=False):
         """
         Deletes task and(if required) all models associated with it
+
         :param task: task which is meant to be deleted
         :param cascade: whether should task be deleted with all associated models
         :return: Nothing
@@ -125,6 +132,7 @@ class Ebonite:
                   load_artifacts: bool = True) -> Model:
         """
         Load model from repository
+
         :param model_name: model name to load
         :param task: :py:class:`~ebonite.core.objects.Task` instance or task name to load model from
         :param project: :py:class:`~ebonite.core.objects.Project` instance or project name to load task from
@@ -140,6 +148,7 @@ class Ebonite:
                     debug=False, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
+
         :param name: name of image to build
         :param model: model to wrap into service
         :param server: server to build image with
@@ -163,6 +172,7 @@ class Ebonite:
     def get_image(self, name: str, model: Model) -> Image:
         """
         Load image from repository
+
         :param name: image name to load
         :param model: :py:class:`~ebonite.core.objects.Model` instance to load image from
         :return: loaded :py:class:`~ebonite.core.objects.Image` instance
@@ -172,6 +182,7 @@ class Ebonite:
     def delete_image(self, image, *, cascade=False):
         """
         Deletes image and(if required) stops all associated instances
+
         :param image: Image that will be deleted
         :param cascade: Whether should image be deleted with all associated instances
         :return: Nothing
@@ -184,6 +195,7 @@ class Ebonite:
     def push_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
         """
         Pushes runtime environment to repository
+
         :param environment: environment to push
         :return: same environment bound to repository
         """
@@ -192,6 +204,7 @@ class Ebonite:
     def get_environment(self, name: str) -> RuntimeEnvironment:
         """
         Load runtime environment from repository
+
         :param name: name of environment to load
         :return: loaded :py:class:`~ebonite.core.objects.RuntimeEnvironment` instance
         """
@@ -201,6 +214,7 @@ class Ebonite:
                      **kwargs) -> RuntimeInstance:
         """
         Runs model service instance and stores it to repository
+
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
@@ -229,6 +243,7 @@ class Ebonite:
                                **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
+
         :param name: name of image and instance to be built and run respectively
         :param model: model to wrap into service
         :param environment: environment to run instance in, if no given `localhost` is used
@@ -240,6 +255,7 @@ class Ebonite:
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
         """
         Loads service instance from repository
+
         :param name: name of instance to load
         :param image: image of instance to load
         :param environment: environment of instance to load
@@ -250,6 +266,7 @@ class Ebonite:
     def stop_instance(self, instance: RuntimeInstance, **kwargs):
         """
         Stops instance of model service and deletes it from repository
+
         :param instance: instance to stop
         :return: nothing
         """
@@ -264,6 +281,7 @@ class Ebonite:
         """
         This function does full default Ebonite's pipeline.
         Creates model, pushes it, wraps with a server, builds the image and runs it locally (if needed).
+
         :param model_name: model name to create.
         :param model_object: object containing model.
         :param model_input: model input.
@@ -288,6 +306,7 @@ class Ebonite:
     def local(cls, path=None, clear=False) -> 'Ebonite':
         """
         Get an instance of :class:`~ebonite.Ebonite` that stores metadata and artifacts on local filesystem
+
         :param path: path to storage dir. If None, `.ebonite` dir is used
         :param clear: if True, erase previous data from storage
         """
@@ -310,6 +329,7 @@ class Ebonite:
                       meta_kwargs: dict = None, artifact_kwargs: dict = None) -> 'Ebonite':
         """
         Create custom Ebonite client from metadata and artifact repositories.
+
         :param metadata: :class:`~ebonite.repository.MetadataRepository` instance or pyjackson subtype type name
         :param artifact: :class:`~ebonite.repository.ArtifactRepository` instance or pyjackson subtype type name
         :param meta_kwargs: kwargs for metadata repo __init__ if subtype type name was provided
@@ -332,6 +352,7 @@ class Ebonite:
     def from_config_file(cls, filepath) -> 'Ebonite':
         """
         Read and create Ebonite instance from config file
+
         :param filepath: path to read config from
         :return: :class:`~ebonite.Ebonite` instance
         """
@@ -340,6 +361,7 @@ class Ebonite:
     def save_client_config(self, filepath):
         """
         Save current client config to a file
+
         :param filepath: path to file
         """
         write(filepath, self, Ebonite)
@@ -356,6 +378,7 @@ class Ebonite:
     def get_default_environment(self):
         """
         Creates (if needed) and returns default runtime environment
+
         :return: saved instance of :class:`.RuntimeEnvironment`
         """
         if self.default_env is not None:
@@ -375,6 +398,7 @@ class Ebonite:
     def delete_environment(self, environment: RuntimeEnvironment, *, cascade=False):
         """
         Deletes environment from metadata repository and(if required) stops associated instances
+        
         :param environment: Environment which is meant to be deleted
         :param cascade: Whether should environment be deleted with all associated instances
         :return: Nothing
