@@ -48,8 +48,8 @@ class Ebonite:
         :return: Nothing
         """
         if cascade:
-            for task in project.tasks:
-                self.delete_task(self.meta_repo.get_task_by_id(task), cascade=cascade)
+            for task in self.meta_repo.get_tasks(project):
+                self.delete_task(task, cascade=cascade)
         self.meta_repo.delete_project(project)
 
     def push_model(self, model: Model, task: Task = None) -> Model:
@@ -89,8 +89,8 @@ class Ebonite:
         :return: Nothing
         """
         if cascade:
-            for image in model.images:
-                self.delete_image(self.meta_repo.get_image_by_id(image), cascade=cascade)
+            for image in self.meta_repo.get_images(model):
+                self.delete_image(image, cascade=cascade)
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
@@ -124,8 +124,8 @@ class Ebonite:
         :return: Nothing
         """
         if cascade:
-            for model in task.models:
-                self.delete_model(self.meta_repo.get_model_by_id(model), cascade=cascade)
+            for model in self.meta_repo.get_models(task):
+                self.delete_model(model, cascade=cascade)
         self.meta_repo.delete_task(task)
 
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
