@@ -126,6 +126,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             logger.debug('Deleting object %s', p)
             try:
                 s.delete(p)
+                s.commit()
             except IntegrityError:
                 raise ie_error_type(obj)
 
