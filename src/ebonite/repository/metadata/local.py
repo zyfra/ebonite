@@ -482,7 +482,7 @@ class LocalMetadataRepository(MetadataRepository):
 
     def delete_environment(self, environment: RuntimeEnvironment):
         if self.data.get_instances_by_environment_id(environment.id):
-            raise EnvironmentWithInstancesError
+            raise EnvironmentWithInstancesError(environment)
         try:
             self.data.remove_environment(environment.id)
             self.save()
