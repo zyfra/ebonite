@@ -155,38 +155,8 @@ class InstanceWithRelationshipError(MetadataError):
         super(InstanceWithRelationshipError, self).__init__(f'Instance {image} has foreign key and can not be deleted')
 
 
-class EnvironmentWithRelationshipError(MetadataError):
-    def __init__(self, image: Image):
-        image = image.name if isinstance(image, Image) else image
-        super(EnvironmentWithRelationshipError, self).__init__(f'Environment {image} has foreign key and can not be deleted')
-
-
 class UnboundObjectError(MetadataError):
     pass
-
-
-class ProjectWithTasksError(MetadataError):
-    def __init__(self, project: Project):
-        project = project.name if isinstance(project, Project) else project
-        super(ProjectWithTasksError, self).__init__(f'Project {project} has foreign key and can not be deleted')
-
-
-class TaskWithModelsError(MetadataError):
-    def __init__(self, task: Task):
-        task = task.name if isinstance(task, Project) else task
-        super(TaskWithModelsError, self).__init__(f'Project {task} has foreign key and can not be deleted')
-
-
-class ModelWithImagesError(MetadataError):
-    def __init__(self, model: Model):
-        model = model.name if isinstance(model, Model) else model
-        super(ModelWithImagesError, self).__init__(f'Model {model} has foreign key and can not be deleted')
-
-
-class ImageWithInstancesError(MetadataError):
-    def __init__(self, image: Image):
-        image = image.name if isinstance(image, Image) else image
-        super(ImageWithInstancesError, self).__init__(f'Image {image} has foreign key and can not be deleted')
 
 
 class EnvironmentWithInstancesError(MetadataError):
