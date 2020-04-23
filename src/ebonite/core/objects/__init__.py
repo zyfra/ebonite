@@ -1,5 +1,5 @@
 from .artifacts import ArtifactCollection
-from .core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task, Pipeline, PipelineStep
+from .core import Image, Model, Pipeline, PipelineStep, Project, RuntimeEnvironment, RuntimeInstance, Task
 from .dataset_type import DatasetType
 from .requirements import Requirement, Requirements
 from .wrapper import ModelIO, ModelWrapper

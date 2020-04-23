@@ -1,5 +1,5 @@
-import re
 import os
+import re
 from abc import abstractmethod
 from contextlib import contextmanager
 from threading import Lock
@@ -7,15 +7,12 @@ from typing import Dict, Generator
 
 import docker
 from docker.errors import DockerException
-
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 from pyjackson.utils import get_class_field_names
 
-from ebonite.build.provider import MLModelProvider
-from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance, Model
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
 from ebonite.core.objects.core import Buildable
-from ebonite.runtime.server import Server
 from ebonite.utils.log import logger
 
 # TODO check

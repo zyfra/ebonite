@@ -1,6 +1,6 @@
 from abc import ABC
 
-from ebonite.core.analyzer import analyzer_class, Hook
+from ebonite.core.analyzer import Hook, analyzer_class
 from ebonite.core.objects.core import Buildable
 
 

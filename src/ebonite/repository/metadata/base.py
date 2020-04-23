@@ -356,7 +356,8 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_pipeline_by_name(self, pipeline_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Pipeline']:
+    def get_pipeline_by_name(self, pipeline_name, task: TaskVar,
+                             project: ProjectVar = None) -> Optional['core.Pipeline']:
         """
         Finds model by name in given task and project.
 
@@ -437,7 +438,7 @@ class MetadataRepository:
 
     # _______________
     @abstractmethod
-    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List['core.Image']:
+    def get_images(self, task: TaskVar, project: ProjectVar = None) -> List['core.Image']:
         """
         Gets a list of images in given model, task and project
 
@@ -450,7 +451,7 @@ class MetadataRepository:
         pass  # pragma: no cover
 
     @abstractmethod
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> Optional['core.Image']:
+    def get_image_by_name(self, image_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Image']:
         """
         Finds image by name in given model, task and project.
 
@@ -520,7 +521,7 @@ class MetadataRepository:
         """
         self._validate_image(image)
 
-        existing_image = self.get_image_by_name(image.name, image.model_id)
+        existing_image = self.get_image_by_name(image.name, image.task_id)
 
         if image.id is None and existing_image is None:
             return self.create_image(image)
@@ -759,7 +760,8 @@ class MetadataRepository:
             raise errors.PipelineNotInTaskError(pipeline)
 
     def _validate_image(self, image: Image):
-        pass
+        if image.task_id is None:
+            raise errors.ImageNotInTaskError(image)
 
     def _validate_environment(self, environment: 'core.RuntimeEnvironment'):
         pass

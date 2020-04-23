@@ -91,13 +91,23 @@ class ModelBuildable(BuildableWithServer, WithMetadataRepository):
         super().__init__(server_type)
         self.debug = debug
         self.model_id = model_id
+        self.model_cache = None
 
     @property
     def model(self):
-        return self._meta.get_model_by_id(self.model_id)
+        if self.model_cache is None:
+            self.model_cache = self._meta.get_model_by_id(self.model_id)
+        return self.model_cache
 
     def get_provider(self) -> MLModelProvider:
         return MLModelProvider(self.model, self.server, self.debug)
+
+    @classmethod
+    def from_model(cls, model: Model, **kwargs):
+        mb = ModelBuildable(model.id, **kwargs)
+        mb.bind_meta_repo(model._meta)
+        mb.model_cache = model
+        return mb
 
 
 class BuildableModelHook(BuildableHook, TypeHookMixin):
@@ -105,4 +115,4 @@ class BuildableModelHook(BuildableHook, TypeHookMixin):
 
     def process(self, obj, **kwargs):
         server = kwargs.get('server')  # TODO ???
-        return ModelBuildable(obj.id, server.type)
+        return ModelBuildable.from_model(obj, server_type=server.type)

@@ -53,21 +53,28 @@ class MLModelMultiProvider(MLModelProvider):
             for i, m in enumerate(self.models)
         ])
 
-    def image_source(self) -> 'MultiModelBuildable':
-        return MultiModelBuildable([m.id for m in self.models], self.server.type)
-
 
 class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
     def __init__(self, model_ids: List[int], server_type: str):
         super().__init__(server_type)
         self.model_ids = model_ids
+        self.models_cache = None
 
     @property
     def models(self) -> List[Model]:
-        return [self._meta.get_model_by_id(mid) for mid in self.model_ids]
+        if self.models_cache is None:
+            self.models_cache = [self._meta.get_model_by_id(mid) for mid in self.model_ids]
+        return self.models_cache
 
     def get_provider(self) -> MLModelMultiProvider:
         return MLModelMultiProvider(self.models, self.server)
+
+    @classmethod
+    def from_models(cls, models: List[Model], **kwargs):
+        mb = MultiModelBuildable([model.id for model in models], **kwargs)
+        mb.bind_meta_repo(models[0]._meta)
+        mb.models_cache = models
+        return mb
 
 
 class BuildableMultiModelHook(BuildableHook, CanIsAMustHookMixin):

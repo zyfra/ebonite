@@ -1,6 +1,6 @@
 from typing import Union
 
-from ebonite.core.objects import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task, Pipeline
+from ebonite.core.objects import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
 
 ProjectIntStr = Union[Project, int, str]
 TaskIntStr = Union[Task, int, str]
@@ -131,9 +131,9 @@ class PipelineNotInTaskError(MetadataError):
         super(PipelineNotInTaskError, self).__init__("Can't save pipeline {} without task".format(pipeline.name))
 
 
-class ImageNotInModelError(MetadataError):
+class ImageNotInTaskError(MetadataError):
     def __init__(self, image: Image):
-        super(ImageNotInModelError, self).__init__("Can't save image {} without model".format(image.name))
+        super(ImageNotInTaskError, self).__init__("Can't save image {} without task".format(image.name))
 
 
 class InstanceNotInImageError(MetadataError):

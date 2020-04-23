@@ -15,9 +15,9 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
-from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.base import EboniteParams
+from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
@@ -330,6 +330,7 @@ class Task(EboniteObject):
 
         self._meta.delete_pipeline(pipeline)
         del self._pipelines[pipeline_id]
+        pipeline.task_id = None
 
     @_with_meta
     def add_image(self, image: 'Image'):
@@ -338,10 +339,10 @@ class Task(EboniteObject):
 
         :param image: image to add
         """
-        if image.model_id is not None and image.model_id != self.id:
-            raise errors.MetadataError('Image is already in model {}. Delete it first'.format(image.model_id))
+        if image.task_id is not None and image.task_id != self.id:
+            raise errors.MetadataError('Image is already in task {}. Delete it first'.format(image.task_id))
 
-        image.model_id = self.id
+        image.task_id = self.id
         self._meta.save_image(image)
         self._images.add(image)
 
@@ -366,7 +367,7 @@ class Task(EboniteObject):
             raise errors.NonExistingImageError(image)
         del self._images[image.id]
         self._meta.delete_image(image)
-        image.model_id = None
+        image.task_id = None
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         super(Task, self).bind_meta_repo(repo)
@@ -394,7 +395,7 @@ class Task(EboniteObject):
 class _WrapperMethodAccessor:
     # TODO docs
     def __init__(self, model: 'Model', method_name: str):
-        if method_name not in model.wrapper.exposed_methods:
+        if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
             print(model, method_name)
             raise AttributeError(f'{model} does not have {method_name} method')
         self.model = model
@@ -676,6 +677,7 @@ class PipelineStep(EboniteParams):
         self.method_name = method_name
 
 
+@make_string('id', 'name')
 class Pipeline(EboniteObject):
     # TODO docs
     def __init__(self, name: str,
@@ -736,7 +738,7 @@ class Pipeline(EboniteObject):
 
 
 @type_field('type')
-class Buildable(WithMetadataRepository):
+class Buildable(EboniteParams, WithMetadataRepository):
     @abstractmethod
     def get_provider(self):
         pass  # pragma: no cover
@@ -770,6 +772,10 @@ class Image(EboniteObject):
         if not isinstance(task, Task):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
+
+    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
+        super(Image, self).bind_meta_repo(repo)
+        self.source.bind_meta_repo(repo)
 
 
 class RuntimeEnvironment(EboniteObject):

@@ -5,12 +5,12 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 import pyjackson
 
 from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
-                                 ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 ExistingModelError, ExistingPipelineError, ExistingProjectError, ExistingTaskError,
                                  NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingProjectError, NonExistingTaskError,
-                                 ExistingPipelineError, NonExistingPipelineError)
-from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task, Pipeline
-from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
+                                 NonExistingModelError, NonExistingPipelineError, NonExistingProjectError,
+                                 NonExistingTaskError)
+from ebonite.core.objects.core import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
 _Projects = Dict[int, Project]
@@ -172,7 +172,7 @@ class _LocalContainer:
 
     def remove_image(self, image_id):
         image = self.images.pop(image_id, None)
-        self.image_name_index.pop((image.model_id, image.name), None)
+        self.image_name_index.pop((image.task_id, image.name), None)
         return image
 
     def add_environment(self, environment: RuntimeEnvironment):
@@ -497,9 +497,9 @@ class LocalMetadataRepository(MetadataRepository):
     def update_image(self, image: Image) -> Image:
         self._validate_image(image)
 
-        existing_model = self.get_model_by_id(image.model_id)
-        if existing_model is None:
-            raise NonExistingModelError(image.model_id)
+        existing_task = self.get_task_by_id(image.task_id)
+        if existing_task is None:
+            raise NonExistingTaskError(image.task_id)
 
         existing_image = self.get_image_by_id(image.id)
         if existing_image is None:

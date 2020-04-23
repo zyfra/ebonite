@@ -1,16 +1,13 @@
 import logging
 import os
 import tempfile
-
 from typing import Dict
 
 from docker import errors
-
 from jinja2 import Environment, FileSystemLoader
 
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
-from ebonite.build.provider.base import PythonProvider
 from ebonite.core.objects import Image
 from ebonite.core.objects.core import Buildable
 from ebonite.utils.log import logger

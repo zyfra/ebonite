@@ -5,7 +5,6 @@ from ebonite.core.objects.artifacts import ArtifactCollection
 from ebonite.core.objects.requirements import Requirements
 from ebonite.runtime.interface import InterfaceLoader
 from ebonite.runtime.server import Server
-from ebonite.utils.importing import import_string
 from ebonite.utils.module import get_python_version
 
 
@@ -82,5 +81,3 @@ class PythonProvider(ProviderBase):
 
     def get_options(self) -> Dict[str, str]:
         return self.server.additional_options
-
-

@@ -1,20 +1,17 @@
-import datetime
 import os
 import warnings
 from functools import reduce
-from typing import List, Dict
+
+from pyjackson import dumps
+from pyjackson.decorators import cached_property
 
 from ebonite.build.provider import PythonProvider
 from ebonite.build.provider.utils import BuildableWithServer
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.buildable import BuildableHook
-from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection, Blobs, LocalFileBlob
-from ebonite.core.objects import ArtifactCollection, Model, Requirements, DatasetType
-from pyjackson import dumps
-from pyjackson.decorators import cached_property
-
-from ebonite.core.objects import Pipeline, PipelineStep
-from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineMeta, PipelineLoader
+from ebonite.core.objects import ArtifactCollection, Model, Pipeline, Requirements
+from ebonite.core.objects.artifacts import Blobs, CompositeArtifactCollection, LocalFileBlob, _RelativePathWrapper
+from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineLoader, PipelineMeta
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
 
@@ -108,10 +105,13 @@ class PipelineBuildable(BuildableWithServer):
         super().__init__(server_type)
         self.debug = debug
         self.pipeline_id = pipeline_id
+        self.pipeline_cache = None
 
     @property
     def pipeline(self):
-        return self._meta.get_pipeline_by_id(self.pipeline_id)
+        if self.pipeline_cache is None:
+            self.pipeline_cache = self._meta.get_pipeline_by_id(self.pipeline_id)
+        return self.pipeline_cache
 
     def get_provider(self) -> PipelineProvider:
         return PipelineProvider(self.pipeline, self.server, self.debug)
