@@ -1,6 +1,13 @@
 from pydantic import BaseModel
 
 
-class IdValidator(BaseModel):
-    #TODO: make a lot of optional fields? won't work with None - think about it
-    id: int
+class ProjectIdValidator(BaseModel):
+    project_id: int
+
+
+class TaskIdValidator(BaseModel):
+    task_id: int
+
+
+class ModelIdValidator(BaseModel):
+    model_id: int

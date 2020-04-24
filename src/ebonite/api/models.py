@@ -4,23 +4,15 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import IdValidator
+from ebonite.api.helpers import TaskIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ModelWithImagesError, NonExistingModelError
 from ebonite.core.objects.core import Model
 
 
-class GetModelsListBody(PyjacksonModel):
-    __type__ = Model
-    __exclude__ = ['id', 'author', 'creation_date',
-                   'wrapper', 'artifact', 'requirements', 'description', 'params']
-    __force_required__ = ['task_id']
-
-
 class UpdateModelBody(PyjacksonModel):
     __type__ = Model
-    __exclude__ = ['author', 'creation_date',
-                   'wrapper', 'artifact', 'requirements', 'description', 'params']
+    __include__ = ['id', 'name', 'task_id']
     __force_required__ = ['id', 'task_id']
 
 
@@ -30,7 +22,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
     @blueprint.route('', methods=['GET'])
     def get_models() -> Tuple[Response, int]:
         task_id = request.args.get('task_id')
-        IdValidator(id=task_id)
+        TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
         if task:
             return jsonify([pj.dumps(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200

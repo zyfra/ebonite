@@ -4,30 +4,23 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import IdValidator
+from ebonite.api.helpers import ProjectIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingTaskError, NonExistingTaskError, TaskWithModelsError
 from ebonite.core.objects.core import Task
 
 
-class GetTaskBody(PyjacksonModel):
-    __type__ = Task
-
-    __exclude__ = ['id', 'author', 'creation_date']
-    __force_required__ = ['project_id']
-
-
 class TaskCreateBody(PyjacksonModel):
     __type__ = Task
 
-    __exclude__ = ['id', 'author', 'creation_date']
+    __include__ = ['name', 'project_id']
     __force_required__ = ['project_id']
 
 
 class TaskUpdateBody(PyjacksonModel):
     __type__ = Task
 
-    __exclude__ = ['author', 'creation_date']
+    __include__ = ['id', 'name', 'project_id']
     __force_required__ = ['id', 'project_id']
 
 
@@ -41,7 +34,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         :return: Response with all project for given project or error
         """
         project_id = request.args.get('project_id')
-        IdValidator(id=project_id)
+        ProjectIdValidator(project_id=project_id)
         proj = ebonite.meta_repo.get_project_by_id(project_id)
         if proj:
             return jsonify([pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]), 200

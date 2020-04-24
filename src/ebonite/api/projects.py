@@ -12,13 +12,13 @@ from ebonite.core.objects.core import Project
 class ProjectCreateBody(PyjacksonModel):
     __type__ = Project
 
-    __exclude__ = ['creation_date', 'author', 'id']
+    __include__ = ['name']
 
 
 class ProjectUpdateBody(PyjacksonModel):
     __type__ = Project
 
-    __exclude__ = ['creation_date', 'author']
+    __include__ = ['id', 'name']
     __force_required__ = ['id']
 
 
