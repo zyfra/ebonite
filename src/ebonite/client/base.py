@@ -193,7 +193,7 @@ class Ebonite:
 
         return instance.bind_runner(runner)
 
-    def build_and_run_instance(self, name: str, obj, environment: RuntimeEnvironment = None,
+    def build_and_run_instance(self, name: str, obj, task: Task, environment: RuntimeEnvironment = None,
                                **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
@@ -203,7 +203,7 @@ class Ebonite:
         :param environment: environment to run instance in, if no given `localhost` is used
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        image = self.build_image(name, obj, **kwargs)
+        image = self.build_image(name, obj, task, **kwargs)
         return self.run_instance(name, image, environment, **kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
@@ -252,7 +252,7 @@ class Ebonite:
         model = task.create_and_push_model(model_object, model_input, model_name)
 
         if run_instance:
-            return self.build_and_run_instance(instance_name, model, **kwargs)
+            return self.build_and_run_instance(instance_name, model, task, **kwargs)
         else:
             self.build_image(instance_name, model, **kwargs)
 
