@@ -149,12 +149,6 @@ class ImageWithInstancesError(MetadataError):
         super(ImageWithInstancesError, self).__init__(f'Image {image} has foreign key and can not be deleted')
 
 
-class InstanceWithRelationshipError(MetadataError):
-    def __init__(self, image: Image):
-        image = image.name if isinstance(image, Image) else image
-        super(InstanceWithRelationshipError, self).__init__(f'Instance {image} has foreign key and can not be deleted')
-
-
 class UnboundObjectError(MetadataError):
     pass
 

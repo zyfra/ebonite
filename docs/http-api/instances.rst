@@ -38,6 +38,8 @@ Response
     }
   ]
 
+* 404: If given image_id or environment_id are both empty or do not correspond to any records in repository
+
 Get instance
 ------------
 

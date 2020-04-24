@@ -4,6 +4,7 @@ from ebonite.api.environments import environments_blueprint
 from ebonite.api.errors import errors_blueprint
 from ebonite.api.healthchecks import healthcheck_blueprint
 from ebonite.api.images import images_blueprint
+from ebonite.api.instances import instances_blueprint
 from ebonite.api.models import models_blueprint
 from ebonite.api.projects import project_blueprint
 from ebonite.api.tasks import task_blueprint
@@ -13,6 +14,7 @@ from ebonite.client.base import Ebonite
 class EboniteAPI:
     """
     API that provides ability to interact with Ebonite object. Based on Flask framework
+
     :param name: name of the flask application
     :param config_path: path to the config which will be used to initialize Ebonite object
     :param host: host on which API will be run
@@ -22,7 +24,7 @@ class EboniteAPI:
     """
     app: Flask = None
     blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint, models_blueprint,
-                  images_blueprint, environments_blueprint]
+                  images_blueprint, environments_blueprint, instances_blueprint]
 
     def __init__(self, name: str, config_path: str, host: str = '127.0.0.1', port: str = '5000', debug: bool = True):
         self.app = Flask(name)

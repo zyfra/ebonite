@@ -11,3 +11,11 @@ class TaskIdValidator(BaseModel):
 
 class ModelIdValidator(BaseModel):
     model_id: int
+
+
+class ImageIdValidator(BaseModel):
+    image_id: int
+
+
+class EnvironmentIdValidator(BaseModel):
+    environment_id: int
