@@ -62,10 +62,10 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         :param id: id of the task
         :return: Response with task or error
         """
-        try:
-            task = ebonite.meta_repo.get_task_by_id(id)
+        task = ebonite.meta_repo.get_task_by_id(id)
+        if task:
             return jsonify(pj.dumps(task)), 200
-        except NonExistingTaskError:
+        else:
             return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['PATCH'])

@@ -11,12 +11,14 @@ from ebonite.core.objects import RuntimeEnvironment
 
 class CreateEnvironmentBody(PyjacksonModel):
     __type__ = RuntimeEnvironment
+    __autogen_nested__ = True
     __include__ = ['name', 'params']
     __force_required__ = ['params']
 
 
 class UpdateEnvironmentBody(PyjacksonModel):
     __type__ = RuntimeEnvironment
+    __autogen_nested__ = True
     __include__ = ['id', 'name']
     __force_required__ = ['id']
 

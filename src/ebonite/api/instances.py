@@ -12,12 +12,14 @@ from ebonite.core.objects import RuntimeInstance
 
 class RunInstanceBody(PyjacksonModel):
     __type__ = RuntimeInstance
+    __autogen_nested__ = True
     __include__ = ['name', 'environment_id', 'image_id', 'params']
     __force_required__ = ['image_id', 'params']
 
 
 class UpdateInstanceBiody(PyjacksonModel):
     __type__ = RuntimeInstance
+    __autogen_nested__ = True
     __include__ = ['id', 'name']
     __force_required__ = ['id']
 
