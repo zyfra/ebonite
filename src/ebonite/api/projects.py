@@ -40,12 +40,12 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         Creates project in metadata repository
         :return: Response with created object or error
         """
-        proj = ProjectCreateBody.from_data(request.get_json(force=True))
+        project = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
-            proj = ebonite.meta_repo.create_project(proj)
-            return jsonify(pj.dumps(proj)), 201
+            project = ebonite.meta_repo.create_project(project)
+            return jsonify(pj.dumps(project)), 201
         except ExistingProjectError:
-            return jsonify({'errormsg': f'Project with name {proj.name} already exists'}), 400
+            return jsonify({'errormsg': f'Project with name {project.name} already exists'}), 400
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_project(id: int) -> Tuple[Response, int]:
@@ -55,7 +55,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         :return: Response with requested project or error
         """
         project = ebonite.meta_repo.get_project_by_id(id)
-        if project:
+        if project is not None:
             return jsonify(pj.dumps(project)), 200
         else:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
@@ -84,11 +84,11 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         :return: Response with code 204 or error
         """
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
-        proj = ebonite.meta_repo.get_project_by_id(id)
-        if not proj:
+        project = ebonite.meta_repo.get_project_by_id(id)
+        if project is None:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         try:
-            ebonite.delete_project(proj, cascade)
+            ebonite.delete_project(project, cascade)
             return jsonify({}), 204
         except ProjectWithTasksError as e:
             return jsonify({'errormsg': str(e)}), 400

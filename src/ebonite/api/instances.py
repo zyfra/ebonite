@@ -31,10 +31,10 @@ def instances_blueprint(ebonite: Ebonite):
     def get_instances() -> Tuple[Response, int]:
         environment_id, image_id = request.args.get('environment_id'), request.args.get('image_id')
         env = image = None
-        if environment_id:
+        if environment_id is not None:
             EnvironmentIdValidator(environment_id=environment_id)
             env = ebonite.meta_repo.get_environment_by_id(environment_id)
-        if image_id:
+        if image_id is not None:
             ImageIdValidator(image_id=image_id)
             image = ebonite.meta_repo.get_image_by_id(image_id)
         try:
@@ -46,7 +46,7 @@ def instances_blueprint(ebonite: Ebonite):
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_instance(id: int) -> Tuple[Response, int]:
         instance = ebonite.meta_repo.get_instance_by_id(id)
-        if instance:
+        if instance is not None:
             return jsonify(pj.dumps(instance)), 200
         else:
             return jsonify({'errormsg': f'Instance with id {id} does not exist'})
@@ -55,8 +55,9 @@ def instances_blueprint(ebonite: Ebonite):
     def run_instance() -> Tuple[Response, int]:
         instance = RunInstanceBody.from_data(request.get_json(force=True))
         image = ebonite.meta_repo.get_image_by_id(instance.image_id)
-        env = ebonite.meta_repo.get_environment_by_id(instance.environment_id) if instance.environment_id else None
-        if not image:
+        env = ebonite.meta_repo.get_environment_by_id(instance.environment_id) if instance.environment_id is not None\
+            else None
+        if image is None:
             return jsonify({'errormsg': f'Could not run instance. '
                                         f'Image with id {instance.image_id} does not exist'}), 404
         try:
@@ -80,7 +81,7 @@ def instances_blueprint(ebonite: Ebonite):
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_instance(id: int) -> Tuple[Response, int]:
         instance = ebonite.meta_repo.get_instance_by_id(id)
-        if not instance:
+        if instance is None:
             return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
         ebonite.stop_instance(instance)
         return jsonify({}), 204

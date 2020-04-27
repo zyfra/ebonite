@@ -33,7 +33,7 @@ def environments_blueprint(ebonite: Ebonite):
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_environment(id: int) -> Tuple[Response, int]:
         env = ebonite.meta_repo.get_environment_by_id(id)
-        if env:
+        if env is not None:
             return jsonify(pj.dumps(env)), 200
         else:
             return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
@@ -62,8 +62,8 @@ def environments_blueprint(ebonite: Ebonite):
     def delete_environment(id: int) -> Tuple[Response, int]:
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         env = ebonite.meta_repo.get_environment_by_id(id)
-        if not env:
-            return jsonify()
+        if env is None:
+            return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
         try:
             ebonite.delete_environment(env, cascade=cascade)
             return jsonify({}), 204

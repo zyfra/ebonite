@@ -24,7 +24,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         task_id = request.args.get('task_id')
         TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
-        if task:
+        if task is not None:
             return jsonify([pj.dumps(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200
         else:
             return jsonify({'errormsg': f'Task with id {task_id} does not exist'}), 404
@@ -32,7 +32,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_model(id: int) -> Tuple[Response, int]:
         model = ebonite.meta_repo.get_model_by_id(id)
-        if model:
+        if model is not None:
             return jsonify(pj.dumps(model)), 200
         else:
             return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
@@ -40,12 +40,12 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
     @blueprint.route('/<int:id>/artifacts/<string:name>', methods=['GET'])
     def get_model_artifacts(id: int, name: str):
         model = ebonite.meta_repo.get_model_by_id(id)
-        if not model:
+        if model is None:
             return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
         artifacts = ebonite.artifact_repo.get_artifact(model)
         with artifacts.blob_dict() as blobs:
             artifact = blobs.get(name)
-        if artifact:
+        if artifact is not None:
             return jsonify(pj.dumps(artifact)), 200
         else:
             return jsonify({'errormsg': f'Artifact with name {name} does not exist'}), 404
@@ -65,7 +65,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
     def delete_model(id: int):
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         model = ebonite.meta_repo.get_model_by_id(id)
-        if not model:
+        if model is None:
             return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
         try:
             ebonite.delete_model(model, cascade=cascade)

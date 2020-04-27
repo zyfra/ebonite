@@ -35,9 +35,9 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         project_id = request.args.get('project_id')
         ProjectIdValidator(project_id=project_id)
-        proj = ebonite.meta_repo.get_project_by_id(project_id)
-        if proj:
-            return jsonify([pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in proj.tasks]), 200
+        project = ebonite.meta_repo.get_project_by_id(project_id)
+        if project is not None:
+            return jsonify([pj.dumps(ebonite.meta_repo.get_task_by_id(t)) for t in project.tasks]), 200
         else:
             return jsonify({'errormsg': f'Project with id {project_id} is not found'}), 404
 
@@ -63,7 +63,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         :return: Response with task or error
         """
         task = ebonite.meta_repo.get_task_by_id(id)
-        if task:
+        if task is not None:
             return jsonify(pj.dumps(task)), 200
         else:
             return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
@@ -93,7 +93,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         task = ebonite.meta_repo.get_task_by_id(id)
-        if not task:
+        if task is None:
             return jsonify({'erromsg': f'Task with id {id} does not exist'}), 404
         else:
             try:
