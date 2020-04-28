@@ -297,7 +297,7 @@ class Task(EboniteObject):
         """
         Add model to task and save it to meta repo
 
-        :param model: model to add
+        :param pipeline: pipeline to add
         """
         if pipeline.task_id is not None and pipeline.task_id != self.id:
             raise errors.MetadataError('Pipeline is already in task {}. Delete it first'.format(pipeline.task_id))
@@ -311,7 +311,7 @@ class Task(EboniteObject):
         """
         Add multiple models and save them to meta repo
 
-        :param models: models to add
+        :param pipelines: pipelines to add
         """
         for m in pipelines:
             self.add_pipeline(m)
@@ -321,8 +321,7 @@ class Task(EboniteObject):
         """
         Remove model from this task and delete it from meta repo
 
-        :param model: model to delete
-        :param force: whether model artifacts' deletion errors should be ignored, default is false
+        :param pipeline: pipeline to delete
         """
         pipeline_id = pipeline.id
         if pipeline_id not in self._pipelines:

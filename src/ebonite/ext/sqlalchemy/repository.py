@@ -5,20 +5,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
-                                 ExistingModelError, ExistingPipelineError, ExistingProjectError, ExistingTaskError,
+from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
+                                 ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
+                                 ExistingTaskError, ImageWithInstancesError,
                                  NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
                                  NonExistingModelError, NonExistingPipelineError, NonExistingProjectError,
-                                 NonExistingTaskError)
+                                 NonExistingTaskError, ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import (EboniteObject, Image, Model, Pipeline, Project, RuntimeEnvironment,
                                        RuntimeInstance, Task)
-from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
-                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
-                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
-                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
-                                 TaskWithModelsError)
-from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
@@ -226,7 +220,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return task
 
     def delete_task(self, task: Task):
-        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithModelsError)
+        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithFKError)
         task.unbind_meta_repo()
 
     @bind_to_self
@@ -261,7 +255,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return model
 
     def delete_model(self, model: Model):
-        self._delete_object(self.models, model, NonExistingModelError, ModelWithImagesError)
+        self._delete_object(self.models, model, NonExistingModelError, AssertionError)
         model.unbind_meta_repo()
 
     @bind_to_self
@@ -296,7 +290,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             return pipeline
 
     def delete_pipeline(self, pipeline: Pipeline):
-        self._delete_object(self.pipelines, pipeline, NonExistingPipelineError)
+        self._delete_object(self.pipelines, pipeline, NonExistingPipelineError, AssertionError)
         pipeline.unbind_meta_repo()
 
     @bind_to_self

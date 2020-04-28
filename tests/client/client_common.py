@@ -4,10 +4,11 @@ import pytest
 
 from ebonite.client import Ebonite
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingModelError, ImageWithInstancesError,
-                                 ModelWithImagesError, ProjectWithTasksError, TaskWithModelsError)
-from ebonite.core.objects.core import Image, Model
+                                 ProjectWithTasksError, TaskWithFKError)
+from ebonite.core.objects.core import Image, Model, Pipeline, Task
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import check_ebonite_port_free, train_model
+from tests.core.objects.conftest import BuildableMock
 
 
 def test_delete_project__ok(ebnt: Ebonite):
@@ -66,17 +67,23 @@ def test_delete_task_ok(ebnt: Ebonite):
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
 
 
-def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model):
+def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, image: Image, pipeline: Pipeline):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = ebnt.push_model(model, task)
+    task.add_pipeline(pipeline)
+    task.add_image(image)
     task = ebnt.meta_repo.get_task_by_id(task.id)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is not None
     assert ebnt.meta_repo.get_model_by_id(model.id) is not None
+    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is not None
+    assert ebnt.meta_repo.get_image_by_id(image.id) is not None
     ebnt.delete_task(task, cascade=True)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
     assert ebnt.meta_repo.get_model_by_id(model.id) is None
+    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is None
+    assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
 def test_delete_task_with_models(ebnt: Ebonite, model: Model):
@@ -86,7 +93,7 @@ def test_delete_task_with_models(ebnt: Ebonite, model: Model):
     assert ebnt.meta_repo.get_task_by_id(task.id) is not None
     assert ebnt.meta_repo.get_model_by_id(model.id) is not None
 
-    with pytest.raises(TaskWithModelsError):
+    with pytest.raises(TaskWithFKError):
         ebnt.delete_task(task)
 
 
@@ -199,39 +206,20 @@ def delete_model_ok(ebnt: Ebonite):
     assert ebnt.meta_repo.get_model_by_id(model.id) is None
 
 
-def delete_model_cascade_ok(ebnt: Ebonite, model: Model):
-    task = ebnt.get_or_create_task('Project', 'Task')
-    model = ebnt.push_model(model, task)
-    image = Image(model_id=model.id, name='Image')
-    image = ebnt.meta_repo.create_image(image)
+def delete_pipeline_ok(ebnt: Ebonite, task_b: Task, pipeline: Pipeline):
+    task_b.add_pipeline(pipeline)
 
-    assert ebnt.meta_repo.get_task_by_id(task.id) is not None
-    assert ebnt.meta_repo.get_model_by_id(model.id) is not None
-    assert ebnt.meta_repo.get_image_by_id(image.id) is not None
-    ebnt.delete_model(model, cascade=True)
+    assert ebnt.meta_repo.get_task_by_id(task_b.id) is not None
+    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is not None
+    ebnt.delete_pipeline(pipeline)
 
-    assert ebnt.meta_repo.get_image_by_id(image.id) is None
-    assert ebnt.meta_repo.get_model_by_id(model.id) is None
-
-
-def delete_model_with_images(ebnt: Ebonite, model: Model):
-    task = ebnt.get_or_create_task('Project', 'Task')
-    model = ebnt.push_model(model, task)
-    image = Image(model_id=model.id, name='Image')
-    image = ebnt.meta_repo.create_image(image)
-
-    assert ebnt.meta_repo.get_task_by_id(task.id) is not None
-    assert ebnt.meta_repo.get_model_by_id(model.id) is not None
-    assert ebnt.meta_repo.get_image_by_id(image.id) is not None
-
-    with pytest.raises(ModelWithImagesError):
-        ebnt.delete_model(model)
+    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is None
 
 
 def delete_image_ok(ebnt: Ebonite, model: Model):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = ebnt.push_model(model, task)
-    image = Image(model_id=model.id, name='Image')
+    image = Image(task_id=task.id, name='Image', source=BuildableMock())
     image = ebnt.meta_repo.create_image(image)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is not None

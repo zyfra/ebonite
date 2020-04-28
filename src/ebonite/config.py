@@ -73,8 +73,8 @@ class Param:
 
 
 class _ConfigMeta(type):
-    def __new__(cls, name, bases, namespace):
-        meta = super().__new__(cls, name + 'Meta', (cls,) + bases, namespace)
+    def __new__(mcs, name, bases, namespace):
+        meta = super().__new__(mcs, name + 'Meta', (mcs,) + bases, namespace)
         res = super().__new__(meta, name, bases, {})
         return res
 

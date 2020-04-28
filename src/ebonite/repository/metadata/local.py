@@ -4,21 +4,14 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import pyjackson
 
-from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
-                                 ExistingModelError, ExistingPipelineError, ExistingProjectError, ExistingTaskError,
+from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
+                                 ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
+                                 ExistingTaskError, ImageWithInstancesError,
                                  NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
                                  NonExistingModelError, NonExistingPipelineError, NonExistingProjectError,
-                                 NonExistingTaskError)
+                                 NonExistingTaskError, ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
-from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
-                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
-                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
-                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
-                                 TaskWithModelsError)
-from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
-from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
 _Projects = Dict[int, Project]
@@ -361,8 +354,8 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_task(self, task: Task):
         if task.id is None:
             raise NonExistingTaskError(task)
-        if self.get_models(task):
-            raise TaskWithModelsError(task)
+        if self.get_models(task) or self.get_pipelines(task) or self.get_images(task):
+            raise TaskWithFKError(task)
         self.data.remove_task(task.id)
         self.save()
         task.unbind_meta_repo()
@@ -419,8 +412,6 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_model(self, model: Model):
         if model.id is None:
             raise NonExistingModelError(model)
-        if self.get_images(model):
-            raise ModelWithImagesError(model)
         self.data.remove_model(model.id)
         self.save()
         model.unbind_meta_repo()

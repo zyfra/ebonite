@@ -162,16 +162,10 @@ class ProjectWithTasksError(MetadataError):
         super(ProjectWithTasksError, self).__init__(f'Project {project} has foreign key and can not be deleted')
 
 
-class TaskWithModelsError(MetadataError):
+class TaskWithFKError(MetadataError):
     def __init__(self, task: Task):
         task = task.name if isinstance(task, Project) else task
-        super(TaskWithModelsError, self).__init__(f'Project {task} has foreign key and can not be deleted')
-
-
-class ModelWithImagesError(MetadataError):
-    def __init__(self, model: Model):
-        model = model.name if isinstance(model, Model) else model
-        super(ModelWithImagesError, self).__init__(f'Model {model} has foreign key and can not be deleted')
+        super(TaskWithFKError, self).__init__(f'Task {task} has foreign key and can not be deleted')
 
 
 class ImageWithInstancesError(MetadataError):

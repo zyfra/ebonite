@@ -15,7 +15,7 @@ class DMatrixDatasetType(LibDatasetTypeMixin):
     :class:`~.DatasetType` implementation for xgboost.DMatrix type
 
     :param is_from_list: whether DMatrix can be constructed from list
-    :param feature_types: string representation of feature types
+    :param feature_type_names: string representation of feature types
     :param feature_names: list of feature names
     """
 

@@ -33,7 +33,7 @@ class FeedDictDatasetType(DictDatasetType):
             items = {self.get_key(k): v for k, v in instance.items()}
         except ValueError as e:
             raise SerializationError(e)
-        return super().serialize(self, items)
+        return super(FeedDictDatasetType, self).serialize(items)
 
     @staticmethod
     def get_key(k):

@@ -12,6 +12,8 @@ EBONITE_FROM_PIP = True
 
 
 def ebonite_from_pip():
+    """
+    :return boolen flag if ebonite inside image must be installed from pip (or copied local dist instread)"""
     return EBONITE_FROM_PIP
 
 
@@ -34,7 +36,7 @@ class BuilderBase:
 
     @abstractmethod
     def build(self):
-        pass  # pragma: no cover
+        """Abstract method to build image"""
 
 
 # noinspection PyAbstractClass
@@ -42,7 +44,7 @@ class PythonBuilder(BuilderBase):
     """
     Basic class for building python images from ebonite objects
 
-    :param provider: An implementation of PythonProvider to get distribution from
+    :param buildable: A Buildable instance to get distribution from
     """
 
     def __init__(self, buildable: 'core.Buildable'):

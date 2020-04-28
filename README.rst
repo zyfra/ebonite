@@ -50,7 +50,7 @@
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/zyfra/ebonite/v0.5.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/zyfra/ebonite/compare/v0.5.1...master
+    :target: https://github.com/zyfra/ebonite/compare/v0.5.1...dev
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/ebonite.svg
     :alt: PyPI Wheel

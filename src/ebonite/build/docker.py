@@ -1,6 +1,5 @@
 import os
 import time
-import re
 from abc import abstractmethod
 from contextlib import contextmanager
 from threading import Lock
@@ -87,9 +86,7 @@ class DockerHost(RuntimeEnvironment.Params):
     def get_builder(self, name: str, buildable: Buildable, **kwargs):
         """
         :param name: name for image
-        :param model: model to build
-        :param server: server to build
-        :param debug: flag to build debug image
+        :param buildable: buildable to build
         :param kwargs: additional arguments for image parameters and docker builder
 
         :return: docker builder instance

@@ -361,10 +361,10 @@ class MetadataRepository:
         """
         Finds model by name in given task and project.
 
-        :param model_name: expected model name
-        :param task: task to search for model in
-        :param project: project to search for model in
-        :return: found model if exists or `None`
+        :param pipeline_name: expected pipeline name
+        :param task: task to search for pipeline in
+        :param project: project to search for pipeline in
+        :return: found pipeline if exists or `None`
         """
 
         pass  # pragma: no cover
@@ -385,9 +385,9 @@ class MetadataRepository:
         """
         Creates model in the repository
 
-        :param model: model to create
+        :param pipeline: pipeline to create
         :return: created model
-        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
+        :exception: :exc:`.errors.ExistingPipelineError` if given model has the same name and task as existing one
         """
         pass  # pragma: no cover
 
@@ -396,9 +396,9 @@ class MetadataRepository:
         """
         Updates model in the repository
 
-        :param model: model to update
+        :param pipeline: pipeline to update
         :return: updated model
-        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingPipelineError` if given pipeline doesn't exist in the repository
         """
 
         pass  # pragma: no cover
@@ -408,20 +408,20 @@ class MetadataRepository:
         """
         Deletes model from the repository
 
-        :param model: model to delete
+        :param pipeline: pipeline to delete
         :return: nothing
-        :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingPipelineError` if given pipeline doesn't exist in the repository
         """
 
         pass  # pragma: no cover
 
     def save_pipeline(self, pipeline: Pipeline) -> Pipeline:
         """
-        Saves model in the repository
+        Saves pipeline in the repository
 
-        :param model: model to save
-        :return: saved model
-        :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
+        :param pipeline: model to save
+        :return: saved pipeline
+        :exception: :exc:`.errors.ExistingPipelineError` if given pipeline has the same name and task as existing one
         """
 
         if pipeline.task_id is None:
@@ -442,7 +442,6 @@ class MetadataRepository:
         """
         Gets a list of images in given model, task and project
 
-        :param model: model to search for images in
         :param task: task to search for images in
         :param project: project to search for images in
         :return: found images
@@ -456,7 +455,6 @@ class MetadataRepository:
         Finds image by name in given model, task and project.
 
         :param image_name: expected image name
-        :param model: model to search for image in
         :param task: task to search for image in
         :param project: project to search for image in
         :return: found image if exists or `None`
@@ -569,7 +567,7 @@ class MetadataRepository:
 
         :param environment: runtime environment to create
         :return: created runtime environment
-        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing
         """
 
         pass  # pragma: no cover
@@ -581,7 +579,8 @@ class MetadataRepository:
 
         :param environment: runtime environment to update
         :return: updated runtime environment
-        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the
+        repository
         """
 
         pass  # pragma: no cover
@@ -593,7 +592,8 @@ class MetadataRepository:
 
         :param environment: runtime environment to delete
         :return: nothing
-        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the
+        repository
         """
 
         pass  # pragma: no cover
@@ -604,7 +604,7 @@ class MetadataRepository:
 
         :param environment: runtime environment to save
         :return: saved runtime environment
-        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing
         """
         self._validate_environment(environment)
 

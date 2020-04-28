@@ -37,6 +37,7 @@ extlinks = {
     'issue': ('https://github.com/zyfra/ebonite/issues/%s', '#'),
     'pr': ('https://github.com/zyfra/ebonite/pull/%s', 'PR #'),
 }
+# noinspection PyPep8
 import sphinx_rtd_theme
 
 html_theme = "sphinx_rtd_theme"
