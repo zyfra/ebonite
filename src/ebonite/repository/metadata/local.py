@@ -120,6 +120,7 @@ class _LocalContainer:
         task = self.tasks.pop(task_id, None)
 
         self.task_name_index.pop((task.project_id, task.name), None)
+        del self.projects[task.project_id]._tasks[task.id]
         return task
 
     def add_model(self, model: Model):
@@ -137,6 +138,7 @@ class _LocalContainer:
     def remove_model(self, model_id):
         model = self.models.pop(model_id, None)
         self.model_name_index.pop((model.task_id, model.name), None)
+        del self.tasks[model.task_id]._models[model.id]
         return model
 
     def add_pipeline(self, pipeline: Pipeline):
@@ -154,6 +156,7 @@ class _LocalContainer:
     def remove_pipeline(self, pipeline_id):
         pipeline = self.pipelines.pop(pipeline_id, None)
         self.pipeline_name_index.pop((pipeline.task_id, pipeline.name), None)
+        del self.tasks[pipeline.task_id]._pipelines[pipeline.id]
         return pipeline
 
     def add_image(self, image: Image):
@@ -171,6 +174,7 @@ class _LocalContainer:
     def remove_image(self, image_id):
         image = self.images.pop(image_id, None)
         self.image_name_index.pop((image.task_id, image.name), None)
+        del self.tasks[image.task_id]._images[image.id]
         return image
 
     def add_environment(self, environment: RuntimeEnvironment):

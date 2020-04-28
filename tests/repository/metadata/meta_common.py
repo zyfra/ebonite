@@ -228,6 +228,11 @@ def test_create_task(meta: MetadataRepository, project: Project, task: Task):
     assert task is not None
     assert task.has_meta_repo
 
+    project = meta.get_project_by_id(project.id)
+    assert len(project.tasks) == 1
+    assert task.id in project.tasks
+    assert project.tasks[task.id] == task
+
 
 def test_create_task_without_project(meta: MetadataRepository, task: Task):
     with pytest.raises(TaskNotInProjectError):
@@ -494,6 +499,10 @@ def test_delete_task(meta: MetadataRepository, project: Project, task: Task):
     assert not task.has_meta_repo
     assert task.id is None
 
+    project = meta.get_project_by_id(project.id)
+
+    assert len(project.tasks) == 0
+
 
 def test_delete_not_existing_task(meta: MetadataRepository, task: Task):
     with pytest.raises(NonExistingTaskError):
@@ -509,6 +518,11 @@ def test_create_model(meta: MetadataRepository, project: Project, task: Task, mo
     model = meta.create_model(model)
     assert model is not None
     assert model.has_meta_repo
+
+    task = meta.get_task_by_id(task.id)
+    assert len(task.models) == 1
+    assert model.id in task.models
+    assert task.models[model.id] == model
 
 
 def test_create_model_without_task(meta: MetadataRepository, model: Model):
@@ -578,7 +592,7 @@ def test_get_model(meta: MetadataRepository, project: Project, task: Task, model
     model = meta.create_model(model)
     assert model is not None
 
-    assert model == meta.get_model_by_name("Test Model", model.task_id)
+    assert model == meta.get_model_by_name(model.name, model.task_id)
     assert model.has_meta_repo
 
 
@@ -756,6 +770,10 @@ def test_delete_model(meta: MetadataRepository, project: Project, task: Task, mo
     assert not model.has_meta_repo
     assert model.id is None
 
+    task = meta.get_task_by_id(task.id)
+
+    assert len(task.models) == 0
+
 
 def test_delete_not_existing_model(meta: MetadataRepository, model: Model):
     with pytest.raises(NonExistingModelError):
@@ -772,6 +790,11 @@ def test_create_pipeline(meta: MetadataRepository, project: Project, task: Task,
     pipeline = meta.create_pipeline(pipeline)
     assert pipeline is not None
     assert pipeline.has_meta_repo
+
+    task = meta.get_task_by_id(task.id)
+    assert len(task.pipelines) == 1
+    assert pipeline.id in task.pipelines
+    assert task.pipelines[pipeline.id] == pipeline
 
 
 def test_create_pipeline_without_task(meta: MetadataRepository, pipeline: Pipeline):
@@ -1017,6 +1040,9 @@ def test_delete_pipeline(meta: MetadataRepository, project: Project, task: Task,
     assert not pipeline.has_meta_repo
     assert pipeline.id is None
 
+    task = meta.get_task_by_id(task.id)
+
+    assert len(task.pipelines) == 0
 
 def test_delete_not_existing_pipeline(meta: MetadataRepository, pipeline: Pipeline):
     with pytest.raises(NonExistingPipelineError):
@@ -1049,6 +1075,11 @@ def test_create_image__ok(meta: MetadataRepository, image, created_image, create
 
     assert created_image.name == image.name
     assert created_image.params == image.params
+
+    task = meta.get_task_by_id(created_image.task_id)
+    assert len(task.images) == 1
+    assert created_image.id in task.images
+    assert task.images[created_image.id] == created_image
 
 
 def test_create_image__no_task(meta: MetadataRepository, image):
@@ -1090,11 +1121,15 @@ def test_update_image__unsaved_image(meta: MetadataRepository, created_task, ima
 
 
 def test_delete_image__ok(meta: MetadataRepository, created_image):
+    task = meta.get_task_by_id(created_image.task_id)
     meta.delete_image(created_image)
 
     assert created_image.id is None
     assert not created_image.has_meta_repo
 
+    task = meta.get_task_by_id(task.id)
+
+    assert len(task.images) == 0
 
 def test_delete_image__unsaved_image(meta: MetadataRepository, image):
     with pytest.raises(NonExistingImageError):
@@ -1186,6 +1221,7 @@ def test_update_environment__not_existing(meta: MetadataRepository, environment)
 
 
 def test_delete_environment__ok(meta: MetadataRepository, created_environment):
+    created_environment
     assert meta.get_environments() == [created_environment]
 
     meta.delete_environment(created_environment)
@@ -1316,6 +1352,7 @@ def test_delete_instance__ok(meta: MetadataRepository, created_instance):
     meta.delete_instance(created_instance)
 
     assert meta.get_instances(image, environment) == []
+
 
 
 def test_delete_instance__not_existing(meta: MetadataRepository, instance):

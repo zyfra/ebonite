@@ -66,6 +66,8 @@ def test_delete_task_ok(ebnt: Ebonite):
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
 
+def test_a(pipeline: Pipeline):
+    pipeline.id
 
 def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, image: Image, pipeline: Pipeline):
     task = ebnt.get_or_create_task('Project', 'Task')
