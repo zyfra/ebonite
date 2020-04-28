@@ -79,7 +79,9 @@ COPY . ./
 
 
 
+
 CMD sh run.sh
+
 '''
 
     kwargs = {'python_version': '3.6'}
@@ -103,7 +105,9 @@ COPY . ./
 
 RUN echo "post_copy"
 
+
 CMD echo "cmd" && sh run.sh
+
 '''
 
     with tempfile.TemporaryDirectory() as tmpdir:

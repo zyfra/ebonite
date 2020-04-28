@@ -151,6 +151,13 @@ class CustomRequirement(Requirement):
         return src.decode('utf8')
 
     @property
+    def module(self):
+        """
+        Module name for this requirement
+        """
+        return self.name.split('.')[0]
+
+    @property
     def source(self) -> str:
         """
         Source code of this requirement

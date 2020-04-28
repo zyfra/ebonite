@@ -259,7 +259,7 @@ class Task(EboniteObject):
             raise errors.NonExistingModelError(model)
 
         from ebonite.client import Ebonite
-        Ebonite(self._meta, self._art).delete_model(model, force)
+        Ebonite(self._meta, self._art).delete_model(model, force=force)
         del self._models[model_id]
 
     #  ##########API############

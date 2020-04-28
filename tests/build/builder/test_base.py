@@ -181,7 +181,7 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
 
 
 @pytest.mark.parametrize(("python_builder", "server_reqs"), [
-    ("python_builder_sync", {'flasgger==0.9.3'}),
+    ("python_builder_sync", {}),
     ("python_builder_async", {'aiohttp_swagger'})
 ])
 def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data, server_reqs, request):

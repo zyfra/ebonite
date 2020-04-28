@@ -11,6 +11,14 @@ from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, E
                                  NonExistingTaskError)
 from ebonite.core.objects.core import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
+from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
+                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
+                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
+                                 TaskWithModelsError)
+from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
 _Projects = Dict[int, Project]
@@ -58,6 +66,8 @@ class _LocalContainer:
         self.instances: _Instances = {}
         self.instance_name_index: Dict[Tuple[int, int, str], int] = {}
         self.instance_index: Dict[Tuple[int, int], Set[int]] = {}
+        self.image_instance: Dict[int, Set[int]] = {}
+        self.environment_instance: Dict[int, Set[int]] = {}
 
         for p in (projects or {}).values():
             self.add_project(p)
@@ -96,11 +106,8 @@ class _LocalContainer:
     def get_project_by_name(self, name: str):
         return self.get_project_by_id(self.project_name_index.get(name, None))
 
-    def remove_project(self, project_id, recursive):
+    def remove_project(self, project_id):
         project = self.projects.pop(project_id, None)
-        if recursive:
-            for t in project.tasks.keys():
-                self.remove_task(t, True)
         del self.project_name_index[project.name]
         return project
 
@@ -116,11 +123,9 @@ class _LocalContainer:
     def get_task_by_name(self, project_id: int, name: str):
         return self.get_task_by_id(self.task_name_index.get((project_id, name), None))
 
-    def remove_task(self, task_id, recursive):
+    def remove_task(self, task_id):
         task = self.tasks.pop(task_id, None)
-        if recursive:
-            for m in task.models.keys():
-                self.remove_model(m)
+
         self.task_name_index.pop((task.project_id, task.name), None)
         return task
 
@@ -196,6 +201,8 @@ class _LocalContainer:
         self.instances[instance.id] = instance
         self.instance_name_index[(instance.environment_id, instance.image_id, instance.name)] = instance.id
         self.instance_index.setdefault((instance.environment_id, instance.image_id), set()).add(instance.id)
+        self.environment_instance.setdefault(instance.environment_id, set()).add(instance.id)
+        self.image_instance.setdefault(instance.image_id, set()).add(instance.id)
 
     def get_instance_by_id(self, instance_id: int):
         return self.instances.get(instance_id, None)
@@ -206,10 +213,18 @@ class _LocalContainer:
     def get_instances(self, environment_id: int, image_id: int):
         return [self.get_instance_by_id(iid) for iid in self.instance_index.get((environment_id, image_id), set())]
 
+    def get_instances_by_image_id(self, image_id):
+        return [self.get_instance_by_id(iid) for iid in self.image_instance.get(image_id, set())]
+
+    def get_instances_by_environment_id(self, environment_id):
+        return [self.get_instance_by_id(iid) for iid in self.environment_instance.get(environment_id, set())]
+
     def remove_instance(self, instance_id: int):
         instance = self.instances.pop(instance_id, None)
         self.instance_name_index.pop((instance.environment_id, instance.image_id, instance.name), None)
         self.instance_index[(instance.environment_id, instance.image_id)].discard(instance_id)
+        self.environment_instance[instance.environment_id].discard(instance_id)
+        self.image_instance[instance.image_id].discard(instance_id)
         return instance
 
 
@@ -275,7 +290,7 @@ class LocalMetadataRepository(MetadataRepository):
         if existing_project is None:
             raise NonExistingProjectError(project)
 
-        self.data.remove_project(project.id, recursive=False)
+        self.data.remove_project(project.id)
         proj_copy = copy.deepcopy(project)
         self.data.add_project(proj_copy)
         for task in proj_copy.tasks.values():
@@ -285,7 +300,9 @@ class LocalMetadataRepository(MetadataRepository):
 
     def delete_project(self, project: Project):
         try:
-            self.data.remove_project(project.id, True)
+            if self.get_tasks(project):
+                raise ProjectWithTasksError(project)
+            self.data.remove_project(project.id)
             self.save()
             project.unbind_meta_repo()
         except (KeyError, AttributeError):
@@ -333,7 +350,7 @@ class LocalMetadataRepository(MetadataRepository):
         if existing_project is None:
             raise NonExistingProjectError(task.project_id)
 
-        self.data.remove_task(task.id, False)
+        self.data.remove_task(task.id)
         task_copy = copy.deepcopy(task)
         self.data.add_task(task_copy)
         for model in task_copy.models.values():
@@ -344,7 +361,9 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_task(self, task: Task):
         if task.id is None:
             raise NonExistingTaskError(task)
-        self.data.remove_task(task.id, True)
+        if self.get_models(task):
+            raise TaskWithModelsError(task)
+        self.data.remove_task(task.id)
         self.save()
         task.unbind_meta_repo()
 
@@ -400,6 +419,8 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_model(self, model: Model):
         if model.id is None:
             raise NonExistingModelError(model)
+        if self.get_images(model):
+            raise ModelWithImagesError(model)
         self.data.remove_model(model.id)
         self.save()
         model.unbind_meta_repo()
@@ -511,6 +532,8 @@ class LocalMetadataRepository(MetadataRepository):
         return image
 
     def delete_image(self, image: Image):
+        if self.data.get_instances_by_image_id(image.id):
+            raise ImageWithInstancesError(image)
         if image.id is None:
             raise NonExistingImageError(image)
         self.data.remove_image(image.id)
@@ -553,6 +576,8 @@ class LocalMetadataRepository(MetadataRepository):
         return environment
 
     def delete_environment(self, environment: RuntimeEnvironment):
+        if self.data.get_instances_by_environment_id(environment.id):
+            raise EnvironmentWithInstancesError(environment)
         try:
             self.data.remove_environment(environment.id)
             self.save()
@@ -561,11 +586,21 @@ class LocalMetadataRepository(MetadataRepository):
             raise NonExistingEnvironmentError(environment)
 
     @bind_to_self
-    def get_instances(self, image: Union[int, Image], environment: Union[int, RuntimeEnvironment]) \
+    def get_instances(self, image: Union[int, Image] = None, environment: Union[int, RuntimeEnvironment] = None) \
             -> List[RuntimeInstance]:
-        image = image.id if isinstance(image, Image) else image
-        environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
-        return self.data.get_instances(environment, image)
+        if image is None and environment is None:
+            raise ValueError('Image and environment were not provided to the function')
+        if image is not None:
+            image = image.id if isinstance(image, Image) else image
+        if environment is not None:
+            environment = environment.id if isinstance(environment, RuntimeEnvironment) else environment
+
+        if image is not None and environment is not None:
+            return self.data.get_instances(environment, image)
+        elif image is not None:
+            return self.data.get_instances_by_image_id(image)
+        else:
+            return self.data.get_instances_by_environment_id(environment)
 
     @bind_to_self
     def get_instance_by_name(self, instance_name, image: Union[int, Image],

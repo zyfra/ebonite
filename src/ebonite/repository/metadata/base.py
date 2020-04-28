@@ -618,8 +618,8 @@ class MetadataRepository:
         return self.update_environment(environment)
 
     @abstractmethod
-    def get_instances(self, image: Union[int, 'core.Image'], environment: Union[int, 'core.RuntimeEnvironment']) \
-            -> List['core.RuntimeInstance']:
+    def get_instances(self, image: Union[int, 'core.Image'] = None,
+                      environment: Union[int, 'core.RuntimeEnvironment'] = None) -> List['core.RuntimeInstance']:
         """
         Gets a list of instances in given image or environment
 
