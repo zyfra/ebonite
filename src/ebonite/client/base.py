@@ -6,7 +6,7 @@ from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
 from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError
-from ebonite.core.objects import Image, Model, RuntimeEnvironment, RuntimeInstance, Task, Pipeline
+from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository

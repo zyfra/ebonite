@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
                                  ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
-                                 ExistingTaskError, ImageWithInstancesError,
-                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingPipelineError, NonExistingProjectError,
-                                 NonExistingTaskError, ProjectWithTasksError, TaskWithFKError)
+                                 ExistingTaskError, ImageWithInstancesError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
+                                 ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import (EboniteObject, Image, Model, Pipeline, Project, RuntimeEnvironment,
                                        RuntimeInstance, Task)
 from ebonite.repository.metadata import MetadataRepository

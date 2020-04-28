@@ -6,10 +6,10 @@ import pyjackson
 
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
                                  ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
-                                 ExistingTaskError, ImageWithInstancesError,
-                                 NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
-                                 NonExistingModelError, NonExistingPipelineError, NonExistingProjectError,
-                                 NonExistingTaskError, ProjectWithTasksError, TaskWithFKError)
+                                 ExistingTaskError, ImageWithInstancesError, NonExistingEnvironmentError,
+                                 NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
+                                 NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
+                                 ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
