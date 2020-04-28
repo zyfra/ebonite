@@ -34,13 +34,13 @@ class EboniteAPI:
         self.config_path = config_path
         self.ebonite = None
 
-    def run(self):
         self.init_ebonite()
         self.configure_app()
+
+    def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)
 
     def init_ebonite(self):
-        # TODO: Error handling for cases when ebonite object couldn't be created
         self.ebonite = Ebonite.from_config_file(self.config_path)
 
     def configure_app(self):
