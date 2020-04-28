@@ -1044,6 +1044,7 @@ def test_delete_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
     assert len(task.pipelines) == 0
 
+
 def test_delete_not_existing_pipeline(meta: MetadataRepository, pipeline: Pipeline):
     with pytest.raises(NonExistingPipelineError):
         meta.delete_pipeline(pipeline)
@@ -1130,6 +1131,7 @@ def test_delete_image__ok(meta: MetadataRepository, created_image):
     task = meta.get_task_by_id(task.id)
 
     assert len(task.images) == 0
+
 
 def test_delete_image__unsaved_image(meta: MetadataRepository, image):
     with pytest.raises(NonExistingImageError):
@@ -1352,7 +1354,6 @@ def test_delete_instance__ok(meta: MetadataRepository, created_instance):
     meta.delete_instance(created_instance)
 
     assert meta.get_instances(image, environment) == []
-
 
 
 def test_delete_instance__not_existing(meta: MetadataRepository, instance):

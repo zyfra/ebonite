@@ -1,18 +1,12 @@
-import os
-
 import pytest
 
-from ebonite.build.builder.base import use_local_installation
 from ebonite.client import Ebonite
 from tests.client.conftest import create_client_hooks
 
 
-
 @pytest.fixture
-def inmemory_ebnt():  # noqa
-
+def inmemory_ebnt():
     ebnt = Ebonite.inmemory()
-
     yield ebnt
 
 

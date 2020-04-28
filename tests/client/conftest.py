@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from ebonite.core.objects.core import Model, Image, Pipeline
+from ebonite.core.objects.core import Image, Model
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import rm_container, rm_image
 from tests.client.test_func import func
