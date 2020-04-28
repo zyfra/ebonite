@@ -24,7 +24,7 @@ def errors_blueprint(ebonite) -> Blueprint:
         Handles exception which occures during body and param validation in requests
         :return: Response with description of errors
         """
-        return jsonify({'errormsg': exception.errors()}), 400
+        return jsonify({'errormsg': exception.errors()}), 422
 
     @blueprint.app_errorhandler(NotFound)
     def not_found_exception_handler(exception: NotFound):
