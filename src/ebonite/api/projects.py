@@ -1,3 +1,4 @@
+from json import loads
 from typing import Tuple
 
 import pyjackson as pj
@@ -32,7 +33,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         :return: All projects in database
         """
         projects = ebonite.meta_repo.get_projects()
-        return jsonify([pj.dumps(p) for p in projects]), 200
+        return jsonify([loads(pj.dumps(p)) for p in projects]), 200
 
     @blueprint.route('', methods=['POST'])
     def create_project() -> Tuple[Response, int]:
@@ -43,7 +44,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         project = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
             project = ebonite.meta_repo.create_project(project)
-            return jsonify(pj.dumps(project)), 201
+            return jsonify(loads(pj.dumps(project))), 201
         except ExistingProjectError:
             return jsonify({'errormsg': f'Project with name {project.name} already exists'}), 400
 
@@ -56,7 +57,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         project = ebonite.meta_repo.get_project_by_id(id)
         if project is not None:
-            return jsonify(pj.dumps(project)), 200
+            return jsonify(loads(pj.dumps(project))), 200
         else:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 
