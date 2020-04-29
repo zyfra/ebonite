@@ -1223,7 +1223,6 @@ def test_update_environment__not_existing(meta: MetadataRepository, environment)
 
 
 def test_delete_environment__ok(meta: MetadataRepository, created_environment):
-    created_environment
     assert meta.get_environments() == [created_environment]
 
     meta.delete_environment(created_environment)
