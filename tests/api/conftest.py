@@ -5,10 +5,12 @@ import pytest
 
 from ebonite.api.api_base import EboniteAPI
 from ebonite.build.builder.base import use_local_installation
+from tests.ext.sqlalchemy.test_postgres.conftest import postgres_server, postgres_meta
+from tests.ext.s3.conftest import s3_artifact, s3server
 
 
 @pytest.fixture
-def client(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):
+def api(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):
     os.environ['S3_ACCESS_KEY'] = 'eboniteAccessKey'
     os.environ['S3_SECRET_KEY'] = 'eboniteSecretKey'
 
@@ -30,6 +32,10 @@ def client(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact
 
     api = EboniteAPI(name='test_api', config_path=cfg_path, debug=False, host='127.0.0.1', port='5000')
     api.app.config['TESTING'] = True
+    yield api
+
+@pytest.fixture
+def client(api):
     yield api.app.test_client()
 
 
@@ -46,6 +52,12 @@ def create_project_2(client):
 
 
 @pytest.fixture
-def create_tasK_1(client, create_project_1):
+def create_task_1(client, create_project_1):
     rv = client.post('/tasks', data=json.dumps({'name': 'task_1', 'project_id': 1}))
+    assert rv.status_code == 201
+
+
+@pytest.fixture
+def create_task_2(client, create_project_1):
+    rv = client.post('/tasks', data=json.dumps({'name': 'task_2', 'project_id': 1}))
     assert rv.status_code == 201
