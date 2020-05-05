@@ -40,7 +40,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         if project is not None:
             return jsonify([loads(pj.dumps(ebonite.meta_repo.get_task_by_id(t))) for t in project.tasks]), 200
         else:
-            return jsonify({'errormsg': f'Project with id {project_id} is not found'}), 404
+            return jsonify({'errormsg': f'Project with id {project_id} does not exist'}), 404
 
     @blueprint.route('', methods=['POST'])
     def create_task() -> Tuple[Response, int]:
@@ -82,6 +82,8 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         body = request.get_json(force=True)
         body['id'] = id
         task = TaskUpdateBody.from_data(body)
+        if ebonite.meta_repo.get_task_by_id(task.project_id) is None:
+            return jsonify({'errormsg': f'Project {task.project_id} does not exist'}), 404
         try:
             ebonite.meta_repo.update_task(task)
             return jsonify({}), 204
