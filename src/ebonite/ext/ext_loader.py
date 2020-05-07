@@ -99,10 +99,15 @@ class ExtensionLoader:
         if len(extensions) == 0:
             return
 
-        hook = _ImportLoadExtInterceptor(
-            module_to_extension={req: e for e in extensions for req in e.reqs}
-        )
-        sys.meta_path.insert(0, hook)
+        existing = [h for h in sys.meta_path if isinstance(h, _ImportLoadExtInterceptor)]
+        if len(existing) > 0:
+            hook = existing[0]
+            hook.module_to_extension.update({req: e for e in extensions for req in e.reqs})
+        else:
+            hook = _ImportLoadExtInterceptor(
+                module_to_extension={req: e for e in extensions for req in e.reqs}
+            )
+            sys.meta_path.insert(0, hook)
 
     @classmethod
     def load_all(cls, try_lazy=True):
@@ -114,12 +119,6 @@ class ExtensionLoader:
         for_hook = []
         for ext in cls.builtin_extensions.values():
             if not try_lazy or hasattr(sys, 'frozen') or ext.force:
-                for r in ext.reqs:
-                    try:
-                        __import__(r)
-                    except ImportError:
-                        print(r, os.path.exists(r + '.py'), os.path.abspath('.'))
-                        raise
                 if all(module_importable(r) for r in ext.reqs):
                     cls.load(ext)
             else:

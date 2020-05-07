@@ -8,7 +8,8 @@ from typing import Type
 import pytest
 
 from ebonite.ext.ext_loader import Extension, ExtensionLoader
-from ebonite.utils.importing import module_imported
+from ebonite.utils import fs
+from ebonite.utils.importing import module_imported, import_module
 
 
 @pytest.fixture
@@ -38,13 +39,16 @@ def unload_load(module_name):
 def temp_module_factory():
     modules = []
 
-    def inner():
-        name = f'temp_module_{random.randint(0, 10 ** 6)}'
-        module_name = name
-        module_path = module_name + '.py'
-        Path(module_path).touch()
-        modules.append(module_path)
-        return os.path.join('tests', 'ext', module_name).replace('/', '.')
+    def inner(text=''):
+        module = 'sys'
+        while module_imported(module):
+            name = f'temp_module_{random.randint(0, 10 ** 6)}'
+            module_path = fs.current_module_path(name) + '.py'
+            with open(module_path, 'w') as f:
+                f.write(text)
+            modules.append(module_path)
+            module = f'tests.ext.{name}'
+        return module
 
     try:
         yield inner
@@ -53,13 +57,18 @@ def temp_module_factory():
             os.remove(path)
 
 
-def test_extension_loader__force(ext_loader, temp_module_factory):
+@pytest.fixture
+def two_temp_modules(temp_module_factory):
     module1 = temp_module_factory()
     module2 = temp_module_factory()
 
     assert not module_imported(module1)
     assert not module_imported(module2)
+    return module1, module2
 
+
+def test_extension_loader__force(ext_loader, two_temp_modules):
+    module1, module2 = two_temp_modules
     ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=True)
 
     ext_loader.load_all()
@@ -68,11 +77,8 @@ def test_extension_loader__force(ext_loader, temp_module_factory):
     assert module_imported(module2)
 
 
-def test_extension_loader__lazy(ext_loader, temp_module_factory):
-    module1 = temp_module_factory()
-    module2 = temp_module_factory()
-    assert not module_imported(module1)
-    assert not module_imported(module2)
+def test_extension_loader__lazy(ext_loader, two_temp_modules):
+    module1, module2 = two_temp_modules
 
     ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=False)
 
@@ -81,17 +87,15 @@ def test_extension_loader__lazy(ext_loader, temp_module_factory):
     assert not module_imported(module1)
     assert not module_imported(module2)
 
-    __import__(module2)  # noqa
+    import_module(module2)  # noqa
 
     assert module_imported(module1)
     assert module_imported(module2)
 
 
-def test_extension_loader__lazy_defered(ext_loader, temp_module_factory):
-    module1 = temp_module_factory()
-    module2 = temp_module_factory()
-    assert not module_imported(module1)
-    assert not module_imported(module2)
+@pytest.mark.kek
+def test_extension_loader__lazy_defered(ext_loader, two_temp_modules, temp_module_factory):
+    module1, module2 = two_temp_modules
 
     ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=False)
 
@@ -100,10 +104,8 @@ def test_extension_loader__lazy_defered(ext_loader, temp_module_factory):
     assert not module_imported(module1)
     assert not module_imported(module2)
 
-    module3 = temp_module_factory()
-    with open(f'{module3[len("tests.ext."):]}.py', 'w') as f:
-        f.write(f'import {module2}')
-    __import__(module3)  # noqa
+    module3 = temp_module_factory(f'import {module2}')
+    import_module(module3)  # noqa
 
     assert module_imported(module1)
     assert module_imported(module2)
