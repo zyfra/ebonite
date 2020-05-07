@@ -1,15 +1,13 @@
 import contextlib
+import os
 import random
-import shutil
 import sys
 from pathlib import Path
 from typing import Type
 
 import pytest
 
-import os
 from ebonite.ext.ext_loader import Extension, ExtensionLoader
-from ebonite.utils import fs
 from ebonite.utils.importing import module_imported
 
 
