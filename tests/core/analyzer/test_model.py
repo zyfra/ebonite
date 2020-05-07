@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import pytest
-from requirements_test import TestM
+from requirements_test.test_pack_1 import TestM
 
 from ebonite.client.base import Ebonite
 from ebonite.core.analyzer import TypeHookMixin
@@ -93,6 +93,6 @@ def test_model_custom_requirements():
     ebnt = Ebonite.inmemory()
     task = ebnt.get_or_create_task('a', 'b')
     model = task.create_and_push_model(TestM(), 1, 'kek')
-    reqs = model.requirements
-    reqs = [x.module for x in reqs.custom]
-    assert 'requirements_test' in reqs
+    reqs = [x.name for x in model.requirements.custom]
+    assert 'requirements_test.test_pack_1' in reqs
+    assert 'requirements_test.test_pack_2' in reqs

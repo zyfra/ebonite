@@ -1,7 +1,7 @@
 import typing
 
 import numpy as np
-from requirements_test import test_model
+from requirements_test.test_pack_1 import test_model
 
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook
