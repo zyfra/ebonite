@@ -4,7 +4,9 @@ from typing import Dict, Optional
 
 import numpy as np
 import pytest
+from requirements_test import TestM
 
+from ebonite.client.base import Ebonite
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.model import BindingModelHook, ModelAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, Blobs, InMemoryBlob
@@ -85,3 +87,12 @@ def test_func_model_dump_load(tmpdir, wrapper: ModelWrapper, numpy_data):
 
     # we could not compare models directly as they are functions
     np.testing.assert_almost_equal(before_model(numpy_data), after_model(numpy_data))
+
+
+def test_model_custom_requirements():
+    ebnt = Ebonite.inmemory()
+    task = ebnt.get_or_create_task('a', 'b')
+    model = task.create_and_push_model(TestM(), 1, 'kek')
+    reqs = model.requirements
+    reqs = [x.module for x in reqs.custom]
+    assert 'requirements_test' in reqs
