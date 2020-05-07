@@ -2,14 +2,13 @@ import contextlib
 import os
 import random
 import sys
-from pathlib import Path
 from typing import Type
 
 import pytest
 
 from ebonite.ext.ext_loader import Extension, ExtensionLoader
 from ebonite.utils import fs
-from ebonite.utils.importing import module_imported, import_module
+from ebonite.utils.importing import import_module, module_imported
 
 
 @pytest.fixture
