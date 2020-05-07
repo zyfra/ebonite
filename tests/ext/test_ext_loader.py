@@ -1,10 +1,15 @@
 import contextlib
+import random
+import shutil
 import sys
+from pathlib import Path
 from typing import Type
 
 import pytest
 
+import os
 from ebonite.ext.ext_loader import Extension, ExtensionLoader
+from ebonite.utils import fs
 from ebonite.utils.importing import module_imported
 
 
@@ -31,50 +36,76 @@ def unload_load(module_name):
             sys.modules.pop(module_name, None)
 
 
-def test_extension_loader__force(ext_loader):
-    with unload_load('stat'), unload_load('pprint'):
-        assert not module_imported('stat')
-        assert not module_imported('pprint')
+@pytest.fixture
+def temp_module_factory():
+    modules = []
 
-        ext_loader.builtin_extensions['stat'] = Extension('stat', ['pprint'], force=True)
+    def inner():
+        name = f'temp_module_{random.randint(0, 10 ** 6)}'
+        module_name = name
+        module_path = module_name + '.py'
+        Path(module_path).touch()
+        modules.append(module_path)
+        return os.path.join('tests', 'ext', module_name).replace('/', '.')
 
-        ext_loader.load_all()
-
-        assert module_imported('stat')
-        assert module_imported('pprint')
-
-
-def test_extension_loader__lazy(ext_loader):
-    with unload_load('marshal'), unload_load('dbm'):
-        assert not module_imported('marshal')
-        assert not module_imported('dbm')
-
-        ext_loader.builtin_extensions['marshal'] = Extension('marshal', ['dbm'], force=False)
-
-        ext_loader.load_all()
-
-        assert not module_imported('marshal')
-        assert not module_imported('dbm')
-
-        import dbm  # noqa
-
-        assert module_imported('marshal')
-        assert module_imported('dbm')
+    try:
+        yield inner
+    finally:
+        for path in modules:
+            os.remove(path)
 
 
-def test_extension_loader__lazy_defered(ext_loader):
-    with unload_load('urllib'), unload_load('rsa'):
-        assert not module_imported('urllib')
-        assert not module_imported('rsa')
+def test_extension_loader__force(ext_loader, temp_module_factory):
+    module1 = temp_module_factory()
+    module2 = temp_module_factory()
 
-        ext_loader.builtin_extensions['urllib'] = Extension('urllib', ['rsa'], force=False)
+    assert not module_imported(module1)
+    assert not module_imported(module2)
 
-        ext_loader.load_all()
+    ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=True)
 
-        assert not module_imported('urllib')
-        assert not module_imported('rsa')
+    ext_loader.load_all()
 
-        import tests.ext.ext_loader_defered_rsa_import  # noqa
+    assert module_imported(module1)
+    assert module_imported(module2)
 
-        assert module_imported('urllib')
-        assert module_imported('rsa')
+
+def test_extension_loader__lazy(ext_loader, temp_module_factory):
+    module1 = temp_module_factory()
+    module2 = temp_module_factory()
+    assert not module_imported(module1)
+    assert not module_imported(module2)
+
+    ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=False)
+
+    ext_loader.load_all()
+
+    assert not module_imported(module1)
+    assert not module_imported(module2)
+
+    __import__(module2)  # noqa
+
+    assert module_imported(module1)
+    assert module_imported(module2)
+
+
+def test_extension_loader__lazy_defered(ext_loader, temp_module_factory):
+    module1 = temp_module_factory()
+    module2 = temp_module_factory()
+    assert not module_imported(module1)
+    assert not module_imported(module2)
+
+    ext_loader.builtin_extensions[module1] = Extension(module1, [module2], force=False)
+
+    ext_loader.load_all()
+
+    assert not module_imported(module1)
+    assert not module_imported(module2)
+
+    module3 = temp_module_factory()
+    with open(f'{module3[len("tests.ext."):]}.py', 'w') as f:
+        f.write(f'import {module2}')
+    __import__(module3)  # noqa
+
+    assert module_imported(module1)
+    assert module_imported(module2)

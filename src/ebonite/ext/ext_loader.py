@@ -1,4 +1,5 @@
 import importlib
+import os
 import sys
 from types import ModuleType
 from typing import Dict, List, Union
@@ -113,6 +114,12 @@ class ExtensionLoader:
         for_hook = []
         for ext in cls.builtin_extensions.values():
             if not try_lazy or hasattr(sys, 'frozen') or ext.force:
+                for r in ext.reqs:
+                    try:
+                        __import__(r)
+                    except ImportError:
+                        print(r, os.path.exists(r + '.py'), os.path.abspath('.'))
+                        raise
                 if all(module_importable(r) for r in ext.reqs):
                     cls.load(ext)
             else:
@@ -143,6 +150,7 @@ class ExtensionLoader:
 
 class _ImportLoadExtRegisterer(importlib.abc.PathEntryFinder):
     """A hook that registers all modules that are being imported"""
+
     def __init__(self):
         self.imported = []
 
