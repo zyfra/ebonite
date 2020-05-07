@@ -98,11 +98,6 @@ class ExtensionLoader:
         if len(extensions) == 0:
             return
 
-        class MetaPath(list):
-            def __getattribute__(self, item):
-                return super(MetaPath, self).__getattribute__(item)
-
-        sys.meta_path = MetaPath(sys.meta_path)
         hook = _ImportLoadExtInterceptor(
             module_to_extension={req: e for e in extensions for req in e.reqs}
         )

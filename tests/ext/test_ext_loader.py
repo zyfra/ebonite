@@ -63,18 +63,18 @@ def test_extension_loader__lazy(ext_loader):
 
 
 def test_extension_loader__lazy_defered(ext_loader):
-    with unload_load('marshal'), unload_load('dbm'):
-        assert not module_imported('marshal')
-        assert not module_imported('dbm')
+    with unload_load('urllib'), unload_load('rsa'):
+        assert not module_imported('urllib')
+        assert not module_imported('rsa')
 
-        ext_loader.builtin_extensions['marshal'] = Extension('marshal', ['dbm'], force=False)
+        ext_loader.builtin_extensions['urllib'] = Extension('urllib', ['rsa'], force=False)
 
         ext_loader.load_all()
 
-        assert not module_imported('marshal')
-        assert not module_imported('dbm')
+        assert not module_imported('urllib')
+        assert not module_imported('rsa')
 
-        import tests.ext.ext_loader_defered_dbm_import  # noqa
+        import tests.ext.ext_loader_defered_rsa_import  # noqa
 
-        assert module_imported('marshal')
-        assert module_imported('dbm')
+        assert module_imported('urllib')
+        assert module_imported('rsa')

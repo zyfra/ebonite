@@ -213,7 +213,6 @@ class Requirements(EboniteParams):
         List of installable requirements
         """
         return self.of_type(InstallableRequirement)
-        # [r for r in self.requirements if isinstance(r, InstallableRequirement)]
 
     @property
     def custom(self) -> List[CustomRequirement]:
@@ -221,9 +220,12 @@ class Requirements(EboniteParams):
         List of custom requirements
         """
         return self.of_type(CustomRequirement)
-        # [r for r in self.requirements if isinstance(r, CustomRequirement)]
 
     def of_type(self, type_: Type[T]) -> List[T]:
+        """
+        :param type_: type of requirements
+        :return: List of requirements of type `type_`
+        """
         return [r for r in self.requirements if isinstance(r, type_)]
 
     @property
