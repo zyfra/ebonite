@@ -23,6 +23,8 @@ include ebonite.jpg
 include requirements.txt
 include test.requirements.txt
 
+recursive-include requirements_test *.py
+
 include tox.ini
 
 global-exclude *.py[cod] __pycache__/* *.so *.dylib .ebonite/** UNUSED_CODE/** docs/reference*
