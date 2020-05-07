@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ebonite.core.analyzer.model import ModelAnalyzer
+from ebonite.core.objects import ModelWrapper
+
 
 @pytest.fixture
 def np_payload():
@@ -22,3 +25,13 @@ def df_payload():
 @pytest.fixture
 def dataset_df(df_payload):
     return lgb.Dataset(df_payload, label=np.linspace(0, 2).reshape((-1, 1)), free_raw_data=False)
+
+
+@pytest.fixture
+def booster(dataset_np):
+    return lgb.train({}, dataset_np, 1)
+
+
+@pytest.fixture
+def wrapper(booster, dataset_np) -> ModelWrapper:
+    return ModelAnalyzer.analyze(booster, input_data=dataset_np)

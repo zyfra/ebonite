@@ -1,6 +1,6 @@
 import typing
 
-from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs
+from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, InMemoryBlob
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.base import ArtifactExistsError, NoSuchArtifactError
 
@@ -24,7 +24,9 @@ class InMemoryArtifactRepository(ArtifactRepository):
     def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
         if model_id in self._cache:
             raise ArtifactExistsError(model_id, self)
-        self._cache[model_id] = Blobs(blobs)
+        self._cache[model_id] = Blobs({
+            k: InMemoryBlob(v.bytes()) for k, v in blobs.items()
+        })
         return self._cache[model_id]
 
     def _delete_artifact(self, model_id: str):

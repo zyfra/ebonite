@@ -60,3 +60,21 @@ def test_extension_loader__lazy(ext_loader):
 
         assert module_imported('marshal')
         assert module_imported('dbm')
+
+
+def test_extension_loader__lazy_defered(ext_loader):
+    with unload_load('marshal'), unload_load('dbm'):
+        assert not module_imported('marshal')
+        assert not module_imported('dbm')
+
+        ext_loader.builtin_extensions['marshal'] = Extension('marshal', ['dbm'], force=False)
+
+        ext_loader.load_all()
+
+        assert not module_imported('marshal')
+        assert not module_imported('dbm')
+
+        import tests.ext.ext_loader_defered_dbm_import  # noqa
+
+        assert module_imported('marshal')
+        assert module_imported('dbm')
