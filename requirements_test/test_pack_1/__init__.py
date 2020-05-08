@@ -1,2 +1,0 @@
-from requirements_test.test_pack_1.test_model_wrapper import TestModelHook
-from requirements_test.test_pack_1.test_model import TestM

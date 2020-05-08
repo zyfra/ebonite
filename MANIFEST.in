@@ -23,7 +23,6 @@ include ebonite.jpg
 include requirements.txt
 include test.requirements.txt
 
-recursive-include requirements_test *.py
 
 include tox.ini
 

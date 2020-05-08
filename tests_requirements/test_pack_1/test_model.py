@@ -1,4 +1,5 @@
-from requirements_test.test_pack_2 import name
+from test_pack_2 import name
+
 
 class TestM:
 
