@@ -176,7 +176,7 @@ class ModelWrapper(EboniteParams):
 
         :return: :class:`.Requirements` object representing runtime requirements of bound module object
         """
-        return get_object_requirements(self.model)
+        return get_object_requirements(self)
 
     @abstractmethod
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
