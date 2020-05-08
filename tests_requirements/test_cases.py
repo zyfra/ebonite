@@ -5,7 +5,7 @@ import subprocess
 import dill
 from test_pack_1 import TestM
 
-from ebonite.client.base import Ebonite
+from ebonite.client.helpers import create_model
 from ebonite.utils import fs
 from ebonite.utils.module import get_object_requirements
 
@@ -46,9 +46,7 @@ def test_requirements_analyzer__model_works(tmpdir):
 
 
 def test_model_custom_requirements():
-    ebnt = Ebonite.inmemory()
-    task = ebnt.get_or_create_task('a', 'b')
-    model = task.create_and_push_model(TestM(), 1, 'kek')
+    model = create_model(TestM(), 1, 'test_model')
     reqs = [x.name for x in model.requirements.custom]
     assert 'test_pack_1' in reqs
     assert 'test_pack_2' in reqs
