@@ -137,7 +137,7 @@ def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
                            registry.host, username_var, password_var)
 
 
-def _is_docker_running(client) -> bool:
+def _is_docker_running(client: docker.DockerClient) -> bool:
     """
     Check if docker binary and docker daemon are available
 
@@ -145,7 +145,7 @@ def _is_docker_running(client) -> bool:
     :return: true or false
     """
     try:
-        client.images.list()
+        client.info()
         return True
     except (ImportError, IOError, DockerException):
         return False

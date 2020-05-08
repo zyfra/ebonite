@@ -14,6 +14,7 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
+from ebonite.core.analyzer.requirement import RequirementAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
@@ -509,6 +510,7 @@ class Model(EboniteObject):
         if additional_requirements is not None:
             requirements += additional_requirements
 
+        requirements = RequirementAnalyzer.analyze(requirements)
         params = params or {}
         params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
         model = Model(name, wrapper, None, requirements, params, description)
