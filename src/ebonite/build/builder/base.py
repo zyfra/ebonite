@@ -1,12 +1,13 @@
+import io
 import os
 import shutil
 from abc import abstractmethod
 from contextlib import contextmanager
+from os.path import dirname, join
 
 from ebonite.build.provider import PythonProvider
 from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
-
 
 REQUIREMENTS = 'requirements.txt'
 EBONITE_FROM_PIP = True
@@ -14,6 +15,18 @@ EBONITE_FROM_PIP = True
 
 def ebonite_from_pip():
     return EBONITE_FROM_PIP
+
+
+def read(*names, **kwargs):
+    with io.open(
+            join(dirname(__file__).split('/src')[0], *names),
+            encoding=kwargs.get('encoding', 'utf8')
+    ) as fh:
+        return fh.read()
+
+
+def get_requirements(file_name):
+    return [r for r in read(file_name).split('\n') if r and not r.startswith('#')]
 
 
 @contextmanager
@@ -32,6 +45,7 @@ def use_local_installation():
 
 class BuilderBase:
     """Abstract class for building images from ebonite objects"""
+
     @abstractmethod
     def build(self):
         pass  # pragma: no cover
@@ -44,6 +58,7 @@ class PythonBuilder(BuilderBase):
 
     :param provider: An implementation of PythonProvider to get distribution from
     """
+
     def __init__(self, provider: PythonProvider):
         self.provider = provider
 
@@ -93,8 +108,7 @@ class PythonBuilder(BuilderBase):
             requirements = self.provider.get_requirements()
             logger.debug('Auto-determined requirements for model: %s.', requirements.to_pip())
             if not ebonite_from_pip():
-                from setup import setup_args  # FIXME only for development
-                requirements += list(setup_args['install_requires'])
+                requirements += list(get_requirements('requirements.txt'))
                 logger.debug('Adding Ebonite requirements as local installation is employed...')
                 logger.debug('Overall requirements for model: %s.', requirements.to_pip())
             req.write('\n'.join(requirements.to_pip()))
