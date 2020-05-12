@@ -108,6 +108,14 @@ class DockerHost(RuntimeEnvironment.Params):
         kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
         return DockerBuilder(provider, params, **kwargs)
 
+    def remove_image(self, name: str):
+        """
+        :param name:  name of the image to delete
+        """
+        # TODO: MOVE TO BUILDER
+        with create_docker_client() as client:
+            client.images.remove(name)
+
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
     """

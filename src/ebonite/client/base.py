@@ -138,15 +138,13 @@ class Ebonite:
         image.model = model
         return self.meta_repo.create_image(image)
 
-    def delete_image(self, image: Union[str, Image], model: Model, server: Server = None,
-                     environment: RuntimeEnvironment = None):
+    def delete_image(self, image: Union[str, Image], model: Model, environment: RuntimeEnvironment = None):
         """
         Deletes existing image from metadata repo and image provider
 
         :param name: name of image to remove or image instance
         :param model: model to wrap into service
-        :param server: server to build image with
-        :param environment: env to build for
+        :param environment: env to delete from
         """
         if isinstance(image, Image):
             name = image.name
@@ -158,11 +156,8 @@ class Ebonite:
 
         if environment is None:
             environment = self.get_default_environment()
-        if server is None:
-            server = self.get_default_server()
 
-        builder = environment.params.get_builder(name, model, server, False)
-        builder.remove()
+        environment.params.remove_image(name)
         self.meta_repo.delete_image(image)
 
     def get_image(self, name: str, model: Model) -> Image:

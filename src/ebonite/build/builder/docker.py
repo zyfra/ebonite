@@ -107,10 +107,6 @@ class DockerBuilder(PythonBuilder):
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise
 
-    def _remove_image(self):
-        with create_docker_client() as client:
-            client.images.remove(self.params.name)
-
 
 class _DockerfileGenerator:
     """
