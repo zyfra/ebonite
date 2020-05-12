@@ -106,3 +106,10 @@ class PythonBuilder(BuilderBase):
         """
         with open(os.path.join(target_dir, 'run.sh'), 'w') as sh:
             sh.write('python -c "from ebonite import start_runtime; start_runtime()"')
+
+    @abstractmethod
+    def _remove_image(self):
+        """
+        Removes existing image
+        """
+        pass

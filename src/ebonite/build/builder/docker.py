@@ -63,6 +63,9 @@ class DockerBuilder(PythonBuilder):
             self._write_distribution(tempdir)
             return self._build_image(tempdir)
 
+    def remove(self):
+        self._remove_image()
+
     def _write_distribution(self, target_dir):
         super()._write_distribution(target_dir)
 
@@ -103,6 +106,10 @@ class DockerBuilder(PythonBuilder):
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise
+
+    def _remove_image(self):
+        with create_docker_client() as client:
+            client.images.remove(self.params.name)
 
 
 class _DockerfileGenerator:
