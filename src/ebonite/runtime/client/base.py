@@ -93,7 +93,7 @@ class _MethodCall:
 
 
 def _bootstrap_method(method: InterfaceMethodDescriptor):
-    logger.debug(f'Bootstraping server method "%s" with %s argument(s)...', method.name, len(method.args))
+    logger.debug(f'Bootstraping server method "{method.name}" with {len(method.args)} argument(s)...')
     args = []
     for arg_name, arg_type in method.args.items():
         args.append(_Argument(arg_name, arg_type))
