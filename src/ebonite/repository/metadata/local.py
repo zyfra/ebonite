@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 import pyjackson
 
+from ebonite.build.docker import create_docker_client
 from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
                                  ExistingModelError, ExistingProjectError, ExistingTaskError,
                                  NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
@@ -426,6 +427,8 @@ class LocalMetadataRepository(MetadataRepository):
         self.data.remove_image(image.id)
         self.save()
         image.unbind_meta_repo()
+        with create_docker_client() as client:
+            client.images.remove(image.params.name)
 
     @bind_to_self
     def get_environments(self) -> List[RuntimeEnvironment]:
