@@ -7,7 +7,8 @@ from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Model
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import check_ebonite_port_free, train_model
-
+from ebonite.build.docker import create_docker_client
+from docker.errors import ImageNotFound
 
 def test_get_or_create_task(ebnt: Ebonite):
     task = ebnt.get_or_create_task("Project", "Task")
@@ -122,7 +123,7 @@ def test_push_model_project_contains_two_tasks(ebnt: Ebonite, model: Model):
 
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_build_and_run_instance(ebnt, container_name):
+def test_build_and_run_instance(ebnt: Ebonite, container_name):
     reg, data = train_model()
 
     check_ebonite_port_free()
@@ -140,3 +141,27 @@ def test_build_and_run_instance(ebnt, container_name):
     time.sleep(.1)
 
     assert not instance.is_running()
+
+
+@pytest.mark.docker
+@pytest.mark.skipif(not has_docker(), reason='no docker installed')
+def test_build_and_delete_image(ebnt: Ebonite, model: Model):
+    task = ebnt.get_or_create_task('test_proj', 'test_task')
+    model = ebnt.push_model(model, task)
+    try:
+        with create_docker_client() as client:
+            client.images.remove('test_image')
+    except ImageNotFound:
+        pass
+
+    image = ebnt.build_image('test_image', model)
+
+    assert ebnt.get_image(image.name, model) == image
+
+    with create_docker_client() as client:
+        assert client.images.get(image.name) is not None
+    ebnt.delete_image(image, image.model)
+    with pytest.raises(ImageNotFound):
+        client.images.get(image.name)
+
+    assert ebnt.get_image(image.name, model) is None

@@ -63,9 +63,6 @@ class DockerBuilder(PythonBuilder):
             self._write_distribution(tempdir)
             return self._build_image(tempdir)
 
-    def remove(self):
-        self._remove_image()
-
     def _write_distribution(self, target_dir):
         super()._write_distribution(target_dir)
 
