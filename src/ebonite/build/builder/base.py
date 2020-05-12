@@ -94,11 +94,13 @@ class PythonBuilder(BuilderBase):
             logger.debug('Auto-determined requirements for model: %s.', requirements.to_pip())
             if not ebonite_from_pip():
                 cwd = os.getcwd()
-                from setup import setup_args  # FIXME only for development
-                requirements += list(setup_args['install_requires'])
-                logger.debug('Adding Ebonite requirements as local installation is employed...')
-                logger.debug('Overall requirements for model: %s.', requirements.to_pip())
-                os.chdir(cwd)
+                try:
+                    from setup import setup_args  # FIXME only for development
+                    requirements += list(setup_args['install_requires'])
+                    logger.debug('Adding Ebonite requirements as local installation is employed...')
+                    logger.debug('Overall requirements for model: %s.', requirements.to_pip())
+                finally:
+                    os.chdir(cwd)
             req.write('\n'.join(requirements.to_pip()))
 
     def _write_run_script(self, target_dir):
