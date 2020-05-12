@@ -5,7 +5,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ebonite.build.docker import create_docker_client
 from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, ExistingInstanceError,
                                  ExistingModelError, ExistingProjectError, ExistingTaskError,
                                  NonExistingEnvironmentError, NonExistingImageError, NonExistingInstanceError,
