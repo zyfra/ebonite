@@ -1,14 +1,15 @@
 import time
 
 import pytest
+from docker.errors import ImageNotFound
 
+from ebonite.build.docker import create_docker_client
 from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Model
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import check_ebonite_port_free, train_model
-from ebonite.build.docker import create_docker_client
-from docker.errors import ImageNotFound
+
 
 def test_get_or_create_task(ebnt: Ebonite):
     task = ebnt.get_or_create_task("Project", "Task")
