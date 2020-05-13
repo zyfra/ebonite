@@ -1,20 +1,8 @@
-import lightgbm as lgb
 import numpy as np
 import pytest
 
-from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects import ModelWrapper
 from ebonite.ext.lightgbm.model import LightGBMModelWrapper
-
-
-@pytest.fixture
-def booster(dataset_np):
-    return lgb.train({}, dataset_np, 1)
-
-
-@pytest.fixture
-def wrapper(booster, dataset_np) -> ModelWrapper:
-    return ModelAnalyzer.analyze(booster, input_data=dataset_np)
 
 
 def test_hook(wrapper, booster):

@@ -1,20 +1,8 @@
 import numpy as np
 import pytest
-import xgboost
 
-from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects import ModelWrapper
 from ebonite.ext.xgboost.model import XGBoostModelWrapper
-
-
-@pytest.fixture
-def booster(dmatrix_np):
-    return xgboost.train({}, dmatrix_np, 1)
-
-
-@pytest.fixture
-def wrapper(booster, dmatrix_np) -> ModelWrapper:
-    return ModelAnalyzer.analyze(booster, input_data=dmatrix_np)
 
 
 def test_hook(wrapper, booster):

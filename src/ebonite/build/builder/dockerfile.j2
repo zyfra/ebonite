@@ -4,6 +4,10 @@ WORKDIR /app
 
 {% include "pre_install.j2" ignore missing %}
 
+{% if packages %}
+RUN {{ package_install_cmd }} {{ packages|join(" ")  }}
+{% endif %}
+
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 {{ ebonite_install }}
