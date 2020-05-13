@@ -119,7 +119,7 @@ CMD echo "cmd" && sh run.sh
 
 
 def _cut_empty_lines(string):
-    return '\n'.join(l for l in string.splitlines() if l)
+    return '\n'.join(line for line in string.splitlines() if line)
 
 
 def _generate_dockerfile(unix_packages=None, **kwargs):
