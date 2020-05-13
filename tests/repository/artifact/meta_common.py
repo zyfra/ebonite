@@ -40,11 +40,16 @@ def test_materialize_blobs_long_path(art_repo: ArtifactRepository, model: Model,
     with artifact.blob_dict() as bd:
         assert len(bd) == len(blobs)
 
+    if os.path.isdir(tmp_path):
+        os.rmdir(tmp_path)
+
+    tmp_path.mkdir()
     long_path = tmp_path / 'sub'
     with artifact.blob_dict() as bd:
         for name, blob in bd.items():
-            blob.materialize(str(long_path / name))
-            with open(os.path.join(long_path, name), 'rb') as f:
+            blob_path = str(long_path / name)
+            blob.materialize(blob_path)
+            with open(blob_path, 'rb') as f:
                 payload = f.read()
             with blob.bytestream() as blob_payload:
                 assert payload == blob_payload.read()
