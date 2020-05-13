@@ -160,7 +160,10 @@ def test_build_and_delete_image(ebnt: Ebonite, model: Model):
     assert ebnt.get_image(image.name, model) == image
 
     with create_docker_client() as client:
-        assert client.images.get(image.name) is not None
+        try:
+            client.images.get(image.name)
+        except ImageNotFound:
+            pytest.fail('Image was not built properly')
     ebnt.delete_image(image, image.model)
     with pytest.raises(ImageNotFound):
         client.images.get(image.name)

@@ -1,17 +1,17 @@
 import contextlib
 import os
+import tempfile
 
 import docker.errors
 import pytest
-import tempfile
 from testcontainers.core.container import DockerContainer
 
 from ebonite.build.builder.base import use_local_installation
 from ebonite.build.builder.docker import _DockerfileGenerator, DockerBuilder
-from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client
-
-from tests.build.conftest import has_docker
+from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, DockerHost
+from ebonite.core.objects import Image
 from tests.build.builder.test_base import ProviderMock, SECRET
+from tests.build.conftest import has_docker
 
 CLEAN = True
 IMAGE_NAME = 'ebonite_test_docker_builder_image'
@@ -35,6 +35,25 @@ def docker_builder_remote_registry():
                             DockerImage(IMAGE_NAME, registry=RemoteDockerRegistry(host)))
 
 
+@pytest.fixture
+def dockerhost():
+    yield DockerHost()
+
+
+@pytest.fixture
+def pull_helloworld_image():
+    with create_docker_client() as client:
+        client.images.pull('hello-world:latest')
+    yield
+
+
+@pytest.fixture
+def helloworld_image():
+    image = Image('hello-world', 0, 0, Image.Params())
+    image.params.name = 'hello-world'
+    yield image
+
+
 @contextlib.contextmanager
 def get_image_output(image_params):
     image_uri = image_params.get_uri()
@@ -50,6 +69,19 @@ def get_image_output(image_params):
             yield e.stderr.decode('utf8')
         finally:
             client.images.remove(image_uri)
+
+
+@pytest.mark.docker
+def test_image_deletion(dockerhost, pull_helloworld_image, helloworld_image):
+    with create_docker_client() as client:
+        try:
+            client.images.get('hello-world')
+        except docker.errors.ImageNotFound:
+            pytest.fail('Fixture image hello-world was not pulled')
+    dockerhost.remove_image(helloworld_image)
+    with create_docker_client() as client:
+        with pytest.raises(docker.errors.ImageNotFound):
+            client.images.get('hello-world')
 
 
 @pytest.mark.docker

@@ -630,7 +630,7 @@ class RuntimeEnvironment(EboniteObject):
             pass  # pragma: no cover
 
         @abstractmethod
-        def remove_image(self, name: str):
+        def remove_image(self, image: Image):
             """
             Removes existing image
             """

@@ -5,7 +5,7 @@ from typing import Union
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
-from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError, NonExistingImageError
+from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError
 from ebonite.core.objects import Image, Model, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
@@ -138,26 +138,17 @@ class Ebonite:
         image.model = model
         return self.meta_repo.create_image(image)
 
-    def delete_image(self, image: Union[str, Image], model: Model, environment: RuntimeEnvironment = None):
+    def delete_image(self, image: Image, environment: RuntimeEnvironment = None):
         """
-        Deletes existing image from metadata repo and image provider
+        Deletes existing image from metadata repository and image provider
 
         :param name: name of image to remove or image instance
-        :param model: model to wrap into service
         :param environment: env to delete from
         """
-        if isinstance(image, Image):
-            name = image.name
-        else:
-            name = image
-            image = self.meta_repo.get_image_by_name(name, model)
-            if image is None:
-                raise NonExistingImageError(name)
-
         if environment is None:
             environment = self.get_default_environment()
 
-        environment.params.remove_image(name)
+        environment.params.remove_image(image)
         self.meta_repo.delete_image(image)
 
     def get_image(self, name: str, model: Model) -> Image:
