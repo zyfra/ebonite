@@ -432,6 +432,8 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
             if is_local_module(module):
                 # add imports of this module
                 for local_req in get_local_module_reqs(module):
+                    if local_req in self._modules:
+                        continue
                     self._add_requirement(local_req)
 
     def save(self, obj, save_persistent_id=True):

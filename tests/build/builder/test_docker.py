@@ -9,6 +9,7 @@ from testcontainers.core.container import DockerContainer
 from ebonite.build.builder.base import use_local_installation
 from ebonite.build.builder.docker import _DockerfileGenerator, DockerBuilder
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client
+from ebonite.core.objects.requirements import UnixPackageRequirement
 
 from tests.build.conftest import has_docker
 from tests.build.builder.test_base import ProviderMock, SECRET
@@ -64,48 +65,45 @@ def test_build(docker_builder, request):
 
 
 def test_dockerfile_generator_custom_python_version():
-    dockerfile = '''FROM python:3.6-slim
-
+    dockerfile = _cut_empty_lines('''FROM python:AAAA-slim
 WORKDIR /app
-
-
-
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-
-
-
-
 COPY . ./
-
-
-
 CMD sh run.sh
-'''
+''')
 
-    kwargs = {'python_version': '3.6'}
+    kwargs = {'python_version': 'AAAA'}
     assert _generate_dockerfile(**kwargs) == dockerfile
 
 
-def test_dockerfile_generator_super_custom():
-    dockerfile = '''FROM my-python:3.6
-
+def test_dockerfile_generator_unix_packages():
+    dockerfile = _cut_empty_lines('''FROM python:3.6-slim
 WORKDIR /app
-
-RUN echo "pre_install"
-
+RUN kek aaa bbb
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-
-
-RUN echo "post_install"
-
 COPY . ./
+CMD sh run.sh
+''')
 
+    kwargs = {'python_version': '3.6',
+              'package_install_cmd': 'kek'}
+    assert _generate_dockerfile(**kwargs, unix_packages=[UnixPackageRequirement('aaa'),
+                                                         UnixPackageRequirement('bbb')]) == dockerfile
+
+
+def test_dockerfile_generator_super_custom():
+    dockerfile = _cut_empty_lines('''FROM my-python:3.6
+WORKDIR /app
+RUN echo "pre_install"
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+RUN echo "post_install"
+COPY . ./
 RUN echo "post_copy"
-
 CMD echo "cmd" && sh run.sh
-'''
+''')
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for hook in {'pre_install', 'post_install', 'post_copy'}:
@@ -120,6 +118,10 @@ CMD echo "cmd" && sh run.sh
         assert _generate_dockerfile(**kwargs) == dockerfile
 
 
-def _generate_dockerfile(**kwargs):
+def _cut_empty_lines(string):
+    return '\n'.join(line for line in string.splitlines() if line)
+
+
+def _generate_dockerfile(unix_packages=None, **kwargs):
     with use_local_installation():
-        return _DockerfileGenerator(**kwargs).generate({})
+        return _cut_empty_lines(_DockerfileGenerator(**kwargs).generate({}, unix_packages))
