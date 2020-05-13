@@ -74,7 +74,7 @@ class DockerImage(Image.Params):
 class DockerContainer(RuntimeInstance.Params):
     def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
         self.name = name
-        self.ports_mapping = ports_mapping or {9000: 9000}
+        self.ports_mapping = ports_mapping or {}
 
 
 class DockerHost(RuntimeEnvironment.Params):
