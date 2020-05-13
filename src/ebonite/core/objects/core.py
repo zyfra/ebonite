@@ -637,7 +637,7 @@ class RuntimeEnvironment(EboniteObject):
         self.params = params
 
 
-def _with_runner(method):
+def _with_auto_runner(method):
     """
        Decorator for methods to check that object is binded to runner
 
@@ -646,9 +646,11 @@ def _with_runner(method):
        """
 
     @wraps(method)
-    def inner(self, *args, **kwargs):
+    def inner(self: 'RuntimeInstance', *args, **kwargs):
         if not self.has_runner:
-            raise ValueError(f'{self} has no binded runner')
+            if not self.has_meta_repo:
+                raise ValueError(f'{self} has no binded runner')
+            self.bind_runner(self.environment.params.get_runner())
         return method(self, *args, **kwargs)
 
     return inner
@@ -708,7 +710,7 @@ class RuntimeInstance(EboniteObject):
     def has_runner(self):
         return self.runner is not None
 
-    @_with_runner
+    @_with_auto_runner
     def logs(self, **kwargs):
         """
 
@@ -717,7 +719,7 @@ class RuntimeInstance(EboniteObject):
         """
         yield from self.runner.logs(self.params, self.environment.params, **kwargs)
 
-    @_with_runner
+    @_with_auto_runner
     def is_running(self, **kwargs) -> bool:
         """
         Checks whether instance is running
