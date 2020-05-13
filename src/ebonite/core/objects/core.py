@@ -324,7 +324,7 @@ class Model(EboniteObject):
         try:
             json.dumps(self.params)
         except TypeError:
-            raise ValueError(f'"params" argument must be json-serializable') # noqa
+            raise ValueError('"params" argument must be json-serializable')
         self._wrapper = None
         self._wrapper_meta = None
         if isinstance(wrapper_meta, ModelWrapper):
