@@ -33,7 +33,8 @@ class DockerRunner(RunnerBase):
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
-                                                  detach=True)
+                                                  detach=True,
+                                                  **kwargs)
                 if not detach:
                     try:
                         # infinite loop of logs while container running or if everything ok
