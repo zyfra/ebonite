@@ -1,24 +1,20 @@
-import re
 import os
+import time
 from abc import abstractmethod
 from contextlib import contextmanager
 from threading import Lock
-from typing import Dict, Generator
+from typing import Dict, Generator, Optional
 
 import docker
+import requests
 from docker.errors import DockerException
-
 from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 from pyjackson.utils import get_class_field_names
 
-from ebonite.build.provider import MLModelProvider
-from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance, Model
-from ebonite.runtime.server import Server
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
+from ebonite.core.objects.core import Buildable
 from ebonite.utils.log import logger
-
-# TODO check
-VALID_HOST_REGEX = r'^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]).)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$'
 
 
 @type_field('type')
@@ -44,11 +40,8 @@ class DefaultDockerRegistry(DockerRegistry):
 class RemoteDockerRegistry(DockerRegistry):
     type = 'remote'
 
-    def __init__(self, host: str):
-        if re.match(VALID_HOST_REGEX, host):
-            self.host = host
-        else:
-            raise ValueError('Host {} is not valid'.format(host))
+    def __init__(self, host: Optional[str] = None):
+        self.host = host or 'https://index.docker.io/v1/'
 
     def get_host(self) -> str:
         return self.host
@@ -90,12 +83,10 @@ class DockerHost(RuntimeEnvironment.Params):
             self.default_runner = DockerRunner()
         return self.default_runner
 
-    def get_builder(self, name: str, model: Model, server: Server, debug=False, **kwargs):
+    def get_builder(self, name: str, buildable: Buildable, **kwargs):
         """
         :param name: name for image
-        :param model: model to build
-        :param server: server to build
-        :param debug: flag to build debug image
+        :param buildable: buildable to build
         :param kwargs: additional arguments for image parameters and docker builder
 
         :return: docker builder instance
@@ -104,9 +95,8 @@ class DockerHost(RuntimeEnvironment.Params):
 
         image_arg_names = set(get_class_field_names(DockerImage))
         params = DockerImage(name, **{k: v for k, v in kwargs.items() if k in image_arg_names})
-        provider = MLModelProvider(model, server, debug)
         kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
-        return DockerBuilder(provider, params, **kwargs)
+        return DockerBuilder(buildable, params, **kwargs)
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
@@ -182,3 +172,19 @@ def create_docker_client(docker_host: str = '', check=True) -> Generator[docker.
         yield client
     finally:
         client.close()
+
+
+def image_exists_at_dockerhub(tag):
+    repo, tag = tag.split(':')
+    resp = requests.get(f'https://registry.hub.docker.com/v1/repositories/{repo}/tags/{tag}')
+    time.sleep(1)  # rate limiting
+    return resp.status_code == 200
+
+
+def repository_tags_at_dockerhub(repo):
+    resp = requests.get(f'https://registry.hub.docker.com/v1/repositories/{repo}/tags')
+    time.sleep(1)  # rate limiting
+    if resp.status_code != 200:
+        return {}
+    else:
+        return {tag['name'] for tag in resp.json()}

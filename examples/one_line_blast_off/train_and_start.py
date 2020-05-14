@@ -4,7 +4,6 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 
 from ebonite import Ebonite
-from ebonite.build.builder.base import use_local_installation
 
 
 def train_model():
@@ -21,10 +20,8 @@ def main():
     reg, data = train_model()
 
     ebnt = Ebonite.inmemory()
-    #  this changes docker image builder behaviour to get ebonite from local installation instead of pip
-    with use_local_installation():
-        ebnt.create_instance_from_model('my_model', reg, data, task_name='my_task',
-                                        instance_name='magic-one-line-ebnt-service', run_instance=True, detach=False)
+
+    ebnt.create_instance_from_model('my_model', reg, data, run_instance=True, detach=False)
 
 
 if __name__ == '__main__':

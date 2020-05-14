@@ -5,8 +5,12 @@ from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
 from ebonite.build.provider.ml_model import MLModelProvider
+from ebonite.build.provider.utils import BuildableWithServer
+from ebonite.core.analyzer import CanIsAMustHookMixin
+from ebonite.core.analyzer.buildable import BuildableHook
 from ebonite.core.objects import ArtifactCollection, Model, Requirements
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection
+from ebonite.core.objects.core import WithMetadataRepository
 from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODELS_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
@@ -43,7 +47,41 @@ class MLModelMultiProvider(MLModelProvider):
 
     def get_artifacts(self) -> ArtifactCollection:
         """Returns binaries of models artifacts"""
+        # TODO additional server binaries
         return CompositeArtifactCollection([
             _RelativePathWrapper(m.artifact_any, os.path.join(MODEL_BIN_PATH, str(i)))
             for i, m in enumerate(self.models)
         ])
+
+
+class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
+    def __init__(self, model_ids: List[int], server_type: str):
+        super().__init__(server_type)
+        self.model_ids = model_ids
+        self.models_cache = None
+
+    @property
+    def models(self) -> List[Model]:
+        if self.models_cache is None:
+            self.models_cache = [self._meta.get_model_by_id(mid) for mid in self.model_ids]
+        return self.models_cache
+
+    def get_provider(self) -> MLModelMultiProvider:
+        return MLModelMultiProvider(self.models, self.server)
+
+    @classmethod
+    def from_models(cls, models: List[Model], **kwargs):
+        mb = MultiModelBuildable([model.id for model in models], **kwargs)
+        mb.bind_meta_repo(models[0]._meta)
+        mb.models_cache = models
+        return mb
+
+
+class BuildableMultiModelHook(BuildableHook, CanIsAMustHookMixin):
+
+    def must_process(self, obj) -> bool:
+        return isinstance(obj, list) and all(isinstance(o, Model) for o in obj)
+
+    def process(self, obj, **kwargs):
+        server = kwargs.get('server')  # TODO ???
+        return MultiModelBuildable([o.id for o in obj], server.type)

@@ -1,17 +1,15 @@
 import logging
 import os
 import tempfile
-
 from typing import Dict
 
 from docker import errors
-
 from jinja2 import Environment, FileSystemLoader
 
 from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
-from ebonite.build.provider.base import PythonProvider
 from ebonite.core.objects import Image
+from ebonite.core.objects.core import Buildable
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
@@ -23,9 +21,9 @@ EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
 def _print_docker_logs(logs, level=logging.DEBUG):
     for l in logs:
         if 'stream' in l:
-            logger.log(level, l['stream'])
+            logger.log(level, str(l['stream']).strip())
         else:
-            logger.log(level, l)
+            logger.log(level, str(l).strip())
 
 
 class DockerBuilder(PythonBuilder):
@@ -47,19 +45,24 @@ class DockerBuilder(PythonBuilder):
     :param force_overwrite: if false, raise error if image already exists
     """
 
-    def __init__(self, provider: PythonProvider, params: DockerImage, force_overwrite=False, **kwargs):
-        super().__init__(provider)
+    def __init__(self, buildable: Buildable, params: DockerImage, force_overwrite=False, **kwargs):
+        super().__init__(buildable)
         self.params = params
         self.force_overwrite = force_overwrite
 
-        kwargs.update(provider.get_options())
+        kwargs.update(self.provider.get_options())
+
+        self.prebuild_hook = kwargs.get('prebuild_hook', None)
+
         kwargs = {k: v for k, v in kwargs.items() if k in
                   {'base_image', 'python_version', 'templates_dir', 'run_cmd'}}
-        kwargs['python_version'] = kwargs.get('python_version', provider.get_python_version())
+        kwargs['python_version'] = kwargs.get('python_version', self.provider.get_python_version())
         self.dockerfile_gen = _DockerfileGenerator(**kwargs)
 
     def build(self) -> Image:
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
+            if self.prebuild_hook is not None:
+                self.prebuild_hook(self.dockerfile_gen.python_version)
             self._write_distribution(tempdir)
             return self._build_image(tempdir)
 
@@ -99,7 +102,7 @@ class DockerBuilder(PythonBuilder):
                     client.images.push(tag)
                     logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
 
-                return Image(tag, params=self.params)
+                return Image(self.params.name, self.buildable, params=self.params)
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise
@@ -109,7 +112,8 @@ class _DockerfileGenerator:
     """
     Class to generate Dockerfile
 
-    :param base_image:  base image for the built image, default: python:{python_version}
+    :param base_image:  base image for the built image in form of a string or function from python version,
+      default: python:{python_version}
     :param python_version: Python version to use, default: version of running interpreter
     :param templates_dir: directory for Dockerfile templates, default: ./docker_templates
        - `pre_install.j2` - Dockerfile commands to run before pip
@@ -120,6 +124,8 @@ class _DockerfileGenerator:
 
     def __init__(self, base_image=None, python_version=None, templates_dir=None, run_cmd='sh run.sh'):
         self.python_version = python_version or get_python_version()
+        if callable(base_image):
+            base_image = base_image(self.python_version)
         self.base_image = base_image or f'python:{self.python_version}-slim'
         self.templates_dir = templates_dir or os.path.join(os.getcwd(), 'docker_templates')
         self.run_cmd = run_cmd

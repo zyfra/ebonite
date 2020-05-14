@@ -1,13 +1,15 @@
 from abc import abstractmethod
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Iterable, List, Optional, Type, TypeVar
 
 from pyjackson import dumps, loads
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from ebonite.core.objects import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection
-from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.core.objects.core import (Buildable, Image, Model, Pipeline, PipelineStep, Project, RuntimeEnvironment,
+                                       RuntimeInstance, Task)
 from ebonite.core.objects.requirements import Requirements
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
@@ -71,7 +73,7 @@ class SProject(Base, Attaching):
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
-    tasks = relationship("STask", back_populates="project")
+    tasks: Iterable['STask'] = relationship("STask", back_populates="project")
 
     def to_obj(self) -> Project:
         p = Project(self.name, id=self.id, author=self.author, creation_date=self.creation_date)
@@ -98,7 +100,9 @@ class STask(Base, Attaching):
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
 
     project = relationship("SProject", back_populates="tasks")
-    models = relationship("SModel", back_populates="task")
+    models: Iterable['SModel'] = relationship("SModel", back_populates="task")
+    pipelines: Iterable['SPipeline'] = relationship("SPipeline", back_populates='task')
+    images: Iterable['SImage'] = relationship("SImage", back_populates='task')
 
     __table_args__ = (UniqueConstraint('name', 'project_id', name='tasks_name_and_ref'),)
 
@@ -110,6 +114,12 @@ class STask(Base, Attaching):
                     project_id=self.project_id)
         for model in self.models:
             task._models.add(model.to_obj())
+
+        for pipeline in self.pipelines:
+            task._pipelines.add(pipeline.to_obj())
+
+        for image in self.images:
+            task._images.add(image.to_obj())
         return self.attach(task)
 
     @classmethod
@@ -119,7 +129,9 @@ class STask(Base, Attaching):
                     author=task.author,
                     creation_date=task.creation_date,
                     project_id=task.project_id,
-                    models=[SModel.from_obj(m) for m in task.models.values()])
+                    models=[SModel.from_obj(m) for m in task.models.values()],
+                    images=[SImage.from_obj(i) for i in task.images.values()],
+                    pipelines=[SPipeline.from_obj(p) for p in task.pipelines.values()])
 
 
 class SModel(Base, Attaching):
@@ -138,7 +150,6 @@ class SModel(Base, Attaching):
     params = Column(Text)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="models")
-    images = relationship("SImage", back_populates="model")
 
     __table_args__ = (UniqueConstraint('name', 'task_id', name='models_name_and_ref'),)
 
@@ -153,8 +164,6 @@ class SModel(Base, Attaching):
                       params=safe_loads(self.params, Dict[str, Any]),
                       id=self.id,
                       task_id=self.task_id)
-        for image in self.images:
-            model._images.add(image.to_obj())
         return self.attach(model)
 
     @classmethod
@@ -168,8 +177,48 @@ class SModel(Base, Attaching):
                     requirements=dumps(model.requirements),
                     description=model.description,
                     params=dumps(model.params),
-                    task_id=model.task_id,
-                    images=[SImage.from_obj(i) for i in model.images.values()])
+                    task_id=model.task_id)
+
+
+class SPipeline(Base, Attaching):
+    __tablename__ = 'pipelines'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    name = Column(String, unique=False, nullable=False)
+    author = Column(String, unique=False, nullable=False)
+    creation_date = Column(DateTime, unique=False, nullable=False)
+    steps = Column(Text)
+
+    input_data = Column(Text)
+    output_data = Column(Text)
+
+    task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
+    task = relationship("STask", back_populates="pipelines")
+
+    __table_args__ = (UniqueConstraint('name', 'task_id', name='pipelines_name_and_ref'),)
+
+    def to_obj(self) -> Pipeline:
+        pipeline = Pipeline(name=self.name,
+                            steps=safe_loads(self.steps, List[PipelineStep]),
+                            input_data=safe_loads(self.input_data, DatasetType),
+                            output_data=safe_loads(self.output_data, DatasetType),
+                            author=self.author,
+                            creation_date=self.creation_date,
+                            id=self.id,
+                            task_id=self.task_id)
+        return self.attach(pipeline)
+
+    @classmethod
+    def get_kwargs(cls, pipeline: Pipeline) -> dict:
+        return dict(id=pipeline.id,
+                    name=pipeline.name,
+                    author=pipeline.author,
+                    creation_date=pipeline.creation_date,
+                    steps=dumps(pipeline.steps),
+                    input_data=dumps(pipeline.input_data),
+                    output_data=dumps(pipeline.output_data),
+                    task_id=pipeline.task_id)
 
 
 class SImage(Base, Attaching):
@@ -181,20 +230,22 @@ class SImage(Base, Attaching):
     author = Column(String, unique=False, nullable=False)
     creation_date = Column(DateTime, unique=False, nullable=False)
 
-    model_id = Column(Integer, ForeignKey('models.id'), nullable=False)
-    model = relationship("SModel", back_populates="images")
+    task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
+    task = relationship("STask", back_populates="images")
 
     params = Column(Text)
+    source = Column(Text)
 
-    __table_args__ = (UniqueConstraint('name', 'model_id', name='image_name_and_ref'),)
+    __table_args__ = (UniqueConstraint('name', 'task_id', name='image_name_and_ref'),)
 
     def to_obj(self) -> Image:
         image = Image(name=self.name,
                       author=self.author,
                       creation_date=self.creation_date,
                       id=self.id,
-                      model_id=self.model_id,
-                      params=safe_loads(self.params, Image.Params))
+                      task_id=self.task_id,
+                      params=safe_loads(self.params, Image.Params),
+                      source=safe_loads(self.source, Buildable))
         return self.attach(image)
 
     @classmethod
@@ -203,8 +254,9 @@ class SImage(Base, Attaching):
                     name=image.name,
                     author=image.author,
                     creation_date=image.creation_date,
-                    model_id=image.model_id,
-                    params=dumps(image.params))
+                    task_id=image.task_id,
+                    params=dumps(image.params),
+                    source=dumps(image.source))
 
 
 class SRuntimeEnvironment(Base, Attaching):

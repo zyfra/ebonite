@@ -272,7 +272,7 @@ class CompositeArtifactCollection(ArtifactCollection):
         """
         Materializes every ArtifactCollection to path
 
-        :param path: taget dir
+        :param path: target dir
         """
         for a in self.artifacts:
             a.materialize(path)

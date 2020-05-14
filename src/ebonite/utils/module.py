@@ -246,7 +246,7 @@ def is_from_installable_module(obj: object):
     """
     Determines that given object comes from PyPi-installable (aka third party) module.
 
-    :param mod: module object to use
+    :param obj: object to check
     :return: boolean flag
     """
     return is_installable_module(get_object_base_module(obj))
@@ -362,7 +362,7 @@ def add_closure_inspection(f):
         tree = ast.parse(inspect.getsource(obj).strip())
 
         class ImportFromVisitor(ast.NodeVisitor):
-            def visit_ImportFrom(self, node: ast.ImportFrom):
+            def visit_ImportFrom(self, node: ast.ImportFrom):  # noqa
                 warnings.warn(f'Detected local import in {obj.__module__}.{obj.__name__}')
                 if node.level == 0:
                     mod = import_module(node.module)
@@ -422,7 +422,8 @@ class _EboniteRequirementAnalyzer(EbonitePickler):
                 module = get_object_module(obj_or_module)
             except AttributeError as e:
                 # Some internal Tensorflow 2.x object crashes `inspect` module on Python 3.6
-                logger.debug('Skipping dependency analysis for %s because of %s: %s', obj_or_module, type(e).__name__, e)
+                logger.debug('Skipping dependency analysis for %s because of %s: %s', obj_or_module,
+                             type(e).__name__, e)
                 return
         else:
             module = obj_or_module
