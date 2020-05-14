@@ -16,7 +16,7 @@ class DockerRunner(RunnerBase):
         return DockerContainer
 
     def create_instance(self, name: str, ports_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
-        params = {key:param for key, param in kwargs if key != 'ports_mapping'}
+        params = {key: param for key, param in kwargs if key != 'ports_mapping'}
         return DockerContainer(name, ports_mapping, params)
 
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerHost, rm=True, detach=True, **kwargs):
