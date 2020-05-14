@@ -1,5 +1,5 @@
-import re
 import os
+import re
 import subprocess
 import sys
 
@@ -10,16 +10,16 @@ import pytest
 
 from ebonite.build.builder.base import PythonBuilder, use_local_installation
 from ebonite.build.provider import LOADER_ENV, PythonProvider, SERVER_ENV
-from ebonite.build.provider.ml_model_multi import MLModelMultiProvider
-from ebonite.build.provider.ml_model import MLModelProvider
+from ebonite.build.provider.ml_model import ModelBuildable
+from ebonite.build.provider.ml_model_multi import MultiModelBuildable
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
+from ebonite.core.objects.core import Buildable
 from ebonite.core.objects.requirements import InstallableRequirement, Requirements
 from ebonite.ext.aiohttp import AIOHTTPServer
 from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
 from ebonite.utils.module import get_module_version
-
 from tests.build.conftest import check_ebonite_port_free
 
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
@@ -60,24 +60,32 @@ class ProviderMock(PythonProvider):
         return {}
 
 
+class BuildableMock(Buildable):
+    def get_provider(self):
+        return ProviderMock()
+
+
 @pytest.fixture
 def python_builder_mock() -> PythonBuilder:
-    return PythonBuilder(ProviderMock())
+    return PythonBuilder(BuildableMock())
 
 
 @pytest.fixture
 def python_builder_sync(created_model) -> PythonBuilder:
-    return PythonBuilder(MLModelProvider(created_model, FlaskServer()))
+    buildable = ModelBuildable.from_model(created_model, server_type=FlaskServer.type)
+    return PythonBuilder(buildable)
 
 
 @pytest.fixture
 def python_builder_async(created_model) -> PythonBuilder:
-    return PythonBuilder(MLModelProvider(created_model, AIOHTTPServer()))
+    buildable = ModelBuildable.from_model(created_model, server_type=AIOHTTPServer.type)
+    return PythonBuilder(buildable)
 
 
 @pytest.fixture
 def python_multi_builder(created_model) -> PythonBuilder:
-    return PythonBuilder(MLModelMultiProvider([created_model], FlaskServer()))
+    buildable = MultiModelBuildable.from_models([created_model], server_type=FlaskServer.type)
+    return PythonBuilder(buildable)
 
 
 def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuilder):
@@ -110,8 +118,10 @@ def _check_basic_distr_contents(base_dir):
 def _check_requirements(base_dir, expected_modules):
     from setup import get_requirements
     actual_modules = set(get_requirements(os.path.join(base_dir, 'requirements.txt')))
-
-    assert actual_modules == expected_modules
+    expected_modules = set(expected_modules)
+    missed_modules = expected_modules.difference(actual_modules)
+    extra_modules = actual_modules.difference(expected_modules)
+    assert missed_modules == set() and extra_modules == set(), f'missing {missed_modules}, extra {extra_modules}'
 
 
 def _check_contents(base_dir, name, contents):

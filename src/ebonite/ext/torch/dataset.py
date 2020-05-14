@@ -39,6 +39,7 @@ class TorchTensorDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
     def list_size(self):
         return self.shape[0]
 
+    # noinspection DuplicatedCode
     def _get_subtype(self, shape):
         if len(shape) == 0:
             return self._get_dtype_from_str(self.dtype)

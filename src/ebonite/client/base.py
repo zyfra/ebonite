@@ -6,7 +6,7 @@ from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
 from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError
-from ebonite.core.objects import Image, Model, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
@@ -44,7 +44,7 @@ class Ebonite:
         Deletes project and(if required) all tasks associated with it from metadata repository
 
         :param project: project which is meant to be deleted
-        :param cascade: whether should project be deleted with all asssociated tasks
+        :param cascade: whether should project be deleted with all associated tasks
         :return: Nothing
         """
         if cascade:
@@ -57,7 +57,8 @@ class Ebonite:
         Pushes :py:class:`~ebonite.core.objects.Model` instance into metadata and artifact repositories
 
         :param model: :py:class:`~ebonite.core.objects.Model` instance
-        :param task: :py:class:`~ebonite.core.objects.Task` instance to save model to. Optional if model already has task
+        :param task: :py:class:`~ebonite.core.objects.Task` instance to save model to. Optional if model already has
+        task
         :return: same saved :py:class:`~ebonite.core.objects.Model` instance
         """
         if model.id is not None:
@@ -79,18 +80,14 @@ class Ebonite:
         model = self.meta_repo.save_model(model)
         return model
 
-    def delete_model(self, model: Model, *, force=False, cascade=False):
+    def delete_model(self, model: Model, *, force=False):
         """
         Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
 
         :param model: model instance to delete
         :param force: whether model artifacts' deletion errors should be ignored, default is false
-        :param cascade: whether should model be deleted with all asssociated images
         :return: Nothing
         """
-        if cascade:
-            for image in self.meta_repo.get_images(model):
-                self.delete_image(image, cascade=cascade)
         if model.artifact is not None:
             try:
                 self.artifact_repo.delete_artifact(model)
@@ -125,7 +122,11 @@ class Ebonite:
         """
         if cascade:
             for model in self.meta_repo.get_models(task):
-                self.delete_model(model, cascade=cascade)
+                self.delete_model(model)
+            for image in self.meta_repo.get_images(task):
+                self.delete_image(image, cascade=cascade)
+            for pipeline in self.meta_repo.get_pipelines(task):
+                self.delete_pipeline(pipeline)
         self.meta_repo.delete_task(task)
 
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
@@ -144,42 +145,59 @@ class Ebonite:
             model.load()
         return model
 
-    def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
+    def build_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
                     debug=False, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
         :param name: name of image to build
-        :param model: model to wrap into service
+        :param obj: buildable object to wrap into service
+        :param task: task to put image into
         :param server: server to build image with
         :param environment: env to build for
         :param debug: flag to build debug image
         :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
-        if self.meta_repo.get_image_by_name(name, model) is not None:
+        from ebonite.core.analyzer.buildable import BuildableAnalyzer
+        if self.meta_repo.get_image_by_name(name, task) is not None:
             raise ExistingImageError(name)
         if server is None:
             server = self.get_default_server()
 
         if environment is None:
             environment = self.get_default_environment()
-        builder = environment.params.get_builder(name, model, server, debug, **kwargs)
+        buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug)
+        buildable.bind_meta_repo(self.meta_repo)
+        builder = environment.params.get_builder(name, buildable, **kwargs)
         image = builder.build()
-        image.model = model
+        image.task = task
         return self.meta_repo.create_image(image)
 
-    def get_image(self, name: str, model: Model) -> Image:
+    def get_pipeline(self, name: str, task: Task) -> Pipeline:
+        """
+        Load pipeline from repository
+
+        :param name: pipeline name to load
+        :param task: :py:class:`~ebonite.core.objects.Task` instance to load image from
+        :return: loaded :py:class:`~ebonite.core.objects.Pipeline` instance
+        """
+        return self.meta_repo.get_pipeline_by_name(name, task)
+
+    def delete_pipeline(self, pipeline: Pipeline):
+        self.meta_repo.delete_pipeline(pipeline)
+
+    def get_image(self, name: str, task: Task) -> Image:
         """
         Load image from repository
 
         :param name: image name to load
-        :param model: :py:class:`~ebonite.core.objects.Model` instance to load image from
+        :param task: :py:class:`~ebonite.core.objects.Model` instance to load image from
         :return: loaded :py:class:`~ebonite.core.objects.Image` instance
         """
-        return self.meta_repo.get_image_by_name(name, model)
+        return self.meta_repo.get_image_by_name(name, task)
 
-    def delete_image(self, image, *, cascade=False):
+    def delete_image(self, image: Image, *, cascade=False):
         """
         Deletes image and(if required) stops all associated instances
 
@@ -239,17 +257,18 @@ class Ebonite:
 
         return instance.bind_runner(runner)
 
-    def build_and_run_instance(self, name: str, model: Model, environment: RuntimeEnvironment = None,
+    def build_and_run_instance(self, name: str, obj, task: Task, environment: RuntimeEnvironment = None,
                                **kwargs) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
 
         :param name: name of image and instance to be built and run respectively
-        :param model: model to wrap into service
+        :param obj: buildable object to wrap into service
+        :param task: task to put image into
         :param environment: environment to run instance in, if no given `localhost` is used
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        image = self.build_image(name, model, **kwargs)
+        image = self.build_image(name, obj, task, **kwargs)
         return self.run_instance(name, image, environment, **kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
@@ -298,7 +317,7 @@ class Ebonite:
         model = task.create_and_push_model(model_object, model_input, model_name)
 
         if run_instance:
-            return self.build_and_run_instance(instance_name, model, **kwargs)
+            return self.build_and_run_instance(instance_name, model, task, **kwargs)
         else:
             self.build_image(instance_name, model, **kwargs)
 

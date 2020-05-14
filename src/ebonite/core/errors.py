@@ -1,4 +1,14 @@
-from ebonite.core.objects import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+from typing import Union
+
+from ebonite.core.objects import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
+
+ProjectIntStr = Union[Project, int, str]
+TaskIntStr = Union[Task, int, str]
+ModelIntStr = Union[Model, int, str]
+PipelineIntStr = Union[Pipeline, int, str]
+RuntimeEnvironmentIntStr = Union[RuntimeEnvironment, int, str]
+RuntimeInstanceIntStr = Union[RuntimeInstance, int, str]
+ImageIntStr = Union[Image, int, str]
 
 
 class EboniteError(Exception):
@@ -16,79 +26,92 @@ class MetadataError(EboniteError):
 
 
 class ExistingProjectError(MetadataError):
-    def __init__(self, project: Project):
+    def __init__(self, project: ProjectIntStr):
         project = project.name if isinstance(project, Project) else project
         super(ExistingProjectError, self).__init__('Project with name "{}" already exists'.format(project))
 
 
 class NonExistingProjectError(MetadataError):
-    def __init__(self, project: Project):
+    def __init__(self, project: ProjectIntStr):
         project = project.name if isinstance(project, Project) else project
         super(NonExistingProjectError, self).__init__('Project with name "{}" does not exist'.format(project))
 
 
 class ExistingTaskError(MetadataError):
-    def __init__(self, task: Task):
+    def __init__(self, task: TaskIntStr):
         task = task.name if isinstance(task, Task) else task
         super(ExistingTaskError, self).__init__('Task with name "{}" already exists'.format(task))
 
 
 class NonExistingTaskError(MetadataError):
-    def __init__(self, task: Task):
+    def __init__(self, task: TaskIntStr):
         task = task.name if isinstance(task, Task) else task
         super(NonExistingTaskError, self).__init__('Task with name "{}" does not exist'.format(task))
 
 
 class TaskWithoutIdError(MetadataError):
-    def __init__(self, task: Task):
+    def __init__(self, task: TaskIntStr):
         task = task.name if isinstance(task, Task) else task
         super(TaskWithoutIdError, self).__init__('Task "{}" id is None'.format(task))
 
 
 class ExistingModelError(MetadataError):
-    def __init__(self, model: Model):
+    def __init__(self, model: ModelIntStr):
         model = model.name if isinstance(model, Model) else model
         super(ExistingModelError, self).__init__('Model with name "{}" already exists'.format(model))
 
 
 class NonExistingModelError(MetadataError):
-    def __init__(self, model: Model):
+    def __init__(self, model: ModelIntStr):
         model = model.name if isinstance(model, Model) else model
         super(NonExistingModelError, self).__init__('Model with name "{}" does not exist'.format(model))
 
 
+class ExistingPipelineError(MetadataError):
+    def __init__(self, pipeline: PipelineIntStr):
+        pipeline = pipeline.name if isinstance(pipeline, Pipeline) else pipeline
+        super(ExistingPipelineError, self).__init__('Pipeline with name "{}" already exists'.format(pipeline))
+
+
+class NonExistingPipelineError(MetadataError):
+    def __init__(self, pipeline: PipelineIntStr):
+        pipeline = pipeline.name if isinstance(pipeline, Model) else pipeline
+        super(NonExistingPipelineError, self).__init__('Pipeline with name "{}" does not exist'.format(pipeline))
+
+
 class ExistingImageError(MetadataError):
-    def __init__(self, image: Image):
+    def __init__(self, image: ImageIntStr):
         image = image.name if isinstance(image, Image) else image
         super(ExistingImageError, self).__init__('Image with name "{}" already exists'.format(image))
 
 
 class NonExistingImageError(MetadataError):
-    def __init__(self, image: Image):
+    def __init__(self, image: ImageIntStr):
         image = image.name if isinstance(image, Image) else image
         super(NonExistingImageError, self).__init__('Image with name "{}" does not exist'.format(image))
 
 
 class ExistingEnvironmentError(MetadataError):
-    def __init__(self, environment: RuntimeEnvironment):
+    def __init__(self, environment: RuntimeEnvironmentIntStr):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
         super(ExistingEnvironmentError, self).__init__('Environment with name "{}" already exists'.format(environment))
 
 
 class NonExistingEnvironmentError(MetadataError):
-    def __init__(self, environment: RuntimeEnvironment):
+    def __init__(self, environment: RuntimeEnvironmentIntStr):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
-        super(NonExistingEnvironmentError, self).__init__('Environment with name "{}" does not exist'.format(environment))
+        super(NonExistingEnvironmentError, self).__init__(
+            'Environment with name "{}" does not exist'.format(environment))
 
 
 class ExistingInstanceError(MetadataError):
-    def __init__(self, instance: RuntimeInstance):
+    def __init__(self, instance: RuntimeInstanceIntStr):
         instance = instance.name if isinstance(instance, RuntimeInstance) else instance
         super(ExistingInstanceError, self).__init__('Instance with name "{}" already exists'.format(instance))
 
 
 class NonExistingInstanceError(MetadataError):
-    def __init__(self, instance: RuntimeInstance):
+    def __init__(self, instance: RuntimeInstanceIntStr):
         instance = instance.name if isinstance(instance, RuntimeInstance) else instance
         super(NonExistingInstanceError, self).__init__('Instance with name "{}" does not exist'.format(instance))
 
@@ -103,9 +126,14 @@ class ModelNotInTaskError(MetadataError):
         super(ModelNotInTaskError, self).__init__("Can't save model {} without task".format(model.name))
 
 
-class ImageNotInModelError(MetadataError):
+class PipelineNotInTaskError(MetadataError):
+    def __init__(self, pipeline: Pipeline):
+        super(PipelineNotInTaskError, self).__init__("Can't save pipeline {} without task".format(pipeline.name))
+
+
+class ImageNotInTaskError(MetadataError):
     def __init__(self, image: Image):
-        super(ImageNotInModelError, self).__init__("Can't save image {} without model".format(image.name))
+        super(ImageNotInTaskError, self).__init__("Can't save image {} without task".format(image.name))
 
 
 class InstanceNotInImageError(MetadataError):
@@ -119,7 +147,7 @@ class InstanceNotInEnvironmentError(MetadataError):
 
 
 class ModelWithoutIdError(MetadataError):
-    def __init__(self, model: Model):
+    def __init__(self, model: ModelIntStr):
         model = model.name if isinstance(model, Model) else model
         super(ModelWithoutIdError, self).__init__('Model "{}" id is None'.format(model))
 
@@ -134,16 +162,10 @@ class ProjectWithTasksError(MetadataError):
         super(ProjectWithTasksError, self).__init__(f'Project {project} has foreign key and can not be deleted')
 
 
-class TaskWithModelsError(MetadataError):
+class TaskWithFKError(MetadataError):
     def __init__(self, task: Task):
         task = task.name if isinstance(task, Project) else task
-        super(TaskWithModelsError, self).__init__(f'Project {task} has foreign key and can not be deleted')
-
-
-class ModelWithImagesError(MetadataError):
-    def __init__(self, model: Model):
-        model = model.name if isinstance(model, Model) else model
-        super(ModelWithImagesError, self).__init__(f'Model {model} has foreign key and can not be deleted')
+        super(TaskWithFKError, self).__init__(f'Task {task} has foreign key and can not be deleted')
 
 
 class ImageWithInstancesError(MetadataError):

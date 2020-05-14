@@ -5,18 +5,19 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 import pyjackson
 
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
-                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
+                                 ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
+                                 ExistingTaskError, ImageWithInstancesError, NonExistingEnvironmentError,
                                  NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
-                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
-                                 TaskWithModelsError)
-from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
-from ebonite.repository.metadata.base import MetadataRepository, ModelVar, ProjectVar, TaskVar, bind_to_self
+                                 NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
+                                 ProjectWithTasksError, TaskWithFKError)
+from ebonite.core.objects.core import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.repository.metadata.base import MetadataRepository, ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
 _Projects = Dict[int, Project]
 _Tasks = Dict[int, Task]
 _Models = Dict[int, Model]
+_Pipelines = Dict[int, Pipeline]
 _Images = Dict[int, Image]
 _Environments = Dict[int, RuntimeEnvironment]
 _Instances = Dict[int, RuntimeInstance]
@@ -26,24 +27,34 @@ class _LocalContainer:
     def __init__(self, next_project_id: int = 0, projects: _Projects = None,
                  next_task_id: int = 0, tasks: _Tasks = None,
                  next_model_id: int = 0, models: _Models = None,
+                 next_pipeline_id: int = 0, pipelines: _Pipelines = None,
                  next_image_id: int = 0, images: _Images = None,
                  next_environment_id: int = 0, environments: _Environments = None,
                  next_instance_id: int = 0, instances: _Instances = None):
         self.next_project_id = next_project_id
         self.projects: _Projects = {}
         self.project_name_index: Dict[str, int] = {}
+
         self.next_task_id = next_task_id
         self.tasks: _Tasks = {}
         self.task_name_index: Dict[Tuple[int, str], int] = {}
+
         self.next_model_id = next_model_id
         self.models: _Models = {}
         self.model_name_index: Dict[Tuple[int, str], int] = {}
+
+        self.next_pipeline_id = next_pipeline_id
+        self.pipelines: _Pipelines = {}
+        self.pipeline_name_index: Dict[Tuple[int, str], int] = {}
+
         self.next_image_id = next_image_id
         self.images: _Images = {}
         self.image_name_index: Dict[Tuple[int, str], int] = {}
+
         self.next_environment_id = next_environment_id
         self.environments: _Environments = {}
         self.environment_name_index: Dict[str, int] = {}
+
         self.next_instance_id = next_instance_id
         self.instances: _Instances = {}
         self.instance_name_index: Dict[Tuple[int, int, str], int] = {}
@@ -59,6 +70,9 @@ class _LocalContainer:
 
         for m in (models or {}).values():
             self.add_model(m)
+
+        for p in (pipelines or {}).values():
+            self.add_pipeline(p)
 
         for i in (images or {}).values():
             self.add_image(i)
@@ -106,6 +120,7 @@ class _LocalContainer:
         task = self.tasks.pop(task_id, None)
 
         self.task_name_index.pop((task.project_id, task.name), None)
+        del self.projects[task.project_id]._tasks[task.id]
         return task
 
     def add_model(self, model: Model):
@@ -123,23 +138,43 @@ class _LocalContainer:
     def remove_model(self, model_id):
         model = self.models.pop(model_id, None)
         self.model_name_index.pop((model.task_id, model.name), None)
+        del self.tasks[model.task_id]._models[model.id]
         return model
+
+    def add_pipeline(self, pipeline: Pipeline):
+        assert pipeline.id is not None
+        self.pipelines[pipeline.id] = pipeline
+        self.pipeline_name_index[(pipeline.task_id, pipeline.name)] = pipeline.id
+        self.tasks[pipeline.task_id]._pipelines.add(pipeline)
+
+    def get_pipeline_by_id(self, pipeline_id):
+        return self.pipelines.get(pipeline_id, None)
+
+    def get_pipeline_by_name(self, task_id: int, name: str):
+        return self.get_pipeline_by_id(self.pipeline_name_index.get((task_id, name), None))
+
+    def remove_pipeline(self, pipeline_id):
+        pipeline = self.pipelines.pop(pipeline_id, None)
+        self.pipeline_name_index.pop((pipeline.task_id, pipeline.name), None)
+        del self.tasks[pipeline.task_id]._pipelines[pipeline.id]
+        return pipeline
 
     def add_image(self, image: Image):
         assert image.id is not None
         self.images[image.id] = image
-        self.image_name_index[(image.model_id, image.name)] = image.id
-        self.models[image.model_id]._images.add(image)
+        self.image_name_index[(image.task_id, image.name)] = image.id
+        self.tasks[image.task_id]._images.add(image)
 
     def get_image_by_id(self, image_id):
         return self.images.get(image_id, None)
 
-    def get_image_by_name(self, model_id: int, name: str):
-        return self.get_image_by_id(self.image_name_index.get((model_id, name), None))
+    def get_image_by_name(self, task_id: int, name: str):
+        return self.get_image_by_id(self.image_name_index.get((task_id, name), None))
 
     def remove_image(self, image_id):
         image = self.images.pop(image_id, None)
-        self.image_name_index.pop((image.model_id, image.name), None)
+        self.image_name_index.pop((image.task_id, image.name), None)
+        del self.tasks[image.task_id]._images[image.id]
         return image
 
     def add_environment(self, environment: RuntimeEnvironment):
@@ -323,8 +358,8 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_task(self, task: Task):
         if task.id is None:
             raise NonExistingTaskError(task)
-        if self.get_models(task):
-            raise TaskWithModelsError(task)
+        if self.get_models(task) or self.get_pipelines(task) or self.get_images(task):
+            raise TaskWithFKError(task)
         self.data.remove_task(task.id)
         self.save()
         task.unbind_meta_repo()
@@ -381,24 +416,79 @@ class LocalMetadataRepository(MetadataRepository):
     def delete_model(self, model: Model):
         if model.id is None:
             raise NonExistingModelError(model)
-        if self.get_images(model):
-            raise ModelWithImagesError(model)
         self.data.remove_model(model.id)
         self.save()
         model.unbind_meta_repo()
 
-    @bind_to_self
-    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List[Image]:
-        model = self._resolve_model(model, task, project)
-        return copy.deepcopy(list(model.images.values()))
+    # ____________-
 
     @bind_to_self
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
-            Optional[Image]:
-        model = self._resolve_model(model, task, project)
-        if model is None:
+    def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List[Pipeline]:
+        task = self._resolve_task(task, project)
+        return copy.deepcopy(list(task.pipelines.values()))
+
+    @bind_to_self
+    def get_pipeline_by_name(self, pipeline_name: str, task: TaskVar, project: ProjectVar = None) -> Optional[Pipeline]:
+        task = self._resolve_task(task, project)
+        if task is None:
             return None
-        return copy.deepcopy(self.data.get_image_by_name(model.id, image_name))
+        return copy.deepcopy(self.data.get_pipeline_by_name(task.id, pipeline_name))
+
+    @bind_to_self
+    def get_pipeline_by_id(self, id) -> Pipeline:
+        return copy.deepcopy(self.data.get_pipeline_by_id(id))
+
+    @bind_to_self
+    def create_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        self._validate_pipeline(pipeline)
+
+        existing_task = self.get_task_by_id(pipeline.task_id)
+        if existing_task is None:
+            raise NonExistingTaskError(pipeline.task_id)
+
+        if self.get_pipeline_by_name(pipeline.name, existing_task) is not None:
+            raise ExistingPipelineError(pipeline)
+
+        pipeline._id = self.data.get_and_increment('next_pipeline_id')
+        self.data.add_pipeline(copy.deepcopy(pipeline))
+        self.save()
+        return pipeline
+
+    def update_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        self._validate_pipeline(pipeline)
+
+        task = self.get_task_by_id(pipeline.task_id)
+        if task is None:
+            raise NonExistingTaskError(pipeline.task_id)
+
+        existing_pipeline = self.get_pipeline_by_id(pipeline.id)
+        if existing_pipeline is None:
+            raise NonExistingPipelineError(pipeline)
+
+        self.data.remove_pipeline(pipeline.id)
+        pipeline_copy = copy.deepcopy(pipeline)
+        self.data.add_pipeline(pipeline_copy)
+        self.save()
+        return pipeline
+
+    def delete_pipeline(self, pipeline: Pipeline):
+        if pipeline.id is None:
+            raise NonExistingPipelineError(pipeline)
+        self.data.remove_pipeline(pipeline.id)
+        self.save()
+        pipeline.unbind_meta_repo()
+
+    # _____________
+
+    @bind_to_self
+    def get_images(self, task: TaskVar, project: ProjectVar = None) -> List[Image]:
+        task = self._resolve_task(task, project)
+        return copy.deepcopy(list(task.images.values()))
+
+    @bind_to_self
+    def get_image_by_name(self, image_name, task: TaskVar, project: ProjectVar = None) -> Optional[Image]:
+        task = self._resolve_task(task, project)
+        return copy.deepcopy(self.data.get_image_by_name(task.id, image_name))
 
     @bind_to_self
     def get_image_by_id(self, id: int) -> Optional[Image]:
@@ -408,11 +498,11 @@ class LocalMetadataRepository(MetadataRepository):
     def create_image(self, image: Image) -> Image:
         self._validate_image(image)
 
-        existing_model = self.get_model_by_id(image.model_id)
-        if existing_model is None:
-            raise NonExistingModelError(image.model_id)
+        task = self.get_task_by_id(image.task_id)
+        if task is None:
+            raise NonExistingTaskError(image.task_id)
 
-        if self.get_image_by_name(image.name, existing_model) is not None:
+        if self.get_image_by_name(image.name, task) is not None:
             raise ExistingImageError(image)
 
         image._id = self.data.get_and_increment('next_image_id')
@@ -423,9 +513,9 @@ class LocalMetadataRepository(MetadataRepository):
     def update_image(self, image: Image) -> Image:
         self._validate_image(image)
 
-        existing_model = self.get_model_by_id(image.model_id)
-        if existing_model is None:
-            raise NonExistingModelError(image.model_id)
+        existing_task = self.get_task_by_id(image.task_id)
+        if existing_task is None:
+            raise NonExistingTaskError(image.task_id)
 
         existing_image = self.get_image_by_id(image.id)
         if existing_image is None:

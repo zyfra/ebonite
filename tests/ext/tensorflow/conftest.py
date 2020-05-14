@@ -5,6 +5,8 @@ def fix_warnings():  # noqa
     logging.getLogger("tensorflow").setLevel(logging.CRITICAL)  # noqa
     warnings.filterwarnings('ignore', category=FutureWarning)  # noqa
     warnings.filterwarnings('ignore', category=DeprecationWarning)  # noqa
+
+
 fix_warnings()  # noqa
 
 

@@ -6,17 +6,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironmentError, ExistingImageError,
-                                 ExistingInstanceError, ExistingModelError, ExistingProjectError, ExistingTaskError,
-                                 ImageWithInstancesError, ModelWithImagesError, NonExistingEnvironmentError,
+                                 ExistingInstanceError, ExistingModelError, ExistingPipelineError, ExistingProjectError,
+                                 ExistingTaskError, ImageWithInstancesError, NonExistingEnvironmentError,
                                  NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
-                                 NonExistingProjectError, NonExistingTaskError, ProjectWithTasksError,
-                                 TaskWithModelsError)
-from ebonite.core.objects.core import EboniteObject, Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+                                 NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
+                                 ProjectWithTasksError, TaskWithFKError)
+from ebonite.core.objects.core import (EboniteObject, Image, Model, Pipeline, Project, RuntimeEnvironment,
+                                       RuntimeInstance, Task)
 from ebonite.repository.metadata import MetadataRepository
-from ebonite.repository.metadata.base import ModelVar, ProjectVar, TaskVar, bind_to_self
+from ebonite.repository.metadata.base import ProjectVar, TaskVar, bind_to_self
 from ebonite.utils.log import logger
 
-from .models import (Attaching, Base, SImage, SModel, SProject, SRuntimeEnvironment, SRuntimeInstance, STask,
+from .models import (Attaching, Base, SImage, SModel, SPipeline, SProject, SRuntimeEnvironment, SRuntimeInstance, STask,
                      update_attrs)
 
 T = TypeVar('T', bound=EboniteObject)
@@ -34,6 +35,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     projects: Type[SProject] = SProject
     tasks: Type[STask] = STask
     models: Type[SModel] = SModel
+    pipelines: Type[SPipeline] = SPipeline
     images: Type[SImage] = SImage
     environments: Type[SRuntimeEnvironment] = SRuntimeEnvironment
     instances: Type[SRuntimeInstance] = SRuntimeInstance
@@ -195,6 +197,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 raise NonExistingTaskError(task)
             kwargs = STask.get_kwargs(task)
             kwargs.pop('models', None)
+            kwargs.pop('images', None)
+            kwargs.pop('pipelines', None)
             update_attrs(t, **kwargs)
 
             for m in t.models:
@@ -202,10 +206,21 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                     self.update_model(task.models.get(m.id))
                 else:
                     task._models.add(m.to_obj())
+            for p in t.pipelines:
+                if p.id in task.pipelines:
+                    self.update_pipeline(task.pipelines.get(p.id))
+                else:
+                    task._images.add(p.to_obj())
+
+            for i in t.images:
+                if i.id in task.images:
+                    self.update_image(task.images.get(i.id))
+                else:
+                    task._images.add(i.to_obj())
             return task
 
     def delete_task(self, task: Task):
-        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithModelsError)
+        self._delete_object(self.tasks, task, NonExistingTaskError, TaskWithFKError)
         task.unbind_meta_repo()
 
     @bind_to_self
@@ -235,32 +250,60 @@ class SQLAlchemyMetaRepository(MetadataRepository):
             if m is None:
                 raise NonExistingModelError(model)
             kwargs = SModel.get_kwargs(model)
-            kwargs.pop('images', None)
             update_attrs(m, **kwargs)
 
-            for i in m.images:
-                if i.id in model.images:
-                    self.update_image(model.images.get(i.id))
-                else:
-                    model._images.add(i.to_obj())
             return model
 
     def delete_model(self, model: Model):
-        self._delete_object(self.models, model, NonExistingModelError, ModelWithImagesError)
+        self._delete_object(self.models, model, NonExistingModelError, AssertionError)
         model.unbind_meta_repo()
 
     @bind_to_self
-    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List[Image]:
-        model = self._resolve_model(model, task, project)
-        return self._get_objects(self.images, self.images.model_id == model.id)
+    def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List[Pipeline]:
+        task = self._resolve_task(task, project)
+        return self._get_objects(self.pipelines, self.pipelines.task_id == task.id)
 
     @bind_to_self
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
-            Optional[Image]:
-        model = self._resolve_model(model, task, project)
-        if model is None:
+    def get_pipeline_by_name(self, pipeline_name, task: TaskVar, project: ProjectVar = None) -> Optional[Pipeline]:
+        task = self._resolve_task(task, project)
+        if task is None:
             return None
-        return self._get_object_by_name(self.images, image_name, self.images.model_id == model.id)
+        return self._get_object_by_name(self.pipelines, pipeline_name, self.pipelines.task_id == task.id)
+
+    @bind_to_self
+    def get_pipeline_by_id(self, id: int) -> Optional[Pipeline]:
+        return self._get_object_by_id(self.pipelines, id)
+
+    @bind_to_self
+    def create_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        self._validate_pipeline(pipeline)
+        return self._create_object(self.pipelines, pipeline, ExistingPipelineError)
+
+    def update_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        with self._session():
+            m: SPipeline = self._get_sql_object_by_id(self.pipelines, pipeline.id)
+            if m is None:
+                raise NonExistingPipelineError(pipeline)
+            kwargs = SPipeline.get_kwargs(pipeline)
+            update_attrs(m, **kwargs)
+
+            return pipeline
+
+    def delete_pipeline(self, pipeline: Pipeline):
+        self._delete_object(self.pipelines, pipeline, NonExistingPipelineError, AssertionError)
+        pipeline.unbind_meta_repo()
+
+    @bind_to_self
+    def get_images(self, task: TaskVar, project: ProjectVar = None) -> List[Image]:
+        task = self._resolve_task(task, project)
+        return self._get_objects(self.images, self.images.task_id == task.id)
+
+    @bind_to_self
+    def get_image_by_name(self, image_name, task: TaskVar, project: ProjectVar = None) -> Optional[Image]:
+        task = self._resolve_task(task, project)
+        if task is None:
+            return None
+        return self._get_object_by_name(self.images, image_name, self.images.task_id == task.id)
 
     @bind_to_self
     def get_image_by_id(self, id: int) -> Optional[Image]:
