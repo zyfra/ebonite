@@ -78,8 +78,8 @@ class DockerRunner(RunnerBase):
         log = container.logs(stdout=stdout, stderr=stderr, stream=stream,
                              tail=tail, since=since, follow=follow, until=until)
         if stream:
-            for l in log:
-                yield l.decode("utf-8")
+            for line in log:
+                yield line.decode("utf-8")
         else:
             yield log.decode("utf-8")
 

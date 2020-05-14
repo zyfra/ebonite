@@ -61,6 +61,7 @@ class S3Blob(Blob, _WithS3Client):
 
     def materialize(self, path):
         logger.debug('Downloading file from %s to %s', self.s3path, path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         self._s3.download_file(self.bucket_name, self.s3path, path)
 
     @contextlib.contextmanager

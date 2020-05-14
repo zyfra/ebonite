@@ -20,11 +20,11 @@ EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
 
 
 def _print_docker_logs(logs, level=logging.DEBUG):
-    for l in logs:
-        if 'stream' in l:
-            logger.log(level, str(l['stream']).strip())
+    for log in logs:
+        if 'stream' in log:
+            logger.log(level, str(log['stream']).strip())
         else:
-            logger.log(level, str(l).strip())
+            logger.log(level, str(log).strip())
 
 
 class DockerBuilder(PythonBuilder):
