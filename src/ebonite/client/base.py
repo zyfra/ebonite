@@ -144,6 +144,7 @@ class Ebonite:
 
         :param name: name of image to remove or image instance
         :param environment: env to delete from
+        :param host_only: should image be deleted only from host
         """
         if environment is None:
             environment = self.get_default_environment()

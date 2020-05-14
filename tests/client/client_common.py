@@ -125,7 +125,7 @@ def test_delete_image__no_repo_ok(ebnt: Ebonite, image_to_delete: Image):
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
     env = ebnt.get_default_environment()
     env.params = MockEnvironmentParams()
-    assert ebnt.delete_image(image_to_delete, env, True) is True
+    assert ebnt.delete_image(image_to_delete, env, True)
 
 
 def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):

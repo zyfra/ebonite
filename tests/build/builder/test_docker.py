@@ -41,14 +41,9 @@ def dockerhost():
 
 
 @pytest.fixture
-def pull_helloworld_image():
+def helloworld_image():
     with create_docker_client() as client:
         client.images.pull('hello-world:latest')
-    yield
-
-
-@pytest.fixture
-def helloworld_image():
     image = Image('hello-world', 0, 0, Image.Params())
     image.params.name = 'hello-world'
     yield image
@@ -72,7 +67,7 @@ def get_image_output(image_params):
 
 
 @pytest.mark.docker
-def test_image_deletion(dockerhost, pull_helloworld_image, helloworld_image):
+def test_image_deletion(dockerhost, helloworld_image):
     with create_docker_client() as client:
         try:
             client.images.get('hello-world')
