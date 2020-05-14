@@ -33,6 +33,28 @@ def test_push_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[s
             assert p.read() == blob.payload
 
 
+def test_materialize_blobs_long_path(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob], tmp_path):
+    artifact: ArtifactCollection = art_repo.push_artifact(model, blobs)
+
+    assert artifact is not None
+    with artifact.blob_dict() as bd:
+        assert len(bd) == len(blobs)
+
+    if os.path.isdir(tmp_path):
+        os.rmdir(tmp_path)
+
+    tmp_path.mkdir()
+    long_path = tmp_path / 'sub'
+    with artifact.blob_dict() as bd:
+        for name, blob in bd.items():
+            blob_path = str(long_path / name)
+            blob.materialize(blob_path)
+            with open(blob_path, 'rb') as f:
+                payload = f.read()
+            with blob.bytestream() as blob_payload:
+                assert payload == blob_payload.read()
+
+
 def test_push_artifact__non_saved_model(art_repo: ArtifactRepository, model: Model):
     model._id = None
 
