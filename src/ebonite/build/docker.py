@@ -72,7 +72,7 @@ class DockerImage(Image.Params):
 
 
 class DockerContainer(RuntimeInstance.Params):
-    def __init__(self, name: str, ports_mapping: Dict[int, int] = None, params: Dict[str, str] = None):
+    def __init__(self, name: str, ports_mapping: Dict[int, int] = None, params: Dict[str, object] = None):
         self.name = name
         self.ports_mapping = ports_mapping or {}
         self.params = params or {}

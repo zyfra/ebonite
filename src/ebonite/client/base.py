@@ -114,7 +114,7 @@ class Ebonite:
         return model
 
     def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
-                    debug=False, builder_kwargs: dict = {}) -> Image:
+                    debug=False, builder_kwargs: Dict[str, object] = None) -> Image:
         """
         Builds image of model service and stores it to repository
 
@@ -126,6 +126,7 @@ class Ebonite:
         :param builder_kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
+        builder_kwargs = builder_kwargs or {}
         if self.meta_repo.get_image_by_name(name, model) is not None:
             raise ExistingImageError(name)
         if server is None:
@@ -167,7 +168,8 @@ class Ebonite:
         return self.meta_repo.get_environment_by_name(name)
 
     def run_instance(self, name: str, image: Image, environment: RuntimeEnvironment = None,
-                     instance_kwargs: Dict[str, str] = None, runner_kwargs: Dict[str, str] = None) -> RuntimeInstance:
+                     instance_kwargs: Dict[str, object] = None,
+                     runner_kwargs: Dict[str, object] = None) -> RuntimeInstance:
         """
         Runs model service instance and stores it to repository
 
@@ -201,8 +203,8 @@ class Ebonite:
         return instance.bind_runner(runner)
 
     def build_and_run_instance(self, name: str, model: Model, environment: RuntimeEnvironment = None,
-                               builder_kwargs: Dict[str, str] = None, runner_kwargs: Dict[str, str] = None,
-                               instance_kwargs: Dict[str, str] = None) -> RuntimeInstance:
+                               builder_kwargs: Dict[str, object] = None, runner_kwargs: Dict[str, object] = None,
+                               instance_kwargs: Dict[str, object] = None) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
 
@@ -247,8 +249,8 @@ class Ebonite:
     def create_instance_from_model(self, model_name: str, model_object, model_input, *,
                                    project_name: str = 'default_project', task_name: str = 'default_task',
                                    instance_name: str = None, run_instance: bool = False,
-                                   builder_kwargs: Dict[str, str] = None, runner_kwargs: Dict[str, str] = None,
-                                   instance_kwargs: Dict[str, str] = None):
+                                   builder_kwargs: Dict[str, object] = None, runner_kwargs: Dict[str, object] = None,
+                                   instance_kwargs: Dict[str, object] = None):
         """
         This function does full default Ebonite's pipeline.
         Creates model, pushes it, wraps with a server, builds the image and runs it locally (if needed).
