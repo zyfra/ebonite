@@ -13,7 +13,7 @@ class RequirementAnalyzer:
 
     @classmethod
     def analyze(cls, obj: AnyRequirements) -> Requirements:
-        f"""
+        """
         Run RequirementHook hooks to analyze obj
 
         :param obj: objects to analyze
