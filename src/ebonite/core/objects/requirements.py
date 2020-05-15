@@ -5,7 +5,7 @@ import json
 import os
 import zlib
 from types import ModuleType
-from typing import Dict, List, Union
+from typing import Dict, List, Type, TypeVar, Union
 
 from pyjackson.decorators import make_string, type_field
 
@@ -32,8 +32,12 @@ class Requirement(EboniteParams):
     type = None
 
 
+class PythonRequirement(Requirement):
+    module = None
+
+
 @make_string(include_name=True)
-class InstallableRequirement(Requirement):
+class InstallableRequirement(PythonRequirement):
     """
     This class represents pip-installable python library
 
@@ -92,7 +96,7 @@ class InstallableRequirement(Requirement):
 
 
 @make_string(include_name=True)
-class CustomRequirement(Requirement):
+class CustomRequirement(PythonRequirement):
     """
     This class represents local python code that you need as a requirement for your code
 
@@ -184,6 +188,15 @@ class CustomRequirement(Requirement):
             return {self.name.replace('.', '/') + '.py': self.source}
 
 
+@make_string
+class UnixPackageRequirement(Requirement):
+    def __init__(self, package_name: str):
+        self.package_name = package_name
+
+
+T = TypeVar('T', bound=Requirement)
+
+
 class Requirements(EboniteParams):
     """
     A collection of requirements
@@ -199,21 +212,28 @@ class Requirements(EboniteParams):
         """
         List of installable requirements
         """
-        return [r for r in self.requirements if isinstance(r, InstallableRequirement)]
+        return self.of_type(InstallableRequirement)
 
     @property
     def custom(self) -> List[CustomRequirement]:
         """
         List of custom requirements
         """
-        return [r for r in self.requirements if isinstance(r, CustomRequirement)]
+        return self.of_type(CustomRequirement)
+
+    def of_type(self, type_: Type[T]) -> List[T]:
+        """
+        :param type_: type of requirements
+        :return: List of requirements of type `type_`
+        """
+        return [r for r in self.requirements if isinstance(r, type_)]
 
     @property
     def modules(self) -> List[str]:
         """
         List of module names
         """
-        return [r.module for r in self.requirements]
+        return [r.module for r in self.of_type(PythonRequirement)]
 
     def add(self, requirement: Requirement):
         """
@@ -252,6 +272,9 @@ class Requirements(EboniteParams):
                         break
                 else:
                     self.requirements.append(requirement)
+        else:  # TODO better checks here
+            if requirement not in self.requirements:
+                self.requirements.append(requirement)
 
     def to_pip(self) -> List[str]:
         """
