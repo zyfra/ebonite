@@ -123,11 +123,22 @@ e.g., create a Docker image named `my_service` with an HTTP service wrapping you
   model = client.get_model('my_clf', task)
   client.build_image('my_service', model)
 
-Check out examples (in `examples` directory) and documentation to learn more.
+Check out examples (in `examples <examples/>`_  directory) and documentation to learn more.
+
 
 Documentation
 =============
 ... is available `here <https://ebonite.readthedocs.io/en/latest/>`_
+
+Examples
+========
+... is available in the `folder </examples/>`_.
+It contains a lot of examples:
+
+* `Jupyter Notebook guide </examples/notebook_tutorial/ebonite_tutorial.ipynb>`_
+* `Scikit-learn guide </examples/sklearn_model/>`_
+* `TensorFlow 2.0 </examples/tensorflow_v2_example/>`_
+* etc.
 
 Supported libraries and repositories
 ====================================
@@ -177,4 +188,4 @@ Supported libraries and repositories
 Contributing
 ============
 
-Read `this <https://github.com/zyfra/ebonite/blob/master/CONTRIBUTING.rst>`_
+Read `this <CONTRIBUTING.rst>`_
