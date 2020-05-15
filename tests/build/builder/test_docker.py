@@ -8,11 +8,13 @@ from testcontainers.core.container import DockerContainer
 
 from ebonite.build.builder.base import use_local_installation
 from ebonite.build.builder.docker import _DockerfileGenerator, DockerBuilder
-from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client
 from ebonite.core.objects.requirements import UnixPackageRequirement
 
-from tests.build.conftest import has_docker
+from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, DockerHost
+from ebonite.core.objects import Image
 from tests.build.builder.test_base import ProviderMock, SECRET
+from tests.build.conftest import has_docker
+
 
 CLEAN = True
 IMAGE_NAME = 'ebonite_test_docker_builder_image'
@@ -20,6 +22,20 @@ IMAGE_NAME = 'ebonite_test_docker_builder_image'
 REGISTRY_PORT = 5000
 
 no_docker = pytest.mark.skipif(not has_docker(), reason='docker is unavailable or skipped')
+
+
+@pytest.fixture
+def dockerhost():
+    yield DockerHost()
+
+
+@pytest.fixture
+def helloworld_image():
+    with create_docker_client() as client:
+        client.images.pull('hello-world:latest')
+    image = Image('hello-world', 0, 0, Image.Params())
+    image.params.name = 'hello-world'
+    yield image
 
 
 @pytest.fixture
@@ -51,6 +67,19 @@ def get_image_output(image_params):
             yield e.stderr.decode('utf8')
         finally:
             client.images.remove(image_uri)
+
+
+@pytest.mark.docker
+def test_image_deletion(dockerhost, helloworld_image):
+    with create_docker_client() as client:
+        try:
+            client.images.get('hello-world')
+        except docker.errors.ImageNotFound:
+            pytest.fail('Fixture image hello-world was not pulled')
+    dockerhost.remove_image(helloworld_image)
+    with create_docker_client() as client:
+        with pytest.raises(docker.errors.ImageNotFound):
+            client.images.get('hello-world')
 
 
 @pytest.mark.docker

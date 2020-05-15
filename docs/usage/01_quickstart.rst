@@ -68,3 +68,12 @@ Or create and start a docker container like this
 
 Full code can be found in
 `examples/sklearn_model <https://github.com/zyfra/ebonite/tree/master/examples/sklearn_model>`__.
+
+
+Other examples
+--------------
+More examples available `here <https://github.com/zyfra/ebonite/tree/master/examples/>`__:
+
+* `Jupyter Notebook guide <https://github.com/zyfra/ebonite/tree/master/examples/notebook_tutorial/ebonite_tutorial.ipynb>`__
+* `TensorFlow 2.0 <https://github.com/zyfra/ebonite/tree/master//examples/tensorflow_v2_example/>`__
+* etc
