@@ -14,6 +14,8 @@ from pyjackson.decorators import make_string, type_field
 
 import ebonite.repository
 from ebonite.core import errors
+from ebonite.core.analyzer.dataset import DatasetAnalyzer
+from ebonite.core.analyzer.metric import MetricAnalyzer
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
@@ -21,7 +23,7 @@ from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
-from ebonite.core.objects.dataset_source import DatasetSource
+from ebonite.core.objects.dataset_source import DatasetSource, InMemoryDataset
 from ebonite.core.objects.metric import Metric
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.module import get_python_version
@@ -313,6 +315,8 @@ class Task(EboniteObject):
         if pipeline.task_id is not None and pipeline.task_id != self.id:
             raise errors.MetadataError('Pipeline is already in task {}. Delete it first'.format(pipeline.task_id))
 
+        if pipeline.input_data != self.input_type or pipeline.output_data != self.output_type:
+            raise errors.EboniteError("")
         pipeline.task_id = self.id
         self._meta.save_pipeline(pipeline)
         self._pipelines.add(pipeline)
@@ -401,7 +405,11 @@ class Task(EboniteObject):
         for image in self._images.values():
             image.bind_artifact_repo(repo)
 
-    def add_dataset(self, name, dataset: DatasetSource):
+    def add_dataset(self, name, dataset: Union[DatasetSource, Any], target: Any=None):
+        if not isinstance(dataset, DatasetSource):
+            if target is None:
+                raise errors.EboniteError("Cannot create dataset for evaluation without target")
+            dataset = InMemoryDataset.from_object(dataset, target)
         # TODO checks and stuff
         if self.input_type is None:
             self.input_type = dataset.dataset_type
@@ -409,7 +417,9 @@ class Task(EboniteObject):
             self._main_dataset = dataset.get()  # FIXME
         self.datasets[name] = dataset
 
-    def add_metric(self, name, metric: Metric):
+    def add_metric(self, name, metric: Union[Metric, Any]):
+        if not isinstance(metric, Metric):
+            metric = MetricAnalyzer.analyze(metric)
         # TODO checks
         self.metrics[name] = metric
 
