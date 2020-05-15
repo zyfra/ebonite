@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Dict, Generator, Type
+from typing import Generator, Type
 
 from ebonite.build.docker import DockerContainer, DockerHost, DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
