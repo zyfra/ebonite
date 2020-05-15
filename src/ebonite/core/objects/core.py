@@ -629,7 +629,12 @@ class RuntimeEnvironment(EboniteObject):
             """
             :return: builder for this environment
             """
-            pass  # pragma: no cover
+
+        @abstractmethod
+        def remove_image(self, image: Image):
+            """
+            Removes existing image
+            """
 
     def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):

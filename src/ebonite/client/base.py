@@ -138,6 +138,22 @@ class Ebonite:
         image.model = model
         return self.meta_repo.create_image(image)
 
+    def delete_image(self, image: Image, environment: RuntimeEnvironment = None, host_only: bool = False):
+        """
+        Deletes existing image from metadata repository and image provider
+
+        :param name: name of image to remove or image instance
+        :param environment: env to delete from
+        :param host_only: should image be deleted only from host
+        """
+        if environment is None:
+            environment = self.get_default_environment()
+
+        environment.params.remove_image(image)
+        if not host_only:
+            self.meta_repo.delete_image(image)
+        return True
+
     def get_image(self, name: str, model: Model) -> Image:
         """
         Load image from repository

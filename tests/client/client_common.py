@@ -4,9 +4,10 @@ import pytest
 
 from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
-from ebonite.core.objects.core import Model
+from ebonite.core.objects.core import Image, Model
 from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import check_ebonite_port_free, train_model
+from tests.client.conftest import MockEnvironmentParams
 
 
 def test_get_or_create_task(ebnt: Ebonite):
@@ -120,9 +121,24 @@ def test_push_model_project_contains_two_tasks(ebnt: Ebonite, model: Model):
     assert project.tasks.get(task.id) == task1
 
 
+def test_delete_image__no_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    env = ebnt.get_default_environment()
+    env.params = MockEnvironmentParams()
+    assert ebnt.delete_image(image_to_delete, env, True)
+
+
+def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    env = ebnt.get_default_environment()
+    env.params = MockEnvironmentParams()
+    ebnt.delete_image(image_to_delete, env, False)
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
+
+
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_build_and_run_instance(ebnt, container_name):
+def test_build_and_run_instance(ebnt: Ebonite, container_name):
     reg, data = train_model()
 
     check_ebonite_port_free()
