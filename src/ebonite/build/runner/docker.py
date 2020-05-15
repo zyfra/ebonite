@@ -15,7 +15,8 @@ class DockerRunner(RunnerBase):
     def instance_type(self) -> Type[DockerContainer]:
         return DockerContainer
 
-    def create_instance(self, name: str, ports_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
+    def create_instance(self, name: str, **kwargs) -> DockerContainer:
+        ports_mapping = kwargs.get('ports_mapping')
         if 'ports_mapping' in kwargs:
             kwargs.pop('ports_mapping')
         return DockerContainer(name, ports_mapping, kwargs)
@@ -36,6 +37,7 @@ class DockerRunner(RunnerBase):
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
                                                   detach=True,
+                                                  **instance.params,
                                                   **kwargs)
                 if not detach:
                     try:

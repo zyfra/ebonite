@@ -191,7 +191,7 @@ class Ebonite:
 
         runner = environment.params.get_runner()
 
-        params = runner.create_instance(name, **instance_kwargs, **runner_kwargs)
+        params = runner.create_instance(name, **instance_kwargs)
 
         instance = RuntimeInstance(name, params=params)
         instance.image = image

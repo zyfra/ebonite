@@ -110,6 +110,20 @@ def test_run_local_fail_inside_container(runner, registry, detach):
         _check_runner(runner, img, detach=detach, rm=True)
 
 
+@pytest.mark.docker
+@pytest.mark.skipif(not has_docker(), reason='no docker installed')
+def test_instance_creation_with_kwargs(runner, registry):
+    runner = DockerRunner()
+    kwargs = {'key': 'val', 'host': '', 'int_key': 1, 'ports_mapping': {8000: 8000}}
+    instance = runner.create_instance('instance', **kwargs)
+    assert 'ports_mapping' not in instance.params
+    assert instance.ports_mapping == {8000: 8000}
+
+    kwargs = {'key': 'val', 'host': '', 'int_key': 1}
+    instance = runner.create_instance('instance_2', **kwargs)
+    assert instance.ports_mapping == {}
+
+
 def _check_runner(runner, img, host='', **kwargs):
     runner = runner(host, img, CONTAINER_NAME)
     instance = DockerContainer(CONTAINER_NAME, ports_mapping={80: None})
