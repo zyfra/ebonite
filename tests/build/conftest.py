@@ -2,13 +2,11 @@ import os
 import socket
 
 import docker.errors
-import pandas as pd
 import pytest
+
 from ebonite.build.docker import create_docker_client, is_docker_running
 from ebonite.core.objects.core import Model
 from ebonite.runtime.server import HTTPServerConfig
-from sklearn.linear_model import LinearRegression
-
 from tests.client.test_func import func
 
 
@@ -41,13 +39,6 @@ def rm_image(image_tag: str, host: str = ''):
         tags = [t for i in client.images.list() for t in i.tags]
         if any(image_tag == t for t in tags):
             client.images.remove(image_tag, force=True)
-
-
-def train_model():
-    reg = LinearRegression()
-    data = pd.DataFrame([[1, 1], [2, 1]], columns=['a', 'b'])
-    reg.fit(data, [1, 0])
-    return reg, data
 
 
 @pytest.fixture

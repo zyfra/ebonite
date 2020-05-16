@@ -1,7 +1,9 @@
 import time
 
+import pandas as pd
 import pytest
 from pyjackson.core import Comparable
+from sklearn.linear_model import LinearRegression
 
 from ebonite.core.objects.core import Image, Model
 from tests.build.builder.test_docker import has_docker
@@ -59,6 +61,14 @@ def image_to_delete(ebnt, model):
     image.params.name = 'image'
     image = ebnt.meta_repo.create_image(image)
     yield image
+
+
+@pytest.fixture
+def regression_and_data():
+    reg = LinearRegression()
+    data = pd.DataFrame([[1, 1], [2, 1]], columns=['a', 'b'])
+    reg.fit(data, [1, 0])
+    return reg, data
 
 
 create_client_hooks = interface_hook_creator('tests/client/', 'client_common.py', 'ebnt')
