@@ -6,9 +6,8 @@ from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Image, Model
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import check_ebonite_port_free, regression_and_data
+from tests.build.conftest import check_ebonite_port_free
 from tests.client.conftest import MockEnvironmentParams
-
 
 
 def test_get_or_create_task(ebnt: Ebonite):
