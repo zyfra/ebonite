@@ -4,6 +4,15 @@ Changelog
 Current release candidate
 -------------------------
 
+0.5.2 (2020-05-16)
+------------------
+
+* Fixed dependency inspection to include wrapper dependencies
+* Fixed s3 repo to fail with subdirectories
+* More flexible way to add parameters for instance running (e.g. docker run arguments)
+* Added new type of Requirement to represent unix packages - for example, libgomp for xgboost
+* Minor tweaks
+
 0.5.1 (2020-04-16)
 ------------------
 

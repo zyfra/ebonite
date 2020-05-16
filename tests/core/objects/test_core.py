@@ -17,19 +17,19 @@ def test_project__add_task__unbind(project: Project, task_factory):
 
 
 @pytest.mark.parametrize('set_project_id', [True, False])
-def test_project__add_task__new(set_project_id, meta: MetadataRepository, project_b: Project, task_factory):
-    assert len(project_b.tasks) == 0
+def test_project__add_task__new(set_project_id, meta: MetadataRepository, project_saved, task_factory):
+    assert len(project_saved.tasks) == 0
     task: Task = task_factory()
     if set_project_id:
-        task.project = project_b
-    project_b.add_task(task)
-    assert len(project_b.tasks) == 1
+        task.project = project_saved
+    project_saved.add_task(task)
+    assert len(project_saved.tasks) == 1
     task_id = task.id
     assert task_id is not None
     assert task == meta.get_task_by_id(task_id)
-    assert task == project_b.tasks[task_id]
-    assert task == project_b.tasks(task.name)
-    assert task.project == project_b
+    assert task == project_saved.tasks[task_id]
+    assert task == project_saved.tasks(task.name)
+    assert task.project == project_saved
 
 
 def test_project__add_task__wrong_project(meta: MetadataRepository, project_factory, task_factory):
@@ -43,32 +43,32 @@ def test_project__add_task__wrong_project(meta: MetadataRepository, project_fact
         project1.add_task(task)
 
 
-def test_project__add_tasks(project_b: Project, task_factory, meta: MetadataRepository):
+def test_project__add_tasks(project_saved, task_factory, meta: MetadataRepository):
     tasks = [task_factory() for _ in range(5)]
-    assert len(project_b.tasks) == 0
-    project_b.add_tasks(tasks)
-    assert len(project_b.tasks) == 5
+    assert len(project_saved.tasks) == 0
+    project_saved.add_tasks(tasks)
+    assert len(project_saved.tasks) == 5
 
     for t in tasks:
         task_id = t.id
         assert task_id is not None
         assert t == meta.get_task_by_id(task_id)
-        assert t == project_b.tasks[task_id]
-        assert t == project_b.tasks(t.name)
+        assert t == project_saved.tasks[task_id]
+        assert t == project_saved.tasks(t.name)
 
 
-def test_project__add_tasks__empty(project_b: Project):
-    project_b.add_tasks([])
-    assert len(project_b.tasks) == 0
+def test_project__add_tasks__empty(project_saved):
+    project_saved.add_tasks([])
+    assert len(project_saved.tasks) == 0
 
 
-def test_project__delete_task(project_b, task):
-    project_b.add_task(task)
+def test_project__delete_task(project_saved, task):
+    project_saved.add_task(task)
     assert task.id is not None
     assert task.project_id is not None
 
-    project_b.delete_task(task)
-    assert len(project_b.tasks) == 0
+    project_saved.delete_task(task)
+    assert len(project_saved.tasks) == 0
 
     assert task.id is None
     assert task.project_id is None
@@ -83,24 +83,38 @@ def test_project__delete_task__nonexistent(project_factory, task):
         project.delete_task(task)
 
 
-def test_project_serde(project_b: Project):
-    serde_and_compare(project_b)
+def test_project_serde(project_saved):
+    serde_and_compare(project_saved)
+
+
+def test_task__project_property(project_saved_art, task):
+    assert project_saved_art.has_artifact_repo
+    assert project_saved_art.has_meta_repo
+
+    project_saved_art.add_task(task)
+    assert task.has_meta_repo
+    assert task.has_artifact_repo
+
+    assert task.project == project_saved_art
+
+    assert task.project.has_meta_repo
+    assert task.project.has_artifact_repo
 
 
 @pytest.mark.parametrize('set_task_id', [True, False])
-def test_task__add_model__new(set_task_id, meta: MetadataRepository, task_b: Task, model_factory):
-    assert len(task_b.models) == 0
+def test_task__add_model__new(set_task_id, meta: MetadataRepository, task_saved, model_factory):
+    assert len(task_saved.models) == 0
     model: Model = model_factory()
     if set_task_id:
-        model.task = task_b
-    task_b.add_model(model)
-    assert len(task_b.models) == 1
+        model.task = task_saved
+    task_saved.add_model(model)
+    assert len(task_saved.models) == 1
     model_id = model.id
     assert model_id is not None
     assert model == meta.get_model_by_id(model_id)
-    assert model == task_b.models[model_id]
-    assert model == task_b.models(model.name)
-    assert model.task == task_b
+    assert model == task_saved.models[model_id]
+    assert model == task_saved.models(model.name)
+    assert model.task == task_saved
 
 
 def test_task__add_model__wrong_task(meta: MetadataRepository, task_factory, model_factory):
@@ -114,47 +128,47 @@ def test_task__add_model__wrong_task(meta: MetadataRepository, task_factory, mod
         task1.add_model(model)
 
 
-def test_task__add_models(task_b: Task, model_factory, meta: MetadataRepository):
+def test_task__add_models(task_saved, model_factory, meta: MetadataRepository):
     models = [model_factory() for _ in range(5)]
-    assert len(task_b.models) == 0
-    task_b.add_models(models)
-    assert len(task_b.models) == 5
+    assert len(task_saved.models) == 0
+    task_saved.add_models(models)
+    assert len(task_saved.models) == 5
 
     for m in models:
         model_id = m.id
         assert model_id is not None
         assert m == meta.get_model_by_id(model_id)
-        assert m == task_b.models[model_id]
-        assert m == task_b.models(m.name)
-        assert m.task == task_b
+        assert m == task_saved.models[model_id]
+        assert m == task_saved.models(m.name)
+        assert m.task == task_saved
 
 
-def test_task__add_models__empty(task_b: Task):
-    task_b.add_models([])
-    assert len(task_b.models) == 0
+def test_task__add_models__empty(task_saved):
+    task_saved.add_models([])
+    assert len(task_saved.models) == 0
 
 
-def test_task__delete_model(task_b: Task, model):
-    task_b.add_model(model)
+def test_task__delete_model(task_saved, model):
+    task_saved.add_model(model)
     assert model.id is not None
     assert model.task_id is not None
 
-    task_b.delete_model(model)
-    assert len(task_b.models) == 0
+    task_saved.delete_model(model)
+    assert len(task_saved.models) == 0
 
     assert model.id is None
     assert model.task_id is None
 
 
-def test_task__delete_model_with_artifacts(task_b: Task, model, artifact_repo):
+def test_task__delete_model_with_artifacts(task_saved, model, artifact_repo):
     model._unpersisted_artifacts = Blobs({'data': InMemoryBlob(b'data')})
-    task_b.bind_artifact_repo(artifact_repo)
-    task_b.push_model(model)
+    task_saved.bind_artifact_repo(artifact_repo)
+    task_saved.push_model(model)
     assert model.id is not None
     assert model.task_id is not None
 
-    task_b.delete_model(model)
-    assert len(task_b.models) == 0
+    task_saved.delete_model(model)
+    assert len(task_saved.models) == 0
 
     assert model.id is None
     assert model.task_id is None
@@ -169,23 +183,23 @@ def test_task__delete_model__nonexistent(task_factory, model):
         task.delete_model(model)
 
 
-def test_task__serde(task_b: Task):
-    serde_and_compare(task_b)
+def test_task__serde(task_saved):
+    serde_and_compare(task_saved)
 
 
-def test_task__create_and_push_model(task_b2, sklearn_model_obj, pandas_data):
+def test_task__create_and_push_model(task_saved_art, sklearn_model_obj, pandas_data):
     model_name = 'Test Model'
-    task_b2.create_and_push_model(sklearn_model_obj, pandas_data, model_name)
+    task_saved_art.create_and_push_model(sklearn_model_obj, pandas_data, model_name)
 
-    assert task_b2._meta.get_model_by_name(model_name, task_b2) is not None
-    assert task_b2.models(model_name) is not None
+    assert task_saved_art._meta.get_model_by_name(model_name, task_saved_art) is not None
+    assert task_saved_art.models(model_name) is not None
 
 
-def test_task__push_model(task_b2, created_model):
-    task_b2.push_model(created_model)
+def test_task__push_model(task_saved_art, created_model):
+    task_saved_art.push_model(created_model)
 
-    assert task_b2._meta.get_model_by_name(created_model.name, task_b2) is not None
-    assert created_model.id in task_b2.models
+    assert task_saved_art._meta.get_model_by_name(created_model.name, task_saved_art) is not None
+    assert created_model.id in task_saved_art.models
 
 
 # ###############MODEL##################
@@ -197,6 +211,20 @@ def test_create_model(sklearn_model_obj, pandas_data):
     assert input_meta.columns == list(pandas_data)
     assert output_meta.real_type == np.ndarray
     assert {'numpy', 'sklearn', 'pandas'}.issubset(model.requirements.modules)
+
+
+def test_model__task_property(task_saved_art, created_model):
+    assert task_saved_art.has_artifact_repo
+    assert task_saved_art.has_meta_repo
+
+    task_saved_art.add_model(created_model)
+    assert created_model.has_meta_repo
+    assert created_model.has_artifact_repo
+
+    assert created_model.task == task_saved_art
+
+    assert created_model.task.has_meta_repo
+    assert created_model.task.has_artifact_repo
 
 
 def test_create_model_with_custom_wrapper(sklearn_model_obj, pandas_data):

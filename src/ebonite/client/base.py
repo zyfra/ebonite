@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Union
+from typing import Dict, Union
 
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
@@ -97,6 +97,23 @@ class Ebonite:
         task.bind_artifact_repo(self.artifact_repo)
         return task
 
+    def create_model(self, model_name: str, model_object, model_input, *,
+                     project_name: str = 'default_project', task_name: str = 'default_task'):
+        """
+        This function creates ebonite model.
+        Creates model, task and project (if needed) and pushes it to repo
+
+        :param model_name: model name to create.
+        :param model_object: object containing model.
+        :param model_input: model input.
+        :param project_name: project name.
+        :param task_name: task name.
+
+        :return: :class:`~ebonite.core.objects.Model` instance representing
+        """
+        task = self.get_or_create_task(project_name, task_name)
+        return task.create_and_push_model(model_object, model_input, model_name)
+
     def get_model(self, model_name: str, task: TaskVar, project: ProjectVar = None,
                   load_artifacts: bool = True) -> Model:
         """
@@ -114,7 +131,7 @@ class Ebonite:
         return model
 
     def build_image(self, name: str, model: Model, server: Server = None, environment: RuntimeEnvironment = None,
-                    debug=False, **kwargs) -> Image:
+                    debug=False, **builder_kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
@@ -123,9 +140,10 @@ class Ebonite:
         :param server: server to build image with
         :param environment: env to build for
         :param debug: flag to build debug image
-        :param kwargs: additional kwargs for builder
+        :param builder_kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
+        builder_kwargs = builder_kwargs or {}
         if self.meta_repo.get_image_by_name(name, model) is not None:
             raise ExistingImageError(name)
         if server is None:
@@ -133,10 +151,26 @@ class Ebonite:
 
         if environment is None:
             environment = self.get_default_environment()
-        builder = environment.params.get_builder(name, model, server, debug, **kwargs)
+        builder = environment.params.get_builder(name, model, server, debug, **builder_kwargs)
         image = builder.build()
         image.model = model
         return self.meta_repo.create_image(image)
+
+    def delete_image(self, image: Image, environment: RuntimeEnvironment = None, host_only: bool = False):
+        """
+        Deletes existing image from metadata repository and image provider
+
+        :param image: image to remove
+        :param environment: env to delete from
+        :param host_only: should image be deleted only from host
+        """
+        if environment is None:
+            environment = self.get_default_environment()
+
+        environment.params.remove_image(image)
+        if not host_only:
+            self.meta_repo.delete_image(image)
+        return True
 
     def get_image(self, name: str, model: Model) -> Image:
         """
@@ -166,16 +200,21 @@ class Ebonite:
         """
         return self.meta_repo.get_environment_by_name(name)
 
-    def run_instance(self, name: str, image: Image, environment: RuntimeEnvironment = None,
-                     **kwargs) -> RuntimeInstance:
+    def create_instance(self, name: str, image: Image, environment: RuntimeEnvironment = None, run=False,
+                        runner_kwargs: Dict[str, object] = None,
+                        **instance_kwargs) -> RuntimeInstance:
         """
         Runs model service instance and stores it to repository
 
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
+        :param run:  whether to autoatically run instance after creation
+        :param runner_kwargs: additional parameters for runner
+        :param instance_kwargs: additional parameters for instance
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
+
         if environment is None:
             environment = self.get_default_environment()
 
@@ -184,29 +223,38 @@ class Ebonite:
 
         runner = environment.params.get_runner()
 
-        params = runner.create_instance(name, **kwargs)
+        params = runner.create_instance(name, **instance_kwargs)
 
         instance = RuntimeInstance(name, params=params)
         instance.image = image
         instance.environment = environment
+        instance.bind_runner(runner)
         instance = self.meta_repo.create_instance(instance)
-
-        runner.run(params, image.params, environment.params, **kwargs)
-
-        return instance.bind_runner(runner)
+        if run:
+            runner_kwargs = runner_kwargs or {}
+            instance.run(**runner_kwargs)
+        return instance
 
     def build_and_run_instance(self, name: str, model: Model, environment: RuntimeEnvironment = None,
-                               **kwargs) -> RuntimeInstance:
+                               builder_kwargs: Dict[str, object] = None, runner_kwargs: Dict[str, object] = None,
+                               instance_kwargs: Dict[str, object] = None) -> RuntimeInstance:
         """
         Builds image of model service, immediately runs service and stores both image and instance to repository
 
         :param name: name of image and instance to be built and run respectively
         :param model: model to wrap into service
         :param environment: environment to run instance in, if no given `localhost` is used
+        :param builder_kwargs: additional kwargs for builder
+        :param runner_kwargs: additional parameters for runner. Full list can be seen in
+                    https://docker-py.readthedocs.io/en/stable/containers.html
+        :param instance_kwargs: additional parameters for instance
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
         """
-        image = self.build_image(name, model, **kwargs)
-        return self.run_instance(name, image, environment, **kwargs)
+        instance_kwargs = instance_kwargs or {}
+        runner_kwargs = runner_kwargs or {}
+        builder_kwargs = builder_kwargs or {}
+        image = self.build_image(name, model, **builder_kwargs)
+        return self.create_instance(name, image, environment, **instance_kwargs).run(**runner_kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
         """
@@ -230,33 +278,6 @@ class Ebonite:
         runner.stop(instance.params, instance.environment.params, **kwargs)
 
         self.meta_repo.delete_instance(instance)
-
-    def create_instance_from_model(self, model_name: str, model_object, model_input, *,
-                                   project_name: str = 'default_project', task_name: str = 'default_task',
-                                   instance_name: str = None, run_instance: bool = False, **kwargs):
-        """
-        This function does full default Ebonite's pipeline.
-        Creates model, pushes it, wraps with a server, builds the image and runs it locally (if needed).
-
-        :param model_name: model name to create.
-        :param model_object: object containing model.
-        :param model_input: model input.
-        :param project_name: project name.
-        :param task_name: task name.
-        :param instance_name: instance name. Use model_name if not provided.
-        :param run_instance: run built image if `True`.
-        :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
-          if `run_service` is `True` or `None` otherwise
-        """
-        instance_name = instance_name or model_name
-
-        task = self.get_or_create_task(project_name, task_name)
-        model = task.create_and_push_model(model_object, model_input, model_name)
-
-        if run_instance:
-            return self.build_and_run_instance(instance_name, model, **kwargs)
-        else:
-            self.build_image(instance_name, model, **kwargs)
 
     @classmethod
     def local(cls, path=None, clear=False) -> 'Ebonite':

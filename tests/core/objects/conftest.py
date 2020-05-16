@@ -86,14 +86,14 @@ def image_factory(model_factory):
 
 
 @pytest.fixture
-def task_b(task_factory):
+def task_saved(task_factory):
     return task_factory(True)
 
 
 @pytest.fixture
-def task_b2(task_b: Task):
-    task_b.bind_artifact_repo(InMemoryArtifactRepository())
-    return task_b
+def task_saved_art(task_saved):
+    task_saved.bind_artifact_repo(InMemoryArtifactRepository())
+    return task_saved
 
 
 @pytest.fixture
@@ -102,8 +102,13 @@ def task(task_factory):
 
 
 @pytest.fixture
-def project_b(project_factory):
+def project_saved(project_factory):
     return project_factory(True)
+
+
+@pytest.fixture
+def project_saved_art(project_saved):
+    return project_saved.bind_artifact_repo(InMemoryArtifactRepository())
 
 
 @pytest.fixture
