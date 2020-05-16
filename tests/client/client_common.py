@@ -10,6 +10,7 @@ from tests.build.conftest import check_ebonite_port_free, regression_and_data
 from tests.client.conftest import MockEnvironmentParams
 
 
+
 def test_get_or_create_task(ebnt: Ebonite):
     task = ebnt.get_or_create_task("Project", "Task")
     assert task.name == "Task"
