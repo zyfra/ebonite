@@ -47,6 +47,7 @@ class EboniteObject(Comparable):
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         self._meta = repo
+        return self
 
     def unbind_meta_repo(self):
         del self._meta
@@ -58,6 +59,7 @@ class EboniteObject(Comparable):
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         self._art = repo
+        return self
 
     def unbind_artifact_repo(self):
         del self._art
@@ -134,6 +136,7 @@ class Project(EboniteObject):
         task.project_id = self.id
         self._meta.save_task(task)
         self._tasks.add(task)
+        return task.bind_artifact_repo(self._art)
 
     @_with_meta
     def add_tasks(self, tasks: List['Task']):
@@ -165,11 +168,13 @@ class Project(EboniteObject):
         super(Project, self).bind_meta_repo(repo)
         for task in self._tasks.values():
             task.bind_meta_repo(repo)
+        return self
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         super(Project, self).bind_artifact_repo(repo)
         for task in self._tasks.values():
             task.bind_artifact_repo(repo)
+        return self
 
 
 @make_string('id', 'name')
@@ -202,7 +207,7 @@ class Task(EboniteObject):
         p = self._meta.get_project_by_id(self.project_id)
         if p is None:
             raise errors.NonExistingProjectError(self.project_id)
-        return p
+        return p.bind_artifact_repo(self._art)
 
     @project.setter
     def project(self, project: Project):
@@ -223,6 +228,7 @@ class Task(EboniteObject):
         model.task_id = self.id
         self._meta.save_model(model)
         self._models.add(model)
+        return model.bind_artifact_repo(self._art)
 
     @_with_meta
     def add_models(self, models: List['Model']):
@@ -284,11 +290,13 @@ class Task(EboniteObject):
         super(Task, self).bind_meta_repo(repo)
         for model in self._models.values():
             model.bind_meta_repo(repo)
+        return self
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         super(Task, self).bind_artifact_repo(repo)
         for model in self._models.values():
             model.bind_artifact_repo(repo)
+        return self
 
 
 @make_string('id', 'name')
@@ -523,7 +531,7 @@ class Model(EboniteObject):
         t = self._meta.get_task_by_id(self.task_id)
         if t is None:
             raise errors.NonExistingTaskError(self.task_id)
-        return t
+        return t.bind_artifact_repo(self._art)
 
     @task.setter
     def task(self, task: Task):
@@ -535,6 +543,7 @@ class Model(EboniteObject):
         super(Model, self).bind_meta_repo(repo)
         for image in self._images.values():
             image.bind_meta_repo(repo)
+        return self
 
     @_with_meta
     def add_image(self, image: 'Image'):
@@ -604,7 +613,7 @@ class Image(EboniteObject):
         m = self._meta.get_model_by_id(self.model_id)
         if m is None:
             raise errors.NonExistingModelError(self.model_id)
-        return m
+        return m.bind_artifact_repo(self._art)
 
     @model.setter
     def model(self, model: Model):
@@ -682,7 +691,7 @@ class RuntimeInstance(EboniteObject):
         i = self._meta.get_image_by_id(self.image_id)
         if i is None:
             raise errors.NonExistingImageError(self.image_id)
-        return i
+        return i.bind_artifact_repo(self._art)
 
     @image.setter
     def image(self, image: Image):
@@ -696,7 +705,7 @@ class RuntimeInstance(EboniteObject):
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
-        return e
+        return e.bind_artifact_repo(self._art)
 
     @environment.setter
     def environment(self, environment: RuntimeEnvironment):
