@@ -6,7 +6,7 @@ from ebonite.client import Ebonite
 from ebonite.core.errors import ExistingModelError
 from ebonite.core.objects.core import Image, Model
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import check_ebonite_port_free, train_model
+from tests.build.conftest import check_ebonite_port_free, regression_and_data
 from tests.client.conftest import MockEnvironmentParams
 
 
@@ -24,9 +24,17 @@ def test_get_or_create_task_exists(ebnt: Ebonite):
     assert task == task2
 
 
-def test_get_model(ebnt: Ebonite):
+def test_create_model(ebnt: Ebonite, regression_and_data):
+    reg, data = regression_and_data
+
+    model = ebnt.create_model('test model', reg, data)
+    assert isinstance(model, Model)
+    assert ebnt.get_model(model.name, model.task) == model
+
+
+def test_get_model(ebnt: Ebonite, regression_and_data):
     task = ebnt.get_or_create_task("Project", "Task")
-    reg, data = train_model()
+    reg, data = regression_and_data
     model = task.create_and_push_model(reg, data, 'mymodel')
 
     assert ebnt.get_model(project='Project', task='Task', model_name='mymodel') == model
@@ -138,13 +146,14 @@ def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):
 
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_build_and_run_instance(ebnt: Ebonite, container_name):
-    reg, data = train_model()
+def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_name):
+    reg, data = regression_and_data
 
     check_ebonite_port_free()
 
-    instance = ebnt.create_instance_from_model("Test Model", reg, data, project_name="Test Project",
-                                               task_name="Test Task", instance_name=container_name, run_instance=True)
+    model = ebnt.create_model('test model', reg, data)
+
+    instance = ebnt.build_and_run_instance(container_name, model)
     time.sleep(.1)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment

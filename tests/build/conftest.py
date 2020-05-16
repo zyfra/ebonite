@@ -43,7 +43,8 @@ def rm_image(image_tag: str, host: str = ''):
             client.images.remove(image_tag, force=True)
 
 
-def train_model():
+@pytest.fixture
+def regression_and_data():
     reg = LinearRegression()
     data = pd.DataFrame([[1, 1], [2, 1]], columns=['a', 'b'])
     reg.fit(data, [1, 0])

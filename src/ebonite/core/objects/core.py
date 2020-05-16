@@ -716,6 +716,11 @@ class RuntimeInstance(EboniteObject):
         return self.runner is not None
 
     @_with_auto_runner
+    def run(self, **runner_kwargs) -> 'RuntimeInstance':
+        self.runner.run(self.params, self.image.params, self.environment.params, **runner_kwargs)
+        return self
+
+    @_with_auto_runner
     def logs(self, **kwargs):
         """
 
