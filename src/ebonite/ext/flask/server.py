@@ -3,7 +3,7 @@ import uuid
 from io import BytesIO
 
 from ebonite.config import Config, Core, Param
-from ebonite.ext.prebuild import prebuild_image, prebuild_missing_images
+from ebonite.ext.docker.prebuild import prebuild_image, prebuild_missing_images  # TODO remove ext loading
 from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceDescriptor
 from ebonite.runtime.openapi.spec import create_spec
@@ -73,7 +73,6 @@ class FlaskConfig(Config):
 
 if Core.DEBUG:
     FlaskConfig.log_params()
-
 
 PREBUILD_PATH = current_module_path('prebuild')
 BASE_IMAGE_TEMPLATE = 'zyfraai/flask:{}'

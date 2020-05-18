@@ -3,16 +3,20 @@ import os
 import tempfile
 from typing import Dict, List
 
+import docker.models.images
 from docker import errors
 from jinja2 import Environment, FileSystemLoader
 
-from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
-from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
+from ebonite.build.builder.base import BuilderBase, PythonBuildContext, ebonite_from_pip
+from ebonite.build.provider import PythonProvider
 from ebonite.core.objects import Image
 from ebonite.core.objects.core import Buildable
 from ebonite.core.objects.requirements import UnixPackageRequirement
+from ebonite.ext.docker.helpers import create_docker_client, login_to_registry
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
+
+from .base import DockerEnv, DockerImage, DockerRegistry
 
 TEMPLATE_FILE = 'dockerfile.j2'
 
@@ -27,7 +31,30 @@ def _print_docker_logs(logs, level=logging.DEBUG):
             logger.log(level, str(log).strip())
 
 
-class DockerBuilder(PythonBuilder):
+class DockerBuilder(BuilderBase):
+    def create_image(self, name: str, tag: str = 'latest', repository: str = None, **kwargs) -> Image.Params:
+        return DockerImage(name, tag, repository)
+
+    def build_image(self, buildable: Buildable, image: DockerImage, environment: DockerEnv,
+                    force_overwrite=False, **kwargs):
+        context = DockerBuildContext(buildable.get_provider(), image, force_overwrite=force_overwrite, **kwargs)
+        docker_image = context.build(environment.registry)
+        image.image_id = docker_image.id
+
+    def delete_image(self, image: DockerImage, environment: DockerEnv, **kwargs):
+        with create_docker_client() as client:
+            client.images.remove(image.name)
+
+    def image_exists(self, image: DockerImage, environment: DockerEnv, **kwargs) -> bool:
+        with create_docker_client() as client:
+            try:
+                client.images.get(image.name)
+                return True
+            except docker.errors.ImageNotFound:
+                return False
+
+
+class DockerBuildContext(PythonBuildContext):
     """
     PythonBuilder implementation for building docker containers
 
@@ -46,8 +73,8 @@ class DockerBuilder(PythonBuilder):
     :param force_overwrite: if false, raise error if image already exists
     """
 
-    def __init__(self, buildable: Buildable, params: DockerImage, force_overwrite=False, **kwargs):
-        super().__init__(buildable)
+    def __init__(self, provider: PythonProvider, params: DockerImage, force_overwrite=False, **kwargs):
+        super().__init__(provider)
         self.params = params
         self.force_overwrite = force_overwrite
         self.prebuild_hook = kwargs.get('prebuild_hook', None)
@@ -59,12 +86,12 @@ class DockerBuilder(PythonBuilder):
                    {'base_image', 'python_version', 'templates_dir', 'run_cmd', 'package_install_cmd'}}
         self.dockerfile_gen = _DockerfileGenerator(**options)
 
-    def build(self) -> Image:
+    def build(self, registry: DockerRegistry) -> docker.models.images.Image:
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
             if self.prebuild_hook is not None:
                 self.prebuild_hook(self.dockerfile_gen.python_version)
             self._write_distribution(tempdir)
-            return self._build_image(tempdir)
+            return self._build_image(tempdir, registry)
 
     def _write_distribution(self, target_dir):
         super()._write_distribution(target_dir)
@@ -77,11 +104,11 @@ class DockerBuilder(PythonBuilder):
             dockerfile = self.dockerfile_gen.generate(env, unix_packages)
             df.write(dockerfile)
 
-    def _build_image(self, context_dir):
-        tag = self.params.get_uri()
+    def _build_image(self, context_dir, registry: DockerRegistry) -> docker.models.images.Image:
+        tag = self.params.get_uri(registry)
         logger.debug('Building docker image %s from %s...', tag, context_dir)
         with create_docker_client() as client:
-            login_to_registry(client, self.params.registry)
+            login_to_registry(client, registry)
 
             if not self.force_overwrite:
                 try:
@@ -95,15 +122,13 @@ class DockerBuilder(PythonBuilder):
                 except errors.ImageNotFound:
                     pass
             try:
-                _, logs = client.images.build(path=context_dir, tag=tag, rm=True)
-                logger.info('Built image %s', tag)
+                image, logs = client.images.build(path=context_dir, tag=tag, rm=True)
+                logger.info('Built docker image %s', tag)
                 _print_docker_logs(logs)
 
-                if isinstance(self.params.registry, RemoteDockerRegistry):
-                    client.images.push(tag)
-                    logger.info('Pushed image %s to remote registry at host %s', tag, self.params.registry.host)
+                registry.push(client, tag)
 
-                return Image(self.params.name, self.buildable, params=self.params)
+                return image
             except errors.BuildError as e:
                 _print_docker_logs(e.build_log, logging.ERROR)
                 raise

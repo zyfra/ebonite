@@ -277,7 +277,7 @@ def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_na
     with pytest.raises(EnvironmentWithInstancesError):
         ebnt.delete_environment(instance.environment)
 
-    ebnt.stop_instance(instance)
+    ebnt.delete_instance(instance)
     time.sleep(.1)
 
     assert not instance.is_running()

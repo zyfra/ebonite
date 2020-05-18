@@ -8,7 +8,7 @@ import numpy as np
 import psutil
 import pytest
 
-from ebonite.build.builder.base import PythonBuilder, use_local_installation
+from ebonite.build.builder.base import PythonBuildContext, use_local_installation
 from ebonite.build.provider import LOADER_ENV, PythonProvider, SERVER_ENV
 from ebonite.build.provider.ml_model import ModelBuildable
 from ebonite.build.provider.ml_model_multi import MultiModelBuildable
@@ -66,36 +66,36 @@ class BuildableMock(Buildable):
 
 
 @pytest.fixture
-def python_builder_mock() -> PythonBuilder:
-    return PythonBuilder(BuildableMock())
+def python_builder_mock() -> PythonBuildContext:
+    return PythonBuildContext(BuildableMock())
 
 
 @pytest.fixture
-def python_builder_sync(created_model) -> PythonBuilder:
+def python_builder_sync(created_model) -> PythonBuildContext:
     buildable = ModelBuildable.from_model(created_model, server_type=FlaskServer.type)
-    return PythonBuilder(buildable)
+    return PythonBuildContext(buildable)
 
 
 @pytest.fixture
-def python_builder_async(created_model) -> PythonBuilder:
+def python_builder_async(created_model) -> PythonBuildContext:
     buildable = ModelBuildable.from_model(created_model, server_type=AIOHTTPServer.type)
-    return PythonBuilder(buildable)
+    return PythonBuildContext(buildable)
 
 
 @pytest.fixture
-def python_multi_builder(created_model) -> PythonBuilder:
+def python_multi_builder(created_model) -> PythonBuildContext:
     buildable = MultiModelBuildable.from_models([created_model], server_type=FlaskServer.type)
-    return PythonBuilder(buildable)
+    return PythonBuildContext(buildable)
 
 
-def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuilder):
+def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuildContext):
     python_builder_mock._write_distribution(tmpdir)
 
     _check_basic_distr_contents(tmpdir)
     _check_requirements(tmpdir, set(_get_builder_requirements(python_builder_mock)))
 
 
-def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: PythonBuilder):
+def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: PythonBuildContext):
     with use_local_installation():
         python_builder_mock._write_distribution(tmpdir)
 
@@ -105,7 +105,7 @@ def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: Pytho
     _check_requirements(tmpdir, {*setup_args['install_requires'], *_get_builder_requirements(python_builder_mock)})
 
 
-def _get_builder_requirements(python_builder: PythonBuilder):
+def _get_builder_requirements(python_builder: PythonBuildContext):
     return python_builder.provider.get_requirements().to_pip()
 
 
@@ -142,7 +142,7 @@ def _check_contents(base_dir, name, contents):
 
 @pytest.mark.parametrize("python_builder", ["python_builder_sync", "python_builder_async"])
 def test_python_builder__distr_loadable(tmpdir, python_builder, created_model, pandas_data, request):
-    python_builder: PythonBuilder = request.getfixturevalue(python_builder)
+    python_builder: PythonBuildContext = request.getfixturevalue(python_builder)
     prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
@@ -154,7 +154,7 @@ def test_python_builder__distr_loadable(tmpdir, python_builder, created_model, p
     np.testing.assert_almost_equal(prediction, prediction2)
 
 
-def test_python_multi_builder__distr_loadable(tmpdir, python_multi_builder: PythonBuilder, created_model, pandas_data):
+def test_python_multi_builder__distr_loadable(tmpdir, python_multi_builder: PythonBuildContext, created_model, pandas_data):
     prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
@@ -174,7 +174,7 @@ def _load(loader, tmpdir):
     return iface
 
 
-def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuilder):
+def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuildContext):
     args, env = _prepare_distribution(tmpdir, python_builder_mock)
     server_output = subprocess.run(args, env=env, check=True, stdout=subprocess.PIPE).stdout
     assert server_output.decode('utf8').strip() == SECRET
@@ -185,7 +185,7 @@ def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuild
     ("python_builder_async", {'aiohttp_swagger'})
 ])
 def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data, server_reqs, request):
-    python_builder: PythonBuilder = request.getfixturevalue(python_builder)
+    python_builder: PythonBuildContext = request.getfixturevalue(python_builder)
     args, env = _prepare_distribution(tmpdir, python_builder)
 
     from setup import setup_args

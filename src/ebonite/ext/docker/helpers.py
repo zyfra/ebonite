@@ -1,111 +1,16 @@
 import os
 import time
-from abc import abstractmethod
 from contextlib import contextmanager
 from threading import Lock
-from typing import Dict, Generator, Optional
+from typing import Generator, Union
 
 import docker
 import requests
 from docker.errors import DockerException
-from pyjackson.core import Comparable
-from pyjackson.decorators import type_field
-from pyjackson.utils import get_class_field_names
 
-from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
-from ebonite.core.objects.core import Buildable
 from ebonite.utils.log import logger
 
-
-@type_field('type')
-class DockerRegistry(Comparable):
-
-    @abstractmethod
-    def get_host(self) -> str:
-        pass  # pragma: no cover
-
-
-class DefaultDockerRegistry(DockerRegistry):
-    """ The class represents docker registry.
-
-    The default registry contains local images and images from the default registry (docker.io).
-
-    """
-    type = 'local'
-
-    def get_host(self) -> str:
-        return ''
-
-
-class RemoteDockerRegistry(DockerRegistry):
-    type = 'remote'
-
-    def __init__(self, host: Optional[str] = None):
-        self.host = host or 'https://index.docker.io/v1/'
-
-    def get_host(self) -> str:
-        return self.host
-
-
-class DockerImage(Image.Params):
-    def __init__(self, name: str, tag: str = 'latest',
-                 repository: str = None, registry: DockerRegistry = None):
-        self.name = name
-        self.tag = tag
-        self.repository = repository
-        self.registry = registry or DefaultDockerRegistry()
-
-    def get_uri(self) -> str:
-        uri = '{}:{}'.format(self.name, self.tag)
-        if self.repository is not None:
-            uri = '{}/{}'.format(self.repository, uri)
-        if isinstance(self.registry, RemoteDockerRegistry):
-            uri = '{}/{}'.format(self.registry.get_host(), uri)
-        return uri
-
-
-class DockerContainer(RuntimeInstance.Params):
-    def __init__(self, name: str, ports_mapping: Dict[int, int] = None, params: Dict[str, object] = None):
-        self.name = name
-        self.ports_mapping = ports_mapping or {}
-        self.params = params or {}
-
-
-class DockerHost(RuntimeEnvironment.Params):
-    def __init__(self, host: str = ''):
-        self.host = host
-
-    def get_runner(self):
-        """
-        :return: docker runner
-        """
-        if self.default_runner is None:
-            from ebonite.build import DockerRunner
-            self.default_runner = DockerRunner()
-        return self.default_runner
-
-    def get_builder(self, name: str, buildable: Buildable, **kwargs):
-        """
-        :param name: name for image
-        :param buildable: buildable to build
-        :param kwargs: additional arguments for image parameters and docker builder
-
-        :return: docker builder instance
-        """
-        from ebonite.build import DockerBuilder
-
-        image_arg_names = set(get_class_field_names(DockerImage))
-        params = DockerImage(name, **{k: v for k, v in kwargs.items() if k in image_arg_names})
-        kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
-        return DockerBuilder(buildable, params, **kwargs)
-
-    def remove_image(self, image: Image):
-        """
-        :param image:  image to delete
-        """
-        # TODO: MOVE TO BUILDER
-        with create_docker_client() as client:
-            client.images.remove(image.params.name)
+from .base import DockerContainer, DockerDaemon, DockerEnv, DockerImage, DockerRegistry, RemoteDockerRegistry
 
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
@@ -197,3 +102,60 @@ def repository_tags_at_dockerhub(repo):
         return {}
     else:
         return {tag['name'] for tag in resp.json()}
+
+
+def run_docker_img(container_params: Union[str, DockerContainer], image_params: Union[str, DockerImage],
+                   host_params: Union[str, (DockerEnv)] = '', ports_mapping=None, detach=True):
+    """
+    Runs Docker image as container
+
+    :param container_params: expected params (or simply name) of container to be run
+    :param image_params: params (or simply name) for docker image to be run
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
+    :param ports_mapping: mapping of exposed ports in container
+    :param detach: if `False` block execution until container exits
+    :return: nothing
+    """
+    if isinstance(image_params, str):
+        image_params = DockerImage(image_params)
+
+    from .runner import DockerRunner
+    DockerRunner().run(_as_container(container_params, ports_mapping),
+                       image_params, _as_host(host_params), detach=detach)
+
+
+def is_docker_container_running(container_params: Union[str, DockerContainer],
+                                host_params: Union[str, DockerEnv] = '') -> bool:
+    """
+    Checks whether Docker container is running
+
+    :param container_params: params (or simply name) of container to check running
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
+    :return: "is running" flag
+    """
+    from .runner import DockerRunner
+    return DockerRunner().is_running(_as_container(container_params), _as_host(host_params))
+
+
+def stop_docker_container(container_params: Union[str, DockerContainer], host_params: Union[str, DockerEnv] = ''):
+    """
+    Stops Docker container
+
+    :param container_params: params (or simply name) of container to be stopped
+    :param host_params: host params (or simply URI) to connect to Docker daemon on, if no given "localhost" is used
+    :return: nothing
+    """
+    from .runner import DockerRunner
+    DockerRunner().stop(_as_container(container_params), _as_host(host_params))
+
+
+def _as_container(container_params: Union[str, DockerContainer], ports_mapping=None):
+    if isinstance(container_params, str):
+        container_params = DockerContainer(container_params, ports_mapping)
+    return container_params
+
+
+def _as_host(host_params: Union[str, DockerEnv]):
+    if isinstance(host_params, str):
+        host_params = DockerEnv(DockerRegistry(host_params), DockerDaemon(host_params))
+    return host_params

@@ -379,7 +379,6 @@ class Task(EboniteObject):
         super(Task, self).bind_meta_repo(repo)
         for model in self._models.values():
             model.bind_meta_repo(repo)
-        return self
 
         for pipeline in self._pipelines.values():
             pipeline.bind_meta_repo(repo)
@@ -387,17 +386,20 @@ class Task(EboniteObject):
         for image in self._images.values():
             image.bind_meta_repo(repo)
 
+        return self
+
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         super(Task, self).bind_artifact_repo(repo)
         for model in self._models.values():
             model.bind_artifact_repo(repo)
-        return self
 
         for pipeline in self._pipelines.values():
             pipeline.bind_artifact_repo(repo)
 
         for image in self._images.values():
             image.bind_artifact_repo(repo)
+
+        return self
 
 
 class _WrapperMethodAccessor:
@@ -748,13 +750,83 @@ class Pipeline(EboniteObject):
 
 @type_field('type')
 class Buildable(EboniteParams, WithMetadataRepository):
+    # TODO docs
     @abstractmethod
     def get_provider(self):
+        # TODO docs
         pass  # pragma: no cover
 
 
+class RuntimeEnvironment(EboniteObject):
+    @type_field('type')
+    class Params(Comparable):
+        default_runner = None
+        default_builder = None
+
+        def get_runner(self):
+            """
+            :return: Runner for this environment
+            """
+            return self.default_runner
+
+        def get_builder(self):
+            """
+            :return: builder for this environment
+            """
+            return self.default_builder
+
+    def __init__(self, name: str, id: int = None, params: Params = None,
+                 author: str = None, creation_date: datetime.datetime = None):
+        super().__init__(id, name, author, creation_date)
+        self.params = params
+
+
+class _WithEnvironment:
+    _meta = None
+    _art = None
+
+    def __init__(self, environment_id: int = None, *args, **kwargs):
+        super(_WithEnvironment, self).__init__(*args, **kwargs)
+        self.environment_id = environment_id
+
+    @property
+    @_with_meta
+    def environment(self) -> RuntimeEnvironment:  # TODO caching
+        e = self._meta.get_environment_by_id(self.environment_id)
+        if e is None:
+            raise errors.NonExistingEnvironmentError(self.environment_id)
+        return e.bind_artifact_repo(self._art)
+
+    @environment.setter
+    def environment(self, environment: RuntimeEnvironment):
+        if not isinstance(environment, RuntimeEnvironment):
+            raise ValueError(f'{environment} is not RuntimeEnvironment')
+        self.environment_id = environment.id
+
+
+def _with_auto_builder(method):
+    """
+    Decorator for methods to check that object is binded to builder
+
+    :param method: method to apply decorator
+    :return: decorated method
+    """
+
+    @wraps(method)
+    def inner(self: 'Image', *args, **kwargs):
+        if not self.has_builder:
+            if not self.has_meta_repo:
+                raise ValueError(f'{self} has no binded runner')
+            self.bind_builder(self.environment.params.get_builder())
+        return method(self, *args, **kwargs)
+
+    return inner
+
+
 @make_string('id', 'name')
-class Image(EboniteObject):
+class Image(_WithEnvironment, EboniteObject):
+    builder = None
+
     @type_field('type')
     class Params(Comparable):
         pass
@@ -762,8 +834,9 @@ class Image(EboniteObject):
     def __init__(self, name: str, source: Buildable, id: int = None,
                  params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None,
-                 task_id: int = None):
-        super().__init__(id, name, author, creation_date)
+                 task_id: int = None,
+                 environment_id: int = None):
+        super().__init__(environment_id, id, name, author, creation_date)
         self.task_id = task_id
         self.source = source
         self.params = params
@@ -786,43 +859,37 @@ class Image(EboniteObject):
         super(Image, self).bind_meta_repo(repo)
         self.source.bind_meta_repo(repo)
 
+    def bind_builder(self, builder):
+        self.builder = builder
+        return self
 
-class RuntimeEnvironment(EboniteObject):
-    @type_field('type')
-    class Params(Comparable):
-        default_runner = None
+    def unbind_builder(self):
+        del self.builder
 
-        def get_runner(self):
-            """
-            :return: Runner for this environment
-            """
-            return self.default_runner
+    @property
+    def has_builder(self):
+        return self.builder is not None
 
-        @abstractmethod
-        def get_builder(self, name: str, buildable: Buildable, **kwargs):
-            """
-            :return: builder for this environment
-            """
+    @_with_auto_builder
+    def is_built(self) -> bool:
+        return self.builder.image_exists(self.params, self.environment.params)
 
-        @abstractmethod
-        def remove_image(self, image: Image):
-            """
-            Removes existing image
-            """
+    @_with_auto_builder
+    def build(self, **kwargs):
+        self.builder.build_image(self.source, self.params, self.environment.params, **kwargs)
 
-    def __init__(self, name: str, id: int = None, params: Params = None,
-                 author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(id, name, author, creation_date)
-        self.params = params
+    @_with_auto_builder
+    def remove(self):
+        self.builder.delete_image(self.params, self.environment.params)
 
 
 def _with_auto_runner(method):
     """
-       Decorator for methods to check that object is binded to runner
+    Decorator for methods to check that object is binded to runner
 
-       :param method: method to apply decorator
-       :return: decorated method
-       """
+    :param method: method to apply decorator
+    :return: decorated method
+    """
 
     @wraps(method)
     def inner(self: 'RuntimeInstance', *args, **kwargs):
@@ -835,7 +902,7 @@ def _with_auto_runner(method):
     return inner
 
 
-class RuntimeInstance(EboniteObject):
+class RuntimeInstance(_WithEnvironment, EboniteObject):
     runner = None
 
     @type_field('type')
@@ -845,7 +912,7 @@ class RuntimeInstance(EboniteObject):
     def __init__(self, name: str, id: int = None,
                  image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(id, name, author, creation_date)
+        super().__init__(environment_id, id, name, author, creation_date)
         self.image_id = image_id
         self.environment_id = environment_id
         self.params = params
@@ -863,20 +930,6 @@ class RuntimeInstance(EboniteObject):
         if not isinstance(image, Image):
             raise ValueError(f'{image} is not Image')
         self.image_id = image.id
-
-    @property
-    @_with_meta
-    def environment(self) -> RuntimeEnvironment:  # TODO caching
-        e = self._meta.get_environment_by_id(self.environment_id)
-        if e is None:
-            raise errors.NonExistingEnvironmentError(self.environment_id)
-        return e.bind_artifact_repo(self._art)
-
-    @environment.setter
-    def environment(self, environment: RuntimeEnvironment):
-        if not isinstance(environment, RuntimeEnvironment):
-            raise ValueError(f'{environment} is not RuntimeEnvironment')
-        self.environment_id = environment.id
 
     def bind_runner(self, runner):
         self.runner = runner
@@ -914,3 +967,8 @@ class RuntimeInstance(EboniteObject):
         if not self.has_meta_repo:
             return False  # TODO separate repo logic from runner logic and remove this check
         return self.runner.is_running(self.params, self.environment.params, **kwargs)
+
+    @_with_auto_runner
+    def stop(self, **kwargs):
+        # TODO docs
+        self.runner.stop(self.params, self.environment.params, **kwargs)

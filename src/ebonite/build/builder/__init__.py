@@ -1,4 +1,3 @@
-from .base import BuilderBase, PythonBuilder
-from .docker import DockerBuilder
+from .base import BuilderBase, PythonBuildContext
 
-__all__ = ['BuilderBase', 'DockerBuilder', 'PythonBuilder']
+__all__ = ['BuilderBase', 'PythonBuildContext']

@@ -2,9 +2,11 @@ import sys
 import time
 from typing import Generator, Type
 
-from ebonite.build.docker import DockerContainer, DockerHost, DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
 from ebonite.utils.log import logger
+
+from .base import DockerContainer, DockerEnv, DockerImage
+from .helpers import create_docker_client, login_to_registry
 
 
 class DockerRunnerException(Exception):
@@ -20,24 +22,25 @@ class DockerRunner(RunnerBase):
         ports_mapping = kwargs.pop('ports_mapping', ports_mapping)
         return DockerContainer(name, ports_mapping, kwargs)
 
-    def run(self, instance: DockerContainer, image: DockerImage, env: DockerHost, rm=True, detach=True, **kwargs):
+    def run(self, instance: DockerContainer, image: DockerImage, env: DockerEnv, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
-                isinstance(env, DockerHost)):
+                isinstance(env, DockerEnv)):
             raise TypeError('DockerRunner works with DockerContainer, DockerImage and DockerHost only')
 
-        with create_docker_client(env.host) as client:
-            login_to_registry(client, image.registry)
+        with create_docker_client(env.daemon.host) as client:
+            login_to_registry(client, env.registry)
 
             from docker.errors import ContainerError  # FIXME
             try:
                 # always detach from container and just stream logs if detach=False
-                container = client.containers.run(image.get_uri(),
+                container = client.containers.run(image.get_uri(env.registry),
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
                                                   detach=True,
                                                   **instance.params,
                                                   **kwargs)
+                instance.container_id = container.id
                 if not detach:
                     try:
                         # infinite loop of logs while container running or if everything ok
@@ -67,7 +70,7 @@ class DockerRunner(RunnerBase):
                     print(e.stderr.decode(), file=sys.stderr)
                 raise
 
-    def logs(self, instance: DockerContainer, env: DockerHost, **kwargs) -> Generator[str, None, None]:
+    def logs(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> Generator[str, None, None]:
         self._validate(instance, env)
 
         with create_docker_client(env.host) as client:
@@ -96,19 +99,19 @@ class DockerRunner(RunnerBase):
         except NotFound:
             return False
 
-    def is_running(self, instance: DockerContainer, env: DockerHost, **kwargs) -> bool:
+    def is_running(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> bool:
         self._validate(instance, env)
 
-        with create_docker_client(env.host) as client:
+        with create_docker_client(env.daemon.host) as client:
             return self._is_service_running(client, instance.name)
 
-    def stop(self, instance: DockerContainer, env: DockerHost, **kwargs):
+    def stop(self, instance: DockerContainer, env: DockerEnv, **kwargs):
         self._validate(instance, env)
 
-        with create_docker_client(env.host) as client:
+        with create_docker_client(env.daemon.host) as client:
             container = client.containers.get(instance.name)
             container.stop()
 
-    def _validate(self, instance: DockerContainer, env: DockerHost):
-        if not (isinstance(instance, DockerContainer) and isinstance(env, DockerHost)):
+    def _validate(self, instance: DockerContainer, env: DockerEnv):
+        if not (isinstance(instance, DockerContainer) and isinstance(env, DockerEnv)):
             raise TypeError('DockerRunner works with DockerContainer and DockerHost only')

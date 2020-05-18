@@ -6,8 +6,9 @@ import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
-from ebonite.build.docker import (RemoteDockerRegistry, create_docker_client, image_exists_at_dockerhub,
-                                  login_to_registry, repository_tags_at_dockerhub)
+from ebonite.ext.docker import RemoteDockerRegistry
+from ebonite.ext.docker.helpers import (create_docker_client, image_exists_at_dockerhub, login_to_registry,
+                                        repository_tags_at_dockerhub)
 from ebonite.utils.log import logger
 
 

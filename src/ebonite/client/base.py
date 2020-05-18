@@ -175,8 +175,8 @@ class Ebonite:
     def delete_pipeline(self, pipeline: Pipeline):
         self.meta_repo.delete_pipeline(pipeline)
 
-    def build_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
-                    debug=False, **builder_kwargs) -> Image:
+    def create_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
+                     debug=False, skip_build=True, builder_args: Dict[str, object] = None, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
@@ -186,7 +186,7 @@ class Ebonite:
         :param server: server to build image with
         :param environment: env to build for
         :param debug: flag to build debug image
-        :param builder_kwargs: additional kwargs for builder
+        :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
         from ebonite.core.analyzer.buildable import BuildableAnalyzer
@@ -197,33 +197,38 @@ class Ebonite:
 
         if environment is None:
             environment = self.get_default_environment()
-        buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug)
-        buildable.bind_meta_repo(self.meta_repo)
-        builder = environment.params.get_builder(name, buildable, **builder_kwargs)
-        image = builder.build()
+        buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug).bind_meta_repo(self.meta_repo)
+        builder = environment.params.get_builder()
+        params: Image.Params = builder.create_image(name, **kwargs)
+        image = Image(name, buildable, params=params)
         image.task = task
-        return self.meta_repo.create_image(image)
+        image.environment = environment
+        image.bind_artifact_repo(task._art)  # TODO
+        self.meta_repo.create_image(image)
+        if not skip_build:
+            try:
+                image.build(**(builder_args or {}))
+            except Exception:
+                self.meta_repo.delete_image(image)
+                raise
+        return self.meta_repo.save_image(image)
 
-    def delete_image(self, image: Image, environment: RuntimeEnvironment = None, host_only: bool = False, *,
+    def delete_image(self, image: Image, meta_only: bool = False, *,
                      cascade=False):
         """
         Deletes existing image from metadata repository and image provider
 
         :param image: image to remove
-        :param environment: env to delete from
-        :param host_only: should image be deleted only from host
+        :param meta_only: should image be deleted only from metadata
         :param cascade: whether to delete nested RuntimeInstances
         """
         if cascade:
             for instance in self.meta_repo.get_instances(image):
-                self.stop_instance(instance)
+                self.delete_instance(instance, meta_only=meta_only)
 
-        if environment is not None:  # FIXME separate this logic
-            environment.params.remove_image(image)
-
-        if not host_only:
-            self.meta_repo.delete_image(image)
-        return True
+        if not meta_only:
+            image.remove()
+        self.meta_repo.delete_image(image)
 
     def get_image(self, name: str, task: Task) -> Image:
         """
@@ -307,7 +312,7 @@ class Ebonite:
         instance_kwargs = instance_kwargs or {}
         runner_kwargs = runner_kwargs or {}
         builder_kwargs = builder_kwargs or {}
-        image = self.build_image(name, obj, task, **builder_kwargs)
+        image = self.create_image(name, obj, task, **builder_kwargs)
         return self.create_instance(name, image, environment, **instance_kwargs).run(**runner_kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
@@ -321,15 +326,16 @@ class Ebonite:
         """
         return self.meta_repo.get_instance_by_name(name, image, environment)
 
-    def stop_instance(self, instance: RuntimeInstance, **kwargs):
+    def delete_instance(self, instance: RuntimeInstance, meta_only=False, **kwargs):
         """
         Stops instance of model service and deletes it from repository
 
         :param instance: instance to stop
+        :param meta_only: only remove from metadata, do not stop instance
         :return: nothing
         """
-        runner = instance.runner or instance.environment.params.get_runner()
-        runner.stop(instance.params, instance.environment.params, **kwargs)
+        if not meta_only:
+            instance.stop(**kwargs)
 
         self.meta_repo.delete_instance(instance)
 
@@ -421,8 +427,8 @@ class Ebonite:
                 raise RuntimeError("Can't build docker container: docker module is not installed. Install it "
                                    "with 'pip install docker'")
 
-            from ebonite.build import DockerHost
-            self.default_env = RuntimeEnvironment(env_name, params=DockerHost())
+            from ebonite.ext.docker import DockerEnv
+            self.default_env = RuntimeEnvironment(env_name, params=DockerEnv())
             self.default_env = self.push_environment(self.default_env)
         return self.default_env
 
@@ -437,5 +443,5 @@ class Ebonite:
         if cascade:
             instances = self.meta_repo.get_instances(image=None, environment=environment)
             for instance in instances:
-                self.stop_instance(instance)
+                self.delete_instance(instance)
         self.meta_repo.delete_environment(environment)
