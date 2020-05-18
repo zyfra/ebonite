@@ -336,11 +336,11 @@ def test_pipeline__append(double_model, len_model):
     assert step2.method_name == method
 
 
-def test_pipeline__load(meta, model, task_b2):
-    task_b2.push_model(model)
+def test_pipeline__load(meta, model, task_saved_art):
+    task_saved_art.push_model(model)
 
     p = model.as_pipeline('predict')
-    task_b2.add_pipeline(p)
+    task_saved_art.add_pipeline(p)
 
     p = deserialize(serialize(meta.get_pipeline_by_id(p.id)), Pipeline)
     assert p is not None

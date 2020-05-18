@@ -68,10 +68,6 @@ def test_delete_task_ok(ebnt: Ebonite):
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
 
 
-def test_a(pipeline: Pipeline):
-    pipeline.id
-
-
 def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, image: Image, pipeline: Pipeline):
     task = ebnt.get_or_create_task('Project', 'Task')
     model = ebnt.push_model(model, task)
@@ -267,7 +263,7 @@ def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_na
 
     model = ebnt.create_model('test model', reg, data)
 
-    instance = ebnt.build_and_run_instance(container_name, model)
+    instance = ebnt.build_and_run_instance(container_name, model, model.task)
     time.sleep(.1)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment

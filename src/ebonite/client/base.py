@@ -112,7 +112,7 @@ class Ebonite:
         task.bind_artifact_repo(self.artifact_repo)
         return task
 
-    def delete_task(self, task, *, cascade=False):
+    def delete_task(self, task: Task, *, cascade=False):
         """
         Deletes task and(if required) all models associated with it
 
@@ -212,15 +212,15 @@ class Ebonite:
         :param image: image to remove
         :param environment: env to delete from
         :param host_only: should image be deleted only from host
+        :param cascade: whether to delete nested RuntimeInstances
         """
         if cascade:
             for instance in self.meta_repo.get_instances(image):
                 self.stop_instance(instance)
 
-        if environment is None:
-            environment = self.get_default_environment()
+        if environment is not None:  # FIXME separate this logic
+            environment.params.remove_image(image)
 
-        environment.params.remove_image(image)
         if not host_only:
             self.meta_repo.delete_image(image)
         return True

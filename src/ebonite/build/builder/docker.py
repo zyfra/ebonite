@@ -52,8 +52,8 @@ class DockerBuilder(PythonBuilder):
         self.force_overwrite = force_overwrite
         self.prebuild_hook = kwargs.get('prebuild_hook', None)
 
-        options = {'python_version': buildable.provider.get_python_version()}
-        options.update(buildable.provider.get_options())
+        options = {'python_version': self.provider.get_python_version()}
+        options.update(self.provider.get_options())
         options.update(kwargs)
         options = {k: v for k, v in options.items() if k in
                    {'base_image', 'python_version', 'templates_dir', 'run_cmd', 'package_install_cmd'}}

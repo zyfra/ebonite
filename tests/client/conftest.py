@@ -57,8 +57,7 @@ def model():
 @pytest.fixture
 def image_to_delete(ebnt, model):
     task = ebnt.get_or_create_task('Project', 'Task')
-    model = ebnt.push_model(model, task)
-    image = Image('image', id=None, model_id=model.id, params=Image.Params())
+    image = Image('image', BuildableMock(), id=None, task_id=task.id, params=Image.Params(), )
     image.params.name = 'image'
     image = ebnt.meta_repo.create_image(image)
     yield image
