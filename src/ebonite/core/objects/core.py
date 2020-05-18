@@ -15,6 +15,7 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
+from ebonite.core.analyzer.requirement import RequirementAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
@@ -33,6 +34,7 @@ class WithMetadataRepository:
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         self._meta = repo
+        return self
 
     def unbind_meta_repo(self):
         del self._meta
@@ -48,6 +50,7 @@ class WithArtifactRepository:
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         self._art = repo
+        return self
 
     def unbind_artifact_repo(self):
         del self._art
@@ -142,6 +145,7 @@ class Project(EboniteObject):
         task.project_id = self.id
         self._meta.save_task(task)
         self._tasks.add(task)
+        return task.bind_artifact_repo(self._art)
 
     @_with_meta
     def add_tasks(self, tasks: List['Task']):
@@ -173,11 +177,13 @@ class Project(EboniteObject):
         super(Project, self).bind_meta_repo(repo)
         for task in self._tasks.values():
             task.bind_meta_repo(repo)
+        return self
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         super(Project, self).bind_artifact_repo(repo)
         for task in self._tasks.values():
             task.bind_artifact_repo(repo)
+        return self
 
 
 @make_string('id', 'name')
@@ -214,7 +220,7 @@ class Task(EboniteObject):
         p = self._meta.get_project_by_id(self.project_id)
         if p is None:
             raise errors.NonExistingProjectError(self.project_id)
-        return p
+        return p.bind_artifact_repo(self._art)
 
     @project.setter
     def project(self, project: Project):
@@ -235,6 +241,7 @@ class Task(EboniteObject):
         model.task_id = self.id
         self._meta.save_model(model)
         self._models.add(model)
+        return model.bind_artifact_repo(self._art)
 
     @_with_meta
     def add_models(self, models: List['Model']):
@@ -372,6 +379,7 @@ class Task(EboniteObject):
         super(Task, self).bind_meta_repo(repo)
         for model in self._models.values():
             model.bind_meta_repo(repo)
+        return self
 
         for pipeline in self._pipelines.values():
             pipeline.bind_meta_repo(repo)
@@ -383,6 +391,7 @@ class Task(EboniteObject):
         super(Task, self).bind_artifact_repo(repo)
         for model in self._models.values():
             model.bind_artifact_repo(repo)
+        return self
 
         for pipeline in self._pipelines.values():
             pipeline.bind_artifact_repo(repo)
@@ -438,7 +447,7 @@ class Model(EboniteObject):
         try:
             json.dumps(self.params)
         except TypeError:
-            raise ValueError(f'"params" argument must be json-serializable')
+            raise ValueError('"params" argument must be json-serializable')
         self._wrapper = None
         self._wrapper_meta = None
         if isinstance(wrapper_meta, ModelWrapper):
@@ -622,6 +631,7 @@ class Model(EboniteObject):
         if additional_requirements is not None:
             requirements += additional_requirements
 
+        requirements = RequirementAnalyzer.analyze(requirements)
         params = params or {}
         params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
         model = Model(name, wrapper, None, requirements, params, description)
@@ -634,7 +644,7 @@ class Model(EboniteObject):
         t = self._meta.get_task_by_id(self.task_id)
         if t is None:
             raise errors.NonExistingTaskError(self.task_id)
-        return t
+        return t.bind_artifact_repo(self._art)
 
     @task.setter
     def task(self, task: Task):
@@ -764,7 +774,7 @@ class Image(EboniteObject):
         t = self._meta.get_task_by_id(self.task_id)
         if t is None:
             raise errors.NonExistingTaskError(self.task_id)
-        return t
+        return t.bind_artifact_repo(self._art)
 
     @task.setter
     def task(self, task: Task):
@@ -793,7 +803,12 @@ class RuntimeEnvironment(EboniteObject):
             """
             :return: builder for this environment
             """
-            pass  # pragma: no cover
+
+        @abstractmethod
+        def remove_image(self, image: Image):
+            """
+            Removes existing image
+            """
 
     def __init__(self, name: str, id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
@@ -801,7 +816,7 @@ class RuntimeEnvironment(EboniteObject):
         self.params = params
 
 
-def _with_runner(method):
+def _with_auto_runner(method):
     """
        Decorator for methods to check that object is binded to runner
 
@@ -810,9 +825,11 @@ def _with_runner(method):
        """
 
     @wraps(method)
-    def inner(self, *args, **kwargs):
+    def inner(self: 'RuntimeInstance', *args, **kwargs):
         if not self.has_runner:
-            raise ValueError(f'{self} has no binded runner')
+            if not self.has_meta_repo:
+                raise ValueError(f'{self} has no binded runner')
+            self.bind_runner(self.environment.params.get_runner())
         return method(self, *args, **kwargs)
 
     return inner
@@ -839,7 +856,7 @@ class RuntimeInstance(EboniteObject):
         i = self._meta.get_image_by_id(self.image_id)
         if i is None:
             raise errors.NonExistingImageError(self.image_id)
-        return i
+        return i.bind_artifact_repo(self._art)
 
     @image.setter
     def image(self, image: Image):
@@ -853,7 +870,7 @@ class RuntimeInstance(EboniteObject):
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
-        return e
+        return e.bind_artifact_repo(self._art)
 
     @environment.setter
     def environment(self, environment: RuntimeEnvironment):
@@ -872,7 +889,12 @@ class RuntimeInstance(EboniteObject):
     def has_runner(self):
         return self.runner is not None
 
-    @_with_runner
+    @_with_auto_runner
+    def run(self, **runner_kwargs) -> 'RuntimeInstance':
+        self.runner.run(self.params, self.image.params, self.environment.params, **runner_kwargs)
+        return self
+
+    @_with_auto_runner
     def logs(self, **kwargs):
         """
 
@@ -881,7 +903,7 @@ class RuntimeInstance(EboniteObject):
         """
         yield from self.runner.logs(self.params, self.environment.params, **kwargs)
 
-    @_with_runner
+    @_with_auto_runner
     def is_running(self, **kwargs) -> bool:
         """
         Checks whether instance is running

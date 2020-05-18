@@ -11,7 +11,9 @@ def main():
     model = task.models('mymodel')
 
     #  build docker image from model and run it
-    ebnt.build_and_run_instance("sklearn_model_service", model, detach=False, force_overwrite=True)
+    ebnt.build_and_run_instance("sklearn_model_service", model,
+                                runner_kwargs={'detach': False},
+                                builder_kwargs={'force_overwrite': True})
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 
 

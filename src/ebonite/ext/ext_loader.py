@@ -98,10 +98,15 @@ class ExtensionLoader:
         if len(extensions) == 0:
             return
 
-        hook = _ImportLoadExtInterceptor(
-            module_to_extension={req: e for e in extensions for req in e.reqs}
-        )
-        sys.meta_path.insert(0, hook)
+        existing = [h for h in sys.meta_path if isinstance(h, _ImportLoadExtInterceptor)]
+        if len(existing) > 0:
+            hook = existing[0]
+            hook.module_to_extension.update({req: e for e in extensions for req in e.reqs})
+        else:
+            hook = _ImportLoadExtInterceptor(
+                module_to_extension={req: e for e in extensions for req in e.reqs}
+            )
+            sys.meta_path.insert(0, hook)
 
     @classmethod
     def load_all(cls, try_lazy=True):
@@ -141,7 +146,18 @@ class ExtensionLoader:
             cls._loaded_extensions[extension] = import_module(extension.module)
 
 
-class _ImportLoadExtInterceptor(importlib.abc.Loader):
+class _ImportLoadExtRegisterer(importlib.abc.PathEntryFinder):
+    """A hook that registers all modules that are being imported"""
+
+    def __init__(self):
+        self.imported = []
+
+    def find_module(self, fullname, path=None):
+        self.imported.append(fullname)
+        return None
+
+
+class _ImportLoadExtInterceptor(importlib.abc.Loader, importlib.abc.PathEntryFinder):
     """
     Import hook implementation to load extensions on dependency import
 
@@ -152,20 +168,30 @@ class _ImportLoadExtInterceptor(importlib.abc.Loader):
         self.module_to_extension = module_to_extension
 
     def find_module(self, fullname, path=None):
+        # hijack importing machinery
         return self
 
     def load_module(self, fullname):
-        sys.meta_path = [x for x in sys.meta_path if x is not self]
+        # change this hook to registering hook
+        reg = _ImportLoadExtRegisterer()
+        sys.meta_path = [reg] + [x for x in sys.meta_path if x is not self]
         try:
+            # fallback to ordinary importing
             module = importlib.import_module(fullname)
         finally:
-            sys.meta_path = [self] + sys.meta_path
-        extension = self.module_to_extension.get(fullname)
-        if extension is None:
-            return module
+            # put this hook back
+            sys.meta_path = [self] + [x for x in sys.meta_path if x is not reg]
 
-        if all(module_imported(m) for m in extension.reqs):
-            ExtensionLoader.load(extension)
+        # check all that was imported and import all extensions that are ready
+        for imported in reg.imported:
+            if not module_imported(imported):
+                continue
+            extension = self.module_to_extension.get(imported)
+            if extension is None:
+                continue
+
+            if all(module_imported(m) for m in extension.reqs):
+                ExtensionLoader.load(extension)
 
         return module
 

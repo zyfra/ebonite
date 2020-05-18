@@ -7,7 +7,8 @@ from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingModelErr
                                  ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import Image, Model, Pipeline, Task
 from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import check_ebonite_port_free, train_model
+from tests.build.conftest import check_ebonite_port_free
+from tests.client.conftest import MockEnvironmentParams
 from tests.core.objects.conftest import BuildableMock
 
 
@@ -101,9 +102,17 @@ def test_delete_task_with_models(ebnt: Ebonite, model: Model):
         ebnt.delete_task(task)
 
 
-def test_get_model(ebnt: Ebonite):
+def test_create_model(ebnt: Ebonite, regression_and_data):
+    reg, data = regression_and_data
+
+    model = ebnt.create_model('test model', reg, data)
+    assert isinstance(model, Model)
+    assert ebnt.get_model(model.name, model.task) == model
+
+
+def test_get_model(ebnt: Ebonite, regression_and_data):
     task = ebnt.get_or_create_task("Project", "Task")
-    reg, data = train_model()
+    reg, data = regression_and_data
     model = task.create_and_push_model(reg, data, 'mymodel')
 
     assert ebnt.get_model(project='Project', task='Task', model_name='mymodel') == model
@@ -234,15 +243,31 @@ def delete_image_ok(ebnt: Ebonite, model: Model):
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
+def test_delete_image__no_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    env = ebnt.get_default_environment()
+    env.params = MockEnvironmentParams()
+    assert ebnt.delete_image(image_to_delete, env, True)
+
+
+def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    env = ebnt.get_default_environment()
+    env.params = MockEnvironmentParams()
+    ebnt.delete_image(image_to_delete, env, False)
+    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
+
+
 @pytest.mark.docker
 @pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_build_and_run_instance(ebnt, container_name):
-    reg, data = train_model()
+def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_name):
+    reg, data = regression_and_data
 
     check_ebonite_port_free()
 
-    instance = ebnt.create_instance_from_model("Test Model", reg, data, project_name="Test Project",
-                                               task_name="Test Task", instance_name=container_name, run_instance=True)
+    model = ebnt.create_model('test model', reg, data)
+
+    instance = ebnt.build_and_run_instance(container_name, model)
     time.sleep(.1)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment

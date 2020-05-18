@@ -10,8 +10,8 @@ def fix_warnings():  # noqa
 fix_warnings()  # noqa
 
 
-import pytest
-import tensorflow as tf
+import pytest  # noqa
+import tensorflow as tf  # noqa
 
 
 @pytest.fixture

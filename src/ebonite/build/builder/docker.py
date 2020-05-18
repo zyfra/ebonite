@@ -1,7 +1,7 @@
 import logging
 import os
 import tempfile
-from typing import Dict
+from typing import Dict, List
 
 from docker import errors
 from jinja2 import Environment, FileSystemLoader
@@ -10,6 +10,7 @@ from ebonite.build.builder.base import PythonBuilder, ebonite_from_pip
 from ebonite.build.docker import DockerImage, RemoteDockerRegistry, create_docker_client, login_to_registry
 from ebonite.core.objects import Image
 from ebonite.core.objects.core import Buildable
+from ebonite.core.objects.requirements import UnixPackageRequirement
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
@@ -19,11 +20,11 @@ EBONITE_INSTALL_COMMAND = 'pip install ebonite=={version}'
 
 
 def _print_docker_logs(logs, level=logging.DEBUG):
-    for l in logs:
-        if 'stream' in l:
-            logger.log(level, str(l['stream']).strip())
+    for log in logs:
+        if 'stream' in log:
+            logger.log(level, str(log['stream']).strip())
         else:
-            logger.log(level, str(l).strip())
+            logger.log(level, str(log).strip())
 
 
 class DockerBuilder(PythonBuilder):
@@ -49,15 +50,14 @@ class DockerBuilder(PythonBuilder):
         super().__init__(buildable)
         self.params = params
         self.force_overwrite = force_overwrite
-
-        kwargs.update(self.provider.get_options())
-
         self.prebuild_hook = kwargs.get('prebuild_hook', None)
 
-        kwargs = {k: v for k, v in kwargs.items() if k in
-                  {'base_image', 'python_version', 'templates_dir', 'run_cmd'}}
-        kwargs['python_version'] = kwargs.get('python_version', self.provider.get_python_version())
-        self.dockerfile_gen = _DockerfileGenerator(**kwargs)
+        options = {'python_version': buildable.provider.get_python_version()}
+        options.update(buildable.provider.get_options())
+        options.update(kwargs)
+        options = {k: v for k, v in options.items() if k in
+                   {'base_image', 'python_version', 'templates_dir', 'run_cmd', 'package_install_cmd'}}
+        self.dockerfile_gen = _DockerfileGenerator(**options)
 
     def build(self) -> Image:
         with tempfile.TemporaryDirectory(prefix='ebonite_build_') as tempdir:
@@ -73,7 +73,8 @@ class DockerBuilder(PythonBuilder):
         env = self.provider.get_env()
         logger.debug('Determined environment for running model: %s.', env)
         with open(os.path.join(target_dir, 'Dockerfile'), 'w') as df:
-            dockerfile = self.dockerfile_gen.generate(env)
+            unix_packages = self.provider.get_requirements().of_type(UnixPackageRequirement)
+            dockerfile = self.dockerfile_gen.generate(env, unix_packages)
             df.write(dockerfile)
 
     def _build_image(self, context_dir):
@@ -122,16 +123,22 @@ class _DockerfileGenerator:
     :param run_cmd: command to run in container, default: sh run.sh
     """
 
-    def __init__(self, base_image=None, python_version=None, templates_dir=None, run_cmd='sh run.sh'):
+    def __init__(self, base_image=None, python_version=None, templates_dir=None,
+                 package_install_cmd='apt-get install -y', run_cmd='sh run.sh'):
         self.python_version = python_version or get_python_version()
         if callable(base_image):
             base_image = base_image(self.python_version)
         self.base_image = base_image or f'python:{self.python_version}-slim'
         self.templates_dir = templates_dir or os.path.join(os.getcwd(), 'docker_templates')
         self.run_cmd = run_cmd
+        self.package_install_cmd = package_install_cmd
 
-    def generate(self, env: Dict[str, str]):
-        """Generate Dockerfile using provided base image, python version and run_cmd"""
+    def generate(self, env: Dict[str, str], packages: List[UnixPackageRequirement] = None):
+        """Generate Dockerfile using provided base image, python version and run_cmd
+
+        :param env: dict with environmental variables
+        :param packages: list of unix packages to install
+        """
         logger.debug('Generating Dockerfile via templates from "%s"...', self.templates_dir)
         j2 = Environment(loader=FileSystemLoader([
             os.path.dirname(__file__),
@@ -147,7 +154,9 @@ class _DockerfileGenerator:
             'base_image': self.base_image,
             'run_cmd': self.run_cmd,
             'ebonite_install': '',
-            'env': env
+            'env': env,
+            'package_install_cmd': self.package_install_cmd,
+            'packages': [p.package_name for p in packages or []]
         }
         if ebonite_from_pip():
             import ebonite

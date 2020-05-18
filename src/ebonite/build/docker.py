@@ -65,9 +65,10 @@ class DockerImage(Image.Params):
 
 
 class DockerContainer(RuntimeInstance.Params):
-    def __init__(self, name: str, ports_mapping: Dict[int, int] = None):
+    def __init__(self, name: str, ports_mapping: Dict[int, int] = None, params: Dict[str, object] = None):
         self.name = name
-        self.ports_mapping = ports_mapping or {9000: 9000}
+        self.ports_mapping = ports_mapping or {}
+        self.params = params or {}
 
 
 class DockerHost(RuntimeEnvironment.Params):
@@ -98,6 +99,14 @@ class DockerHost(RuntimeEnvironment.Params):
         kwargs = {k: v for k, v in kwargs.items() if k not in image_arg_names}
         return DockerBuilder(buildable, params, **kwargs)
 
+    def remove_image(self, image: Image):
+        """
+        :param image:  image to delete
+        """
+        # TODO: MOVE TO BUILDER
+        with create_docker_client() as client:
+            client.images.remove(image.params.name)
+
 
 def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
     """
@@ -127,7 +136,7 @@ def login_to_registry(client: docker.DockerClient, registry: DockerRegistry):
                            registry.host, username_var, password_var)
 
 
-def _is_docker_running(client) -> bool:
+def _is_docker_running(client: docker.DockerClient) -> bool:
     """
     Check if docker binary and docker daemon are available
 
@@ -135,7 +144,7 @@ def _is_docker_running(client) -> bool:
     :return: true or false
     """
     try:
-        client.images.list()
+        client.info()
         return True
     except (ImportError, IOError, DockerException):
         return False

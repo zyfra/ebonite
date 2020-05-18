@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Dict, Generator, Type
+from typing import Generator, Type
 
 from ebonite.build.docker import DockerContainer, DockerHost, DockerImage, create_docker_client, login_to_registry
 from ebonite.build.runner.base import RunnerBase
@@ -15,8 +15,10 @@ class DockerRunner(RunnerBase):
     def instance_type(self) -> Type[DockerContainer]:
         return DockerContainer
 
-    def create_instance(self, name: str, ports_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
-        return DockerContainer(name, ports_mapping)
+    def create_instance(self, name: str, **kwargs) -> DockerContainer:
+        ports_mapping = None
+        ports_mapping = kwargs.pop('ports_mapping', ports_mapping)
+        return DockerContainer(name, ports_mapping, kwargs)
 
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerHost, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
@@ -33,7 +35,9 @@ class DockerRunner(RunnerBase):
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
-                                                  detach=True)
+                                                  detach=True,
+                                                  **instance.params,
+                                                  **kwargs)
                 if not detach:
                     try:
                         # infinite loop of logs while container running or if everything ok
@@ -76,8 +80,8 @@ class DockerRunner(RunnerBase):
         log = container.logs(stdout=stdout, stderr=stderr, stream=stream,
                              tail=tail, since=since, follow=follow, until=until)
         if stream:
-            for l in log:
-                yield l.decode("utf-8")
+            for line in log:
+                yield line.decode("utf-8")
         else:
             yield log.decode("utf-8")
 
