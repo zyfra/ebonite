@@ -131,6 +131,8 @@ Response
       }
     }
 
+* `404`: if given pipeline doesn't exist
+
 Update pipeline
 ---------------
 

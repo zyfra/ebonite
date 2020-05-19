@@ -11,7 +11,7 @@ Request
 
   GET /images?task_id=1
 
-* `task_id`: id of model to get images for
+* `task_id`: id of task to get images for
 
 Response
 ^^^^^^^^
