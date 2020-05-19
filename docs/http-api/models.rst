@@ -74,7 +74,7 @@ Response
     "artifacts": ["model.pkl", "methods.json"]
   }
 
-* `404`: if given task doesn't exist
+* `404`: if given model doesn't exist
 
 
 Get model artifact
@@ -138,11 +138,9 @@ Request
   DELETE /models/<:id>?cascade=1
 
 * `id`: id of model to delete
-* `cascade`: (optional, default - `0`) delete cascadely (with referenced images, etc)
 
 Response
 ^^^^^^^^^^^^^^
 
 * `204`: OK
-* `400`: if `cascade` is not `1` and given model has images in it
 * `404`: if given model doesn't exist
