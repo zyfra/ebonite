@@ -2,11 +2,12 @@ import sys
 import time
 from typing import Generator, Type
 
+import docker.errors
+
 from ebonite.build.runner.base import RunnerBase
 from ebonite.utils.log import logger
 
 from .base import DockerContainer, DockerEnv, DockerImage
-from .helpers import create_docker_client, login_to_registry
 
 
 class DockerRunnerException(Exception):
@@ -14,6 +15,22 @@ class DockerRunnerException(Exception):
 
 
 class DockerRunner(RunnerBase):
+    def instance_exists(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> bool:
+        with env.daemon.client() as client:
+            try:
+                client.containers.get(instance.name)
+                return True
+            except docker.errors.NotFound:
+                return False
+
+    def remove_instance(self, instance: DockerContainer, env: DockerEnv, **kwargs):
+        with env.daemon.client() as client:
+            try:
+                c = client.containers.get(instance.name)
+                c.remove(**kwargs)
+            except docker.errors.NotFound:
+                pass
+
     def instance_type(self) -> Type[DockerContainer]:
         return DockerContainer
 
@@ -27,13 +44,13 @@ class DockerRunner(RunnerBase):
                 isinstance(env, DockerEnv)):
             raise TypeError('DockerRunner works with DockerContainer, DockerImage and DockerHost only')
 
-        with create_docker_client(env.daemon.host) as client:
-            login_to_registry(client, env.registry)
+        with env.daemon.client() as client:
+            image.registry.login(client)
 
             from docker.errors import ContainerError  # FIXME
             try:
                 # always detach from container and just stream logs if detach=False
-                container = client.containers.run(image.get_uri(env.registry),
+                container = client.containers.run(image.uri,
                                                   name=instance.name,
                                                   auto_remove=rm,
                                                   ports=instance.ports_mapping,
@@ -56,7 +73,7 @@ class DockerRunner(RunnerBase):
                         container.stop()
 
                 else:
-                    self._sleep()
+                    self._sleep(.5)
                     if not self._is_service_running(client, instance.name):
                         if not rm:
                             for log in self._logs(container, stdout=False, stderr=True):
@@ -73,7 +90,7 @@ class DockerRunner(RunnerBase):
     def logs(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> Generator[str, None, None]:
         self._validate(instance, env)
 
-        with create_docker_client(env.host) as client:
+        with env.daemon.client() as client:
             container = client.containers.get(instance.name)
             yield from self._logs(container, **kwargs)
 
@@ -102,13 +119,13 @@ class DockerRunner(RunnerBase):
     def is_running(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> bool:
         self._validate(instance, env)
 
-        with create_docker_client(env.daemon.host) as client:
+        with env.daemon.client() as client:
             return self._is_service_running(client, instance.name)
 
     def stop(self, instance: DockerContainer, env: DockerEnv, **kwargs):
         self._validate(instance, env)
 
-        with create_docker_client(env.daemon.host) as client:
+        with env.daemon.client() as client:
             container = client.containers.get(instance.name)
             container.stop()
 

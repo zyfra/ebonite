@@ -5,7 +5,7 @@ from everett.manager import config_override
 from testcontainers.core.container import DockerContainer
 
 from ebonite.ext.s3.artifact import S3ArtifactRepository
-from tests.build.builder.test_docker import has_docker
+from tests.conftest import has_docker
 from tests.repository.artifact.conftest import create_artifact_hooks
 
 ACCESS_KEY = 'eboniteAccessKey'

@@ -6,7 +6,7 @@ import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
-from ebonite.ext.docker import RemoteDockerRegistry
+from ebonite.ext.docker import RemoteRegistry
 from ebonite.ext.docker.helpers import (create_docker_client, image_exists_at_dockerhub, login_to_registry,
                                         repository_tags_at_dockerhub)
 from ebonite.utils.log import logger
@@ -36,7 +36,7 @@ def prebuild_image(prebuild_path, name_template, python_version, *, push=False):
 
     if push:
         with create_docker_client() as client:
-            login_to_registry(client, RemoteDockerRegistry())
+            login_to_registry(client, RemoteRegistry())
             client.images.push(tag)
 
 

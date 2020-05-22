@@ -458,7 +458,6 @@ class Model(EboniteObject):
             self._wrapper_meta = wrapper_meta
 
         self.requirements = requirements
-        self.transformer = None
         self.task_id = task_id
         self._persisted_artifacts = artifact
         self._unpersisted_artifacts: Optional[ArtifactCollection] = None
@@ -972,3 +971,11 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
     def stop(self, **kwargs):
         # TODO docs
         self.runner.stop(self.params, self.environment.params, **kwargs)
+
+    @_with_auto_runner
+    def exists(self, **kwargs) -> bool:
+        return self.runner.instance_exists(self.params, self.environment.params, **kwargs)
+
+    @_with_auto_runner
+    def remove(self, **kwargs):
+        self.runner.remove_instance(self.params, self.environment.params, **kwargs)

@@ -1,9 +1,7 @@
-from .base import DefaultDockerRegistry, DockerContainer, DockerEnv, DockerImage, RemoteDockerRegistry
+from .base import DockerContainer, DockerEnv, DockerImage, DockerRegistry, RemoteRegistry
 from .builder import DockerBuilder
-from .helpers import is_docker_container_running, run_docker_img, stop_docker_container
 from .runner import DockerRunner, RunnerBase
 
-__all__ = ['is_docker_container_running', 'run_docker_img', 'stop_docker_container',
-           'DefaultDockerRegistry', 'DockerContainer', 'DockerEnv', 'DockerImage', 'RemoteDockerRegistry',
+__all__ = ['DockerRegistry', 'DockerContainer', 'DockerEnv', 'DockerImage', 'RemoteRegistry',
            'DockerRunner', 'RunnerBase', 'DockerBuilder',
            'DockerRunner']

@@ -6,9 +6,8 @@ from ebonite.client import Ebonite
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingModelError, ImageWithInstancesError,
                                  ProjectWithTasksError, TaskWithFKError)
 from ebonite.core.objects.core import Image, Model, Pipeline, Task
-from tests.build.builder.test_docker import has_docker
 from tests.build.conftest import check_ebonite_port_free
-from tests.client.conftest import MockEnvironmentParams
+from tests.conftest import docker_test
 from tests.core.objects.conftest import BuildableMock
 
 
@@ -68,23 +67,23 @@ def test_delete_task_ok(ebnt: Ebonite):
     assert ebnt.meta_repo.get_task_by_id(task.id) is None
 
 
-def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, image: Image, pipeline: Pipeline):
-    task = ebnt.get_or_create_task('Project', 'Task')
-    model = ebnt.push_model(model, task)
-    task.add_pipeline(pipeline)
-    task.add_image(image)
-    task = ebnt.meta_repo.get_task_by_id(task.id)
-
-    assert ebnt.meta_repo.get_task_by_id(task.id) is not None
-    assert ebnt.meta_repo.get_model_by_id(model.id) is not None
-    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is not None
-    assert ebnt.meta_repo.get_image_by_id(image.id) is not None
-    ebnt.delete_task(task, cascade=True)
-
-    assert ebnt.meta_repo.get_task_by_id(task.id) is None
-    assert ebnt.meta_repo.get_model_by_id(model.id) is None
-    assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is None
-    assert ebnt.meta_repo.get_image_by_id(image.id) is None
+# def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, image: Image, pipeline: Pipeline):
+#     task = ebnt.get_or_create_task('Project', 'Task')
+#     model = ebnt.push_model(model, task)
+#     task.add_pipeline(pipeline)
+#     task.add_image(image)
+#     task = ebnt.meta_repo.get_task_by_id(task.id)
+#
+#     assert ebnt.meta_repo.get_task_by_id(task.id) is not None
+#     assert ebnt.meta_repo.get_model_by_id(model.id) is not None
+#     assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is not None
+#     assert ebnt.meta_repo.get_image_by_id(image.id) is not None
+#     ebnt.delete_task(task, cascade=True)
+#
+#     assert ebnt.meta_repo.get_task_by_id(task.id) is None
+#     assert ebnt.meta_repo.get_model_by_id(model.id) is None
+#     assert ebnt.meta_repo.get_pipeline_by_id(pipeline.id) is None
+#     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
 def test_delete_task_with_models(ebnt: Ebonite, model: Model):
@@ -239,23 +238,22 @@ def delete_image_ok(ebnt: Ebonite, model: Model):
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
-def test_delete_image__no_repo_ok(ebnt: Ebonite, image_to_delete: Image):
-    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
-    env = ebnt.get_default_environment()
-    env.params = MockEnvironmentParams()
-    assert ebnt.delete_image(image_to_delete, env, True)
+# def test_delete_image__no_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+#     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+#     env = ebnt.get_default_environment()
+#     env.params = MockEnvironmentParams()
+#     assert ebnt.delete_image(image_to_delete, True)
+#
+#
+# def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):
+#     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+#     env = ebnt.get_default_environment()
+#     env.params = MockEnvironmentParams()
+#     ebnt.delete_image(image_to_delete, False)
+#     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
 
 
-def test_delete_image__with_repo_ok(ebnt: Ebonite, image_to_delete: Image):
-    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
-    env = ebnt.get_default_environment()
-    env.params = MockEnvironmentParams()
-    ebnt.delete_image(image_to_delete, env, False)
-    assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
-
-
-@pytest.mark.docker
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
+@docker_test
 def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_name):
     reg, data = regression_and_data
 

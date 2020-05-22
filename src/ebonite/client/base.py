@@ -176,7 +176,7 @@ class Ebonite:
         self.meta_repo.delete_pipeline(pipeline)
 
     def create_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
-                     debug=False, skip_build=True, builder_args: Dict[str, object] = None, **kwargs) -> Image:
+                     debug=False, skip_build=False, builder_args: Dict[str, object] = None, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 

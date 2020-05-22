@@ -3,7 +3,6 @@ import re
 import subprocess
 import sys
 
-import dill
 import numpy as np
 import psutil
 import pytest
@@ -14,12 +13,11 @@ from ebonite.build.provider.ml_model import ModelBuildable
 from ebonite.build.provider.ml_model_multi import MultiModelBuildable
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Buildable
-from ebonite.core.objects.requirements import InstallableRequirement, Requirements
+from ebonite.core.objects.requirements import Requirements
 from ebonite.ext.aiohttp import AIOHTTPServer
 from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
-from ebonite.utils.module import get_module_version
 from tests.build.conftest import check_ebonite_port_free
 
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
@@ -46,7 +44,7 @@ class ProviderMock(PythonProvider):
         }
 
     def get_requirements(self):
-        return Requirements([InstallableRequirement.from_str(f'dill=={get_module_version(dill)}')])  # for example
+        return Requirements([])
 
     def get_sources(self):
         return {
@@ -66,47 +64,48 @@ class BuildableMock(Buildable):
 
 
 @pytest.fixture
-def python_builder_mock() -> PythonBuildContext:
-    return PythonBuildContext(BuildableMock())
+def python_build_context_mock() -> PythonBuildContext:
+    return PythonBuildContext(ProviderMock())
 
 
 @pytest.fixture
-def python_builder_sync(created_model) -> PythonBuildContext:
+def python_build_context_sync(created_model) -> PythonBuildContext:
     buildable = ModelBuildable.from_model(created_model, server_type=FlaskServer.type)
-    return PythonBuildContext(buildable)
+    return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
-def python_builder_async(created_model) -> PythonBuildContext:
+def python_build_context_async(created_model) -> PythonBuildContext:
     buildable = ModelBuildable.from_model(created_model, server_type=AIOHTTPServer.type)
-    return PythonBuildContext(buildable)
+    return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
-def python_multi_builder(created_model) -> PythonBuildContext:
+def python_multi_build_context(created_model) -> PythonBuildContext:
     buildable = MultiModelBuildable.from_models([created_model], server_type=FlaskServer.type)
-    return PythonBuildContext(buildable)
+    return PythonBuildContext(buildable.get_provider())
 
 
-def test_python_builder__distr_contents(tmpdir, python_builder_mock: PythonBuildContext):
-    python_builder_mock._write_distribution(tmpdir)
+def test_python_build_context__distr_contents(tmpdir, python_build_context_mock):
+    python_build_context_mock._write_distribution(tmpdir)
 
     _check_basic_distr_contents(tmpdir)
-    _check_requirements(tmpdir, set(_get_builder_requirements(python_builder_mock)))
+    _check_requirements(tmpdir, set(_get_builder_requirements(python_build_context_mock)))
 
 
-def test_python_builder__distr_contents_local(tmpdir, python_builder_mock: PythonBuildContext):
+def test_python_build_context__distr_contents_local(tmpdir, python_build_context_mock):
     with use_local_installation():
-        python_builder_mock._write_distribution(tmpdir)
+        python_build_context_mock._write_distribution(tmpdir)
 
     _check_basic_distr_contents(tmpdir)
     assert os.path.isdir(os.path.join(tmpdir, 'ebonite'))
     from setup import setup_args
-    _check_requirements(tmpdir, {*setup_args['install_requires'], *_get_builder_requirements(python_builder_mock)})
+    _check_requirements(tmpdir,
+                        {*setup_args['install_requires'], *_get_builder_requirements(python_build_context_mock)})
 
 
-def _get_builder_requirements(python_builder: PythonBuildContext):
-    return python_builder.provider.get_requirements().to_pip()
+def _get_builder_requirements(python_build_context: PythonBuildContext):
+    return python_build_context.provider.get_requirements().to_pip()
 
 
 def _check_basic_distr_contents(base_dir):
@@ -140,13 +139,13 @@ def _check_contents(base_dir, name, contents):
             assert file_contents == contents
 
 
-@pytest.mark.parametrize("python_builder", ["python_builder_sync", "python_builder_async"])
-def test_python_builder__distr_loadable(tmpdir, python_builder, created_model, pandas_data, request):
-    python_builder: PythonBuildContext = request.getfixturevalue(python_builder)
+@pytest.mark.parametrize("python_build_context", ["python_build_context_sync", "python_build_context_async"])
+def test_python_build_context__distr_loadable(tmpdir, python_build_context, created_model, pandas_data, request):
+    python_build_context: PythonBuildContext = request.getfixturevalue(python_build_context)
     prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
-        python_builder._write_distribution(tmpdir)
+        python_build_context._write_distribution(tmpdir)
 
     iface = _load(ModelLoader(), tmpdir)
     prediction2 = iface.execute('predict', {'vector': pandas_data})
@@ -154,11 +153,11 @@ def test_python_builder__distr_loadable(tmpdir, python_builder, created_model, p
     np.testing.assert_almost_equal(prediction, prediction2)
 
 
-def test_python_multi_builder__distr_loadable(tmpdir, python_multi_builder: PythonBuildContext, created_model, pandas_data):
+def test_python_multi_builder__distr_loadable(tmpdir, python_multi_build_context, created_model, pandas_data):
     prediction = created_model.wrapper.call_method('predict', pandas_data)
 
     with use_local_installation():
-        python_multi_builder._write_distribution(tmpdir)
+        python_multi_build_context._write_distribution(tmpdir)
 
     iface = _load(MultiModelLoader(), tmpdir)
     prediction2 = iface.execute(f'{created_model.name}-predict', {'vector': pandas_data})
@@ -174,19 +173,19 @@ def _load(loader, tmpdir):
     return iface
 
 
-def test_python_builder__distr_runnable(tmpdir, python_builder_mock: PythonBuildContext):
-    args, env = _prepare_distribution(tmpdir, python_builder_mock)
+def test_python_build_context__distr_runnable(tmpdir, python_build_context_mock):
+    args, env = _prepare_distribution(tmpdir, python_build_context_mock)
     server_output = subprocess.run(args, env=env, check=True, stdout=subprocess.PIPE).stdout
     assert server_output.decode('utf8').strip() == SECRET
 
 
-@pytest.mark.parametrize(("python_builder", "server_reqs"), [
-    ("python_builder_sync", {}),
-    ("python_builder_async", {'aiohttp_swagger'})
+@pytest.mark.parametrize(("python_build_context", "server_reqs"), [
+    ("python_build_context_sync", {}),
+    ("python_build_context_async", {'aiohttp_swagger'})
 ])
-def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data, server_reqs, request):
-    python_builder: PythonBuildContext = request.getfixturevalue(python_builder)
-    args, env = _prepare_distribution(tmpdir, python_builder)
+def test_python_build_context_flask_distr_runnable(tmpdir, python_build_context, pandas_data, server_reqs, request):
+    python_build_context: PythonBuildContext = request.getfixturevalue(python_build_context)
+    args, env = _prepare_distribution(tmpdir, python_build_context)
 
     from setup import setup_args
     _check_requirements(tmpdir, {*setup_args['install_requires'], *server_reqs,
@@ -216,9 +215,9 @@ def test_python_builder_flask_distr_runnable(tmpdir, python_builder, pandas_data
         parent.kill()
 
 
-def _prepare_distribution(target_dir, python_builder):
+def _prepare_distribution(target_dir, python_build_context):
     with use_local_installation():
-        python_builder._write_distribution(target_dir)
+        python_build_context._write_distribution(target_dir)
 
     # prevent escaping from interpreter installation used for running tests
     run_sh = os.path.join(target_dir, 'run.sh')
@@ -235,6 +234,6 @@ def _prepare_distribution(target_dir, python_builder):
     # prevent leak of PYTHONPATH used for running tests
     env = os.environ.copy()
     env['PYTHONPATH'] = str(target_dir)
-    env.update(python_builder.provider.get_env())
+    env.update(python_build_context.provider.get_env())
 
     return args, env

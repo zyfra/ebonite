@@ -6,10 +6,8 @@ from pyjackson.core import Comparable
 from sklearn.linear_model import LinearRegression
 
 from ebonite.core.objects.core import Image, Model
-from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import rm_container, rm_image
 from tests.client.test_func import func
-from tests.conftest import interface_hook_creator
+from tests.conftest import has_docker, interface_hook_creator
 from tests.core.objects.conftest import BuildableMock
 
 CONTAINER_NAME = "ebonite-test-service"
@@ -44,8 +42,9 @@ def container_name():
     if not CLEAR:
         return
 
-    rm_container(name)
-    rm_image(name + ":latest")  # FIXME later
+    from ebonite.ext.docker import DockerRunner, DockerBuilder, DockerContainer, DockerImage, DockerEnv
+    DockerRunner().remove_instance(DockerContainer(name), DockerEnv(), Dockforce=True)
+    DockerBuilder().delete_image(DockerImage(name))
 
 
 @pytest.fixture  # FIXME did not find the way to import fixture from build module

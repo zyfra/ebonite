@@ -13,6 +13,7 @@ from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
+from ebonite.ext.docker.helpers import is_docker_running
 from ebonite.repository.artifact.local import LocalArtifactRepository
 
 
@@ -113,3 +114,15 @@ def interface_hook_creator(package_path, common_filename, fixture_name):
         return pytest_runtest_protocol, pytest_collect_file
 
     return create_interface_hooks
+
+
+def has_docker():
+    if os.environ.get('SKIP_DOCKER_TESTS', None) == 'true':
+        return False
+    return is_docker_running()
+
+
+def docker_test(f):
+    mark = pytest.mark.docker
+    skip = pytest.mark.skipif(not has_docker(), reason='docker is unavailable or skipped')
+    return mark(skip(f))
