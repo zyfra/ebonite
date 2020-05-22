@@ -43,8 +43,8 @@ def container_name():
         return
 
     from ebonite.ext.docker import DockerRunner, DockerBuilder, DockerContainer, DockerImage, DockerEnv
-    DockerRunner().remove_instance(DockerContainer(name), DockerEnv(), Dockforce=True)
-    DockerBuilder().delete_image(DockerImage(name))
+    DockerRunner().remove_instance(DockerContainer(name), DockerEnv(), force=True)
+    DockerBuilder().delete_image(DockerImage(name), DockerEnv())
 
 
 @pytest.fixture  # FIXME did not find the way to import fixture from build module
