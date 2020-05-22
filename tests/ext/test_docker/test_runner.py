@@ -6,8 +6,7 @@ from requests.exceptions import HTTPError
 
 from ebonite.ext.docker import DockerContainer, DockerEnv, DockerImage
 from ebonite.ext.docker.runner import DockerRunner, DockerRunnerException
-from tests.conftest import docker_test
-from tests.ext.test_docker.test_builder import has_docker
+from tests.conftest import docker_test, has_docker
 
 IMAGE_NAME = 'mike0sv/ebaklya'
 BROKEN_IMAGE_NAME = 'test-broken-image'
