@@ -132,8 +132,8 @@ Documentation
 
 Examples
 ========
-... is available in the `folder </examples/>`_.
-It contains a lot of examples:
+... are available in this `folder </examples/>`_.
+Here are some of them:
 
 * `Jupyter Notebook guide </examples/notebook_tutorial/ebonite_tutorial.ipynb>`_
 * `Scikit-learn guide </examples/sklearn_model/>`_
@@ -183,6 +183,7 @@ Supported libraries and repositories
 
   * aiohttp
 
+Create an issue if you need support for something other than that!
 
 
 Contributing
