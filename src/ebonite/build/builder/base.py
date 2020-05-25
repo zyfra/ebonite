@@ -36,7 +36,7 @@ class BuilderBase:
     """Abstract class for building images from ebonite objects"""
 
     @abstractmethod
-    def create_image(self, environment: 'core.RuntimeEnvironment', name: str, **kwargs) -> 'core.Image.Params':
+    def create_image(self, name: str, environment: 'core.RuntimeEnvironment', **kwargs) -> 'core.Image.Params':
         """Abstract method to create image"""
 
     @abstractmethod

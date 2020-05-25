@@ -1,7 +1,9 @@
 import contextlib
 import os
+import traceback
 import typing
 from itertools import chain
+from unittest.mock import MagicMock, _CallList
 
 import pandas as pd
 import pytest
@@ -17,7 +19,95 @@ from ebonite.ext.docker.helpers import is_docker_running
 from ebonite.repository.artifact.local import LocalArtifactRepository
 
 
-class MockModelIO(ModelIO):
+class _CallList2(_CallList):
+    def append(self, object) -> None:
+        super(_CallList2, self).append(object)
+
+
+class MoreMagicMock(MagicMock):
+    # __fields = {'mock_call_stacks'}
+
+    def __init__(self, *args, **kwargs):
+        super(MoreMagicMock, self).__init__(*args, **kwargs)
+        self.mock_call_stacks = []
+
+    # def __setattr__(self, key, value):
+    #     if key in self.__fields:
+    #         object.__setattr__(self, key, value)
+    #     else:
+    #         super(MoreMagicMock, self).__setattr__(key, value)
+    #
+    # def __getattr__(self, item):
+    #     if item in self.__fields:
+    #         return self.__dict__[item]
+    #     return super(MoreMagicMock, self).__getattr__(item)
+
+    def _mock_call(self, *args, **kwargs):
+        self.mock_call_stacks.append(traceback.extract_stack()[:-3])
+        return super(MoreMagicMock, self)._mock_call(*args, **kwargs)
+
+    @contextlib.contextmanager
+    def called_within_context(self, first=True, times=1):
+        if first:
+            self.assert_not_called()
+        times_called = self.call_count
+        yield
+
+        if first and times > 0:
+            self.assert_called()
+
+        if self.call_count != times_called + times:
+
+            frames_summary = []
+            for frame in self.mock_call_stacks[times_called:]:
+                summary = '\n'.join(f'{f.filename}:{f.lineno}' for f in frame if 'site-packages' not in f.filename)
+                frames_summary.append(summary)
+            frames_summary = '\n\n'.join(frames_summary)
+            raise AssertionError(f"Expected '{self._mock_name}' to have been called {times} times "
+                                 f"(got {self.call_count - times_called})\n"
+                                 f"Mock calls: \n{frames_summary}")
+
+
+class MockMethod:
+    def __init__(self, method):
+        self.method = method
+
+    @property
+    def __name(self):
+        return f'_{self.method.__name__}_mock'
+
+    def _side_effect(self, instance):
+        return lambda *args, **kwargs: self.method(instance, *args, **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        self._ensure_mock(instance)
+        return getattr(instance, self.__name)
+
+    def _ensure_mock(self, instance):
+        if self.__name not in instance.__dict__:
+            setattr(instance, self.__name, MoreMagicMock(side_effect=self._side_effect(instance),
+                                                         name=self.method.__name__))
+
+
+def mock_method(method):
+    return MockMethod(method)
+
+
+class MockMixin:
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        cls.__original = dict()
+        for base in (cls,) + cls.__bases__:
+            for name, item in base.__dict__.items():
+                if name.startswith('_') or name in cls.__original or not callable(item):
+                    continue
+                cls.__original[name] = item
+                setattr(cls, name, MockMethod(getattr(cls, name)))
+
+
+class DummyModelIO(ModelIO):
     @contextlib.contextmanager
     def dump(self, model) -> FilesContextManager:
         yield Blobs({'test.bin': InMemoryBlob(b'test')})
@@ -26,11 +116,9 @@ class MockModelIO(ModelIO):
         return None
 
 
-class MockModelWrapper(ModelWrapper):
-    type = 'mock_wrapper'
-
+class DummyModelWrapper(ModelWrapper):
     def __init__(self):
-        super().__init__(MockModelIO())
+        super().__init__(DummyModelIO())
 
     def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
         return {
@@ -42,8 +130,8 @@ class MockModelWrapper(ModelWrapper):
 
 
 @pytest.fixture
-def mock_model_wrapper():
-    return MockModelWrapper()
+def dummy_model_wrapper():
+    return DummyModelWrapper()
 
 
 @pytest.fixture
@@ -73,7 +161,7 @@ def artifact():
     return Blobs({'kek': InMemoryBlob(b'kek')})
 
 
-class DatasetTypeMock(DatasetType):
+class DatasetTypeDummy(DatasetType):
     type = 'mock_dataset_type'
 
     def __init__(self, name: str):

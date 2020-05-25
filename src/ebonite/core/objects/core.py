@@ -781,8 +781,8 @@ class RuntimeEnvironment(EboniteObject):
 
 
 class _WithEnvironment:
-    _meta = None
-    _art = None
+    _meta: 'ebonite.repository.MetadataRepository' = None
+    _art: 'ebonite.repository.ArtifactRepository' = None
 
     def __init__(self, environment_id: int = None, *args, **kwargs):
         super(_WithEnvironment, self).__init__(*args, **kwargs)
@@ -791,6 +791,8 @@ class _WithEnvironment:
     @property
     @_with_meta
     def environment(self) -> RuntimeEnvironment:  # TODO caching
+        if self.environment_id is None:
+            raise errors.UnboundObjectError(f"{self} is not saved, cant access environment")
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
@@ -876,9 +878,12 @@ class Image(_WithEnvironment, EboniteObject):
     @_with_auto_builder
     def build(self, **kwargs):
         self.builder.build_image(self.source, self.params, self.environment.params, **kwargs)
+        if self.has_meta_repo:
+            self._meta.save_image(self)
+        return self
 
     @_with_auto_builder
-    def remove(self):
+    def delete(self):
         self.builder.delete_image(self.params, self.environment.params)
 
 
@@ -944,6 +949,8 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
     @_with_auto_runner
     def run(self, **runner_kwargs) -> 'RuntimeInstance':
         self.runner.run(self.params, self.image.params, self.environment.params, **runner_kwargs)
+        if self.has_meta_repo:
+            self._meta.save_instance(self)
         return self
 
     @_with_auto_runner

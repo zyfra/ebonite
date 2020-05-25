@@ -5,7 +5,6 @@ import pytest
 
 from ebonite.core.objects import Image
 from ebonite.ext.docker import DockerBuilder, DockerEnv, DockerImage, RemoteRegistry
-from ebonite.ext.docker.helpers import create_docker_client
 from tests.build.builder.test_base import SECRET, BuildableMock
 from tests.conftest import docker_test
 
@@ -58,7 +57,7 @@ def docker_builder():
         yield builder
     finally:
         for image_name, env in images:
-            with create_docker_client(env.daemon.host)as c:
+            with env.daemon.client() as c:
                 try:
                     c.images.remove(image_name, force=True)
                 except docker.errors.ImageNotFound:
@@ -89,14 +88,14 @@ def get_image_output(image_params: DockerImage, env: DockerEnv):
 
 def test_docker_builder__create__ok(docker_builder: DockerBuilder, dockerenv_local):
     args = {'name': 'a', 'tag': 'b', 'repository': 'c'}
-    image = docker_builder.create_image(dockerenv_local, **args)
+    image = docker_builder.create_image(environment=dockerenv_local, **args)
     assert isinstance(image, DockerImage)
     assert image == DockerImage(**args)
 
 
 def test_docker_builder__create__extra_arg(docker_builder: DockerBuilder, dockerenv_local):
     with pytest.raises(TypeError):
-        docker_builder.create_image(dockerenv_local, 'a', kek='b')
+        docker_builder.create_image('a', dockerenv_local, kek='b')
 
 
 @docker_test

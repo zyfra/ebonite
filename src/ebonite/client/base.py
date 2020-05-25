@@ -5,7 +5,7 @@ from typing import Dict, Union
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
-from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError
+from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError, ImageWithInstancesError
 from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
@@ -199,7 +199,7 @@ class Ebonite:
             environment = self.get_default_environment()
         buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug).bind_meta_repo(self.meta_repo)
         builder = environment.params.get_builder()
-        params: Image.Params = builder.create_image(name, **kwargs)
+        params: Image.Params = builder.create_image(name, environment.params, **kwargs)
         image = Image(name, buildable, params=params)
         image.task = task
         image.environment = environment
@@ -225,9 +225,11 @@ class Ebonite:
         if cascade:
             for instance in self.meta_repo.get_instances(image):
                 self.delete_instance(instance, meta_only=meta_only)
+        elif len(self.meta_repo.get_instances(image)) > 0:
+            raise ImageWithInstancesError(image)
 
         if not meta_only:
-            image.remove()
+            image.delete()
         self.meta_repo.delete_image(image)
 
     def get_image(self, name: str, task: Task) -> Image:
@@ -312,7 +314,7 @@ class Ebonite:
         instance_kwargs = instance_kwargs or {}
         runner_kwargs = runner_kwargs or {}
         builder_kwargs = builder_kwargs or {}
-        image = self.create_image(name, obj, task, **builder_kwargs)
+        image = self.create_image(name, obj, task, environment=environment, **builder_kwargs)
         return self.create_instance(name, image, environment, **instance_kwargs).run(**runner_kwargs)
 
     def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
@@ -326,7 +328,7 @@ class Ebonite:
         """
         return self.meta_repo.get_instance_by_name(name, image, environment)
 
-    def delete_instance(self, instance: RuntimeInstance, meta_only=False, **kwargs):
+    def delete_instance(self, instance: RuntimeInstance, meta_only=False):
         """
         Stops instance of model service and deletes it from repository
 
@@ -335,7 +337,8 @@ class Ebonite:
         :return: nothing
         """
         if not meta_only:
-            instance.stop(**kwargs)
+            instance.stop()
+            instance.remove()
 
         self.meta_repo.delete_instance(instance)
 

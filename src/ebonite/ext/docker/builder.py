@@ -10,7 +10,7 @@ from .base import DockerEnv, DockerImage
 class DockerBuilder(BuilderBase):
     # TODO docs
     @validate_kwargs
-    def create_image(self, environment: DockerEnv, name: str, tag: str = 'latest', repository: str = None,
+    def create_image(self, name: str, environment: DockerEnv, tag: str = 'latest', repository: str = None,
                      **kwargs) -> Image.Params:
         return DockerImage(name, tag, repository, environment.registry)
 
