@@ -8,7 +8,7 @@ from .base import DockerEnv, DockerImage
 
 
 class DockerBuilder(BuilderBase):
-    # TODO docs
+    """Builder implementation to build docker images"""
     @validate_kwargs
     def create_image(self, name: str, environment: DockerEnv, tag: str = 'latest', repository: str = None,
                      **kwargs) -> Image.Params:

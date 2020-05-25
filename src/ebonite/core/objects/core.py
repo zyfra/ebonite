@@ -81,6 +81,13 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     def id(self) -> int:
         return self._id
 
+    def bind_as(self, other: 'EboniteObject'):
+        if other.has_meta_repo:
+            self.bind_meta_repo(other._meta)
+        if other.has_artifact_repo:
+            self.bind_artifact_repo(other._art)
+        return self
+
 
 def _with_meta(method):
     """
@@ -227,6 +234,7 @@ class Task(EboniteObject):
         if not isinstance(project, Project):
             raise ValueError('{} is not Project'.format(project))
         self.project_id = project.id
+        self.bind_as(project)
 
     @_with_meta
     def add_model(self, model: 'Model'):
@@ -403,7 +411,11 @@ class Task(EboniteObject):
 
 
 class _WrapperMethodAccessor:
-    # TODO docs
+    """Class to access ModelWrapper methods from model
+
+    :param model: model to access
+    :param method_name: name of the wrapper method"""
+
     def __init__(self, model: 'Model', method_name: str):
         if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
             print(model, method_name)
@@ -652,9 +664,13 @@ class Model(EboniteObject):
         if not isinstance(task, Task):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
+        self.bind_as(task)
 
     def as_pipeline(self, method_name=None) -> 'Pipeline':
-        # TODO docs
+        """Create Pipeline that consists of this model's single method
+
+        :param method_name: name of the method. can be omitted if model has only one method
+        """
         method_name = self.wrapper.resolve_method(method_name)
         method = self.wrapper.methods[method_name]
         pipeline = Pipeline(f'{self.name}.{method_name}',
@@ -680,16 +696,31 @@ def _generate_model_name(wrapper: ModelWrapper):
 
 
 class PipelineStep(EboniteParams):
-    # TODO docs
+    """A class to represent one step of a Pipeline - a Model with one of its' methods name
+
+    :param model_name: name of the Model (in the same Task as Pipeline object)
+    :param method_name: name of the method in Model's wrapper to use"""
+
     def __init__(self, model_name: str, method_name: str):
-        # TODO we use model name because it doesnt require saving model and task always have unique model names
         self.model_name = model_name
         self.method_name = method_name
 
 
 @make_string('id', 'name')
 class Pipeline(EboniteObject):
-    # TODO docs
+    """Pipeline is a class to represent a sequence of different Model's methods.
+    They can be used to reuse different models (for example, pre-processing functions) in different pipelines.
+    Pipelines must have exact same in and out data types as tasks they are in
+
+    :param name: name of the pipeline
+    :param steps: sequence of :class:`.PipelineStep`s the pipeline consists of
+    :param input_data: datatype of input dataset
+    :param output_data: datatype of output datset
+    :param id: id of the pipeline
+    :param author: author of the pipeline
+    :param creation_date: date of creation
+    :param task_id: task.id of parent task"""
+
     def __init__(self, name: str,
                  steps: List[PipelineStep],
                  input_data: DatasetType,
@@ -702,8 +733,7 @@ class Pipeline(EboniteObject):
         self.input_data = input_data
         self.task_id = task_id
         self.steps = steps
-        # TODO not using direct fk to models as it is pain
-        self.models: Dict[str, Model] = {}
+        self.models: Dict[str, Model] = {}  # not using direct fk to models as it is pain
 
     @property
     @_with_meta
@@ -718,6 +748,7 @@ class Pipeline(EboniteObject):
         if not isinstance(task, Task):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
+        self.bind_as(task)
 
     @_with_meta
     def load(self):
@@ -727,14 +758,21 @@ class Pipeline(EboniteObject):
             self.models[model.name] = model
 
     def run(self, data):
-        # TODO docs
+        """Applies sequence of pipeline steps to data
+
+        :param data: data to apply pipeline to. must have type `Pipeline.input_data`
+        :returns: processed data of type `Pipeline.output_data`"""
         for step in self.steps:
             model = self.models[step.model_name]
             data = model.wrapper.call_method(step.method_name, data)
         return data
 
     def append(self, model: Union[Model, _WrapperMethodAccessor], method_name: str = None):
-        # TODO docs
+        """Appends another Model to the sequence of this pipeline steps
+
+        :param model: either Model instance, or model method (as in `model.method` where `method` is method name)
+        :param method_name: if Model was provided in `model`, this should be method name.
+        can be omitted if model have only one method"""
         # TODO datatype validaiton
         if isinstance(model, _WrapperMethodAccessor):
             method_name = model.method_name
@@ -749,16 +787,29 @@ class Pipeline(EboniteObject):
 
 @type_field('type')
 class Buildable(EboniteParams, WithMetadataRepository):
-    # TODO docs
+    """An abstract class that represents something that can be built by Builders
+    Have default implementations for Models and Pipelines (and lists of them)
+    """
+
     @abstractmethod
     def get_provider(self):
-        # TODO docs
-        pass  # pragma: no cover
+        """Abstract method to get a provider for this Buildable"""
 
 
 class RuntimeEnvironment(EboniteObject):
+    """Represents and environment where you can build and deploy your services
+    Actual type of environment depends on `.params` field type
+
+    :param name: name of the environment
+    :param id: id of the environment
+    :param author: author of the enviroment
+    :parma creation_date: creation date of the enviroment
+    :param params: :class:`.RuntimeEnvironment.Params` instance
+    """
+
     @type_field('type')
-    class Params(Comparable):
+    class Params(EboniteParams):
+        """Abstract class that represents different types of environments"""
         default_runner = None
         default_builder = None
 
@@ -780,12 +831,12 @@ class RuntimeEnvironment(EboniteObject):
         self.params = params
 
 
-class _WithEnvironment:
-    _meta: 'ebonite.repository.MetadataRepository' = None
-    _art: 'ebonite.repository.ArtifactRepository' = None
+class _WithEnvironment(EboniteObject):
+    """Utility class for objects with PK to :class:`.RuntimeEnvironment`"""
 
-    def __init__(self, environment_id: int = None, *args, **kwargs):
-        super(_WithEnvironment, self).__init__(*args, **kwargs)
+    def __init__(self, id: int, name: str, author: str = None, creation_date: datetime.datetime = None,
+                 environment_id: int = None):
+        super().__init__(id, name, author, creation_date)
         self.environment_id = environment_id
 
     @property
@@ -803,6 +854,7 @@ class _WithEnvironment:
         if not isinstance(environment, RuntimeEnvironment):
             raise ValueError(f'{environment} is not RuntimeEnvironment')
         self.environment_id = environment.id
+        self.bind_as(environment)
 
 
 def _with_auto_builder(method):
@@ -825,19 +877,31 @@ def _with_auto_builder(method):
 
 
 @make_string('id', 'name')
-class Image(_WithEnvironment, EboniteObject):
+class Image(_WithEnvironment):
+    """Class that represents metadata for image built from Buildable
+    Actual type of image depends on `.params` field type
+
+    :param name: name of the image
+    :param id: id of the image
+    :param author: author of the image
+    :parma creation_date: creation date of the image
+    :param source: :class:`.Buildable` instance this image was built from
+    :param params: :class:`.Image.Params` instance
+    :param task_id: task.id this image belongs to
+    :param environment_id: environment.id this image belongs to
+    """
     builder = None
 
     @type_field('type')
-    class Params(Comparable):
-        pass
+    class Params(EboniteParams):
+        """Abstract class that represents different types of images"""
 
     def __init__(self, name: str, source: Buildable, id: int = None,
                  params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None,
                  task_id: int = None,
                  environment_id: int = None):
-        super().__init__(environment_id, id, name, author, creation_date)
+        super().__init__(id, name, author, creation_date, environment_id)
         self.task_id = task_id
         self.source = source
         self.params = params
@@ -855,6 +919,7 @@ class Image(_WithEnvironment, EboniteObject):
         if not isinstance(task, Task):
             raise ValueError('{} is not Task'.format(task))
         self.task_id = task.id
+        self.bind_as(task)
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         super(Image, self).bind_meta_repo(repo)
@@ -873,10 +938,15 @@ class Image(_WithEnvironment, EboniteObject):
 
     @_with_auto_builder
     def is_built(self) -> bool:
+        """Checks if image was built and wasn't removed"""
         return self.builder.image_exists(self.params, self.environment.params)
 
     @_with_auto_builder
     def build(self, **kwargs):
+        """Build this image
+
+        :param kwargs: additional params for builder.build_image (depends on builder implementation)
+        """
         self.builder.build_image(self.source, self.params, self.environment.params, **kwargs)
         if self.has_meta_repo:
             self._meta.save_image(self)
@@ -884,6 +954,7 @@ class Image(_WithEnvironment, EboniteObject):
 
     @_with_auto_builder
     def delete(self):
+        """Deletes this image (from environment, not from ebonite metadata)"""
         self.builder.delete_image(self.params, self.environment.params)
 
 
@@ -906,19 +977,28 @@ def _with_auto_runner(method):
     return inner
 
 
-class RuntimeInstance(_WithEnvironment, EboniteObject):
+class RuntimeInstance(_WithEnvironment):
+    """Class that represents metadata for instance running in environment
+    Actual type of instance depends on `.params` field type
+
+    :param name: name of the instance
+    :param id: id of the instance
+    :param author: author of the instance
+    :parma creation_date: creation date of the instance
+    :param image_id: id of base image for htis instance
+    :param params: :class:`.RuntimeInstance.Params` instance
+    """
     runner = None
 
     @type_field('type')
-    class Params(Comparable):
-        pass
+    class Params(EboniteParams):
+        """Abstract class that represents different types of images"""
 
     def __init__(self, name: str, id: int = None,
                  image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(environment_id, id, name, author, creation_date)
+        super().__init__(id, name, author, creation_date, environment_id)
         self.image_id = image_id
-        self.environment_id = environment_id
         self.params = params
 
     @property
@@ -934,6 +1014,7 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
         if not isinstance(image, Image):
             raise ValueError(f'{image} is not Image')
         self.image_id = image.id
+        self.bind_as(image)
 
     def bind_runner(self, runner):
         self.runner = runner
@@ -948,6 +1029,10 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
 
     @_with_auto_runner
     def run(self, **runner_kwargs) -> 'RuntimeInstance':
+        """Run this instance
+
+        :param runner_kwargs: additional params for runner.run (depends on runner implementation)
+        """
         self.runner.run(self.params, self.image.params, self.environment.params, **runner_kwargs)
         if self.has_meta_repo:
             self._meta.save_instance(self)
@@ -955,7 +1040,7 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
 
     @_with_auto_runner
     def logs(self, **kwargs):
-        """
+        """Get logs of this instance
 
         :param kwargs: parameters for runner `logs` method
         :yields: str logs from running instance
@@ -976,13 +1061,22 @@ class RuntimeInstance(_WithEnvironment, EboniteObject):
 
     @_with_auto_runner
     def stop(self, **kwargs):
-        # TODO docs
+        """Stops the instance
+
+        :param kwargs: params for runner `stop` method
+        """
         self.runner.stop(self.params, self.environment.params, **kwargs)
 
     @_with_auto_runner
     def exists(self, **kwargs) -> bool:
+        """Checks if instance exists (it may be stopped)
+
+        :param kwargs: params for runner `instance_exists` method"""
         return self.runner.instance_exists(self.params, self.environment.params, **kwargs)
 
     @_with_auto_runner
     def remove(self, **kwargs):
+        """Removes the instance from environment (not from metadata)
+
+         :param kwargs: params for runner `remove_instance` method"""
         self.runner.remove_instance(self.params, self.environment.params, **kwargs)

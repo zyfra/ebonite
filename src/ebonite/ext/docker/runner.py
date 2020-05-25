@@ -15,6 +15,8 @@ class DockerRunnerException(Exception):
 
 
 class DockerRunner(RunnerBase):
+    """RunnerBase implementation for docker containers"""
+
     def instance_exists(self, instance: DockerContainer, env: DockerEnv, **kwargs) -> bool:
         with env.daemon.client() as client:
             try:
@@ -47,7 +49,6 @@ class DockerRunner(RunnerBase):
         with env.daemon.client() as client:
             image.registry.login(client)
 
-            from docker.errors import ContainerError  # FIXME
             try:
                 # always detach from container and just stream logs if detach=False
                 container = client.containers.run(image.uri,
@@ -82,7 +83,7 @@ class DockerRunner(RunnerBase):
                             # Can't get logs from removed container
                             raise DockerRunnerException("The container died unexpectedly. Try to run the container "
                                                         "with detach=False or rm=False args to get more info.")
-            except ContainerError as e:
+            except docker.errors.ContainerError as e:
                 if e.stderr:
                     print(e.stderr.decode(), file=sys.stderr)
                 raise
@@ -129,6 +130,7 @@ class DockerRunner(RunnerBase):
             container = client.containers.get(instance.name)
             container.stop()
 
-    def _validate(self, instance: DockerContainer, env: DockerEnv):
+    @classmethod
+    def _validate(cls, instance: DockerContainer, env: DockerEnv):
         if not (isinstance(instance, DockerContainer) and isinstance(env, DockerEnv)):
             raise TypeError('DockerRunner works with DockerContainer and DockerHost only')

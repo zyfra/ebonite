@@ -100,7 +100,7 @@ def test_instance_creation_with_kwargs(runner, dockerenv_remote):
 
 
 def _check_runner(runner, img, env: DockerEnv, **kwargs):
-    instance = DockerContainer(CONTAINER_NAME, ports_mapping={80: None})
+    instance = DockerContainer(CONTAINER_NAME, port_mapping={80: None})
     runner = runner(env, img, CONTAINER_NAME)
 
     assert not runner.is_running(instance, env)

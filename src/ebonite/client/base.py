@@ -203,7 +203,6 @@ class Ebonite:
         image = Image(name, buildable, params=params)
         image.task = task
         image.environment = environment
-        image.bind_artifact_repo(task._art)  # TODO
         self.meta_repo.create_image(image)
         if not skip_build:
             try:

@@ -1,46 +1,30 @@
-# import time
-#
-# import pytest
-#
-# from ebonite.build.builder.base import use_local_installation
-# from ebonite.ext.flask import FlaskServer
-# from tests.conftest import docker_test
-
-# @pytest.fixture
-# def server():
-#     return FlaskServer()
-#
-#
-# @pytest.fixture
-# def img_name():
-#     img_name = "helper-test-image"
-#     with use_local_installation():
-#         yield img_name
-#
-#     rm_image(img_name + ":latest")  # FIXME later
-#
-#
-# @pytest.fixture
-# def container_name():
-#     container_name = "ebaklya"
-#     yield container_name
-#     rm_container(container_name)
-#
-#
-# @pytest.fixture
-# def service_name():
-#     service_name = 'ebnt-test-service'
-#     yield service_name
-#     rm_container(service_name)
-#     rm_image(service_name + ":latest")
+from ebonite.ext.docker.helpers import image_exists_at_dockerhub, repository_tags_at_dockerhub
+from ebonite.utils.module import get_python_version
+from tests.conftest import docker_test
 
 
-# @docker_test
-# def test_run_docker_img(container_name):
-#     run_docker_img(container_name, 'mike0sv/ebaklya', ports_mapping={80: None}, detach=True)
-#     _assert_docker_container_running(container_name)
-#
-#
-# def _assert_docker_container_running(name):
-#     time.sleep(.1)
-#     assert is_docker_container_running(name)
+@docker_test
+def test_image_exists():
+    assert image_exists_at_dockerhub(f'python:{get_python_version()}-slim')
+    assert image_exists_at_dockerhub('minio/minio:latest')
+    assert image_exists_at_dockerhub('postgres:alpine')
+    assert image_exists_at_dockerhub('registry:latest')
+
+
+@docker_test
+def test_image_not_exists():
+    assert not image_exists_at_dockerhub('python:this_does_not_exist')
+    assert not image_exists_at_dockerhub('ebonite:this_does_not_exist')
+    assert not image_exists_at_dockerhub('minio:this_does_not_exist')
+    assert not image_exists_at_dockerhub('registry:this_does_not_exist')
+    assert not image_exists_at_dockerhub('this_does_not_exist:latest')
+
+
+@docker_test
+def test_repository_tags():
+    tags = repository_tags_at_dockerhub('python')
+    assert f'{get_python_version()}-slim' in tags
+    assert get_python_version() in tags
+
+    tags = repository_tags_at_dockerhub('minio/minio')
+    assert 'latest' in tags
