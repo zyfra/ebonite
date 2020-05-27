@@ -36,11 +36,11 @@ class ExposedMethod:
     def get_declaration(self):
         dec = ''
         for line in inspect.getsourcelines(self.method)[0]:
-            line = line.strip()
-            if not line or line.startswith('@'):
+            strip = line.strip()
+            if not strip or (dec == '' and not strip.startswith('def')):
                 continue
-            dec += line + '\n'
-            if re.sub(re.compile("#.*?\n"), "", line).endswith(':'):
+            dec += line
+            if re.sub(re.compile("#.*?\n"), "", line).strip().endswith(':'):
                 break
         return dec.strip().replace(self.original_name, self.name)
 
