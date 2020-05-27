@@ -25,9 +25,9 @@ def run_model_server(model: Model, server: Server = None):
         else:
             raise RuntimeError('You need to install flask and flasgger to use test flask server')
 
-    class MockLoader(ModelLoader):
+    class DummyLoader(ModelLoader):
         def load(self) -> Interface:
             model.ensure_loaded()
             return model_interface(model)
 
-    start_runtime(MockLoader(), server)
+    start_runtime(DummyLoader(), server)

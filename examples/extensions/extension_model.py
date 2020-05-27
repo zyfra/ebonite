@@ -18,7 +18,7 @@ def main():
 
     # your extension code will be inside docker image in form of files if you have local files
     # or requirement if you installed it from pip
-    image = ebnt.build_image('local_ext_model', model, force_overwrite=True)
+    image = ebnt.create_image('local_ext_model', model, force_overwrite=True)
 
     ebnt.create_instance('local_ext_model', image).run(detach=False)
 

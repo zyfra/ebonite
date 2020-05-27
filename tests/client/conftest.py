@@ -1,15 +1,15 @@
+import contextlib
 import time
 
 import pandas as pd
 import pytest
-from pyjackson.core import Comparable
 from sklearn.linear_model import LinearRegression
 
-from ebonite.core.objects.core import Image, Model
-from tests.build.builder.test_docker import has_docker
-from tests.build.conftest import rm_container, rm_image
+from ebonite import Ebonite
+from ebonite.build import BuilderBase, RunnerBase
+from ebonite.core.objects.core import Image, Model, RuntimeEnvironment
 from tests.client.test_func import func
-from tests.conftest import interface_hook_creator
+from tests.conftest import MockMixin, has_docker, interface_hook_creator
 from tests.core.objects.conftest import BuildableMock
 
 CONTAINER_NAME = "ebonite-test-service"
@@ -17,22 +17,38 @@ CONTAINER_NAME = "ebonite-test-service"
 CLEAR = True  # flag to disable removal of containers for easy inspection and debugging
 
 
-class MockEnvironmentParams(Comparable):
-    default_runner = None
+class MockBuilder(BuilderBase, MockMixin):
+    pass
 
+
+class MockRunner(RunnerBase, MockMixin):
+    pass
+
+
+class _MockEnvironmentParams(RuntimeEnvironment.Params):
     def get_runner(self):
-        # TODO: Runner
-        return self.default_runner
+        return self.runner
 
-    def get_builder(self, name: str, model: Model, server, debug=False, **kwargs):
-        # TODO: Builder
-        return
+    def get_builder(self):
+        return self.builder
 
-    def remove_image(self, image: Image):
-        if image.params.name:
-            return True
-        else:
-            return False
+    @classmethod
+    @contextlib.contextmanager
+    def reset(cls):
+        cls.builder = MockBuilder()
+        cls.runner = MockRunner()
+        yield
+
+
+@pytest.fixture
+def mock_env_params():
+    with _MockEnvironmentParams.reset():
+        yield _MockEnvironmentParams()
+
+
+@pytest.fixture
+def mock_env(mock_env_params):
+    return RuntimeEnvironment('mock', params=mock_env_params)
 
 
 @pytest.fixture
@@ -44,8 +60,9 @@ def container_name():
     if not CLEAR:
         return
 
-    rm_container(name)
-    rm_image(name + ":latest")  # FIXME later
+    from ebonite.ext.docker import DockerRunner, DockerBuilder, DockerContainer, DockerImage, DockerEnv
+    DockerRunner().remove_instance(DockerContainer(name), DockerEnv(), force=True)
+    DockerBuilder().delete_image(DockerImage(name), DockerEnv())
 
 
 @pytest.fixture  # FIXME did not find the way to import fixture from build module
@@ -55,10 +72,13 @@ def model():
 
 
 @pytest.fixture
-def image_to_delete(ebnt, model):
+def image_to_delete(ebnt: Ebonite, model, mock_env):
     task = ebnt.get_or_create_task('Project', 'Task')
-    image = Image('image', BuildableMock(), id=None, task_id=task.id, params=Image.Params(), )
+    ebnt.meta_repo.create_environment(mock_env)
+    image = Image('image', BuildableMock(), id=None, task_id=task.id, params=Image.Params())
+    image.environment = mock_env
     image.params.name = 'image'
+    image.bind_builder(mock_env.params.get_builder())
     image = ebnt.meta_repo.create_image(image)
     yield image
 

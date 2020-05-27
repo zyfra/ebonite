@@ -3,7 +3,6 @@ import uuid
 from io import BytesIO
 
 from ebonite.config import Config, Core, Param
-from ebonite.ext.prebuild import prebuild_image, prebuild_missing_images
 from ebonite.runtime.interface import Interface
 from ebonite.runtime.interface.base import InterfaceDescriptor
 from ebonite.runtime.openapi.spec import create_spec
@@ -74,9 +73,13 @@ class FlaskConfig(Config):
 if Core.DEBUG:
     FlaskConfig.log_params()
 
-
 PREBUILD_PATH = current_module_path('prebuild')
 BASE_IMAGE_TEMPLATE = 'zyfraai/flask:{}'
+
+
+def prebuild_hook(python_version):
+    from ebonite.ext.docker.prebuild import prebuild_image
+    prebuild_image(PREBUILD_PATH, BASE_IMAGE_TEMPLATE, python_version)
 
 
 class FlaskServer(BaseHTTPServer):
@@ -88,13 +91,12 @@ class FlaskServer(BaseHTTPServer):
         current_module_path('build', 'app.py')  # replace stub in base image
     ]
 
-    # TODO somehow make this depend on builder implementation?
-    additional_options = {
+    additional_options = {'docker': {
         'templates_dir': current_module_path('build'),
         'base_image': lambda python_version: BASE_IMAGE_TEMPLATE.format(python_version),
         'run_cmd': False,  # base image has already specified command
-        'prebuild_hook': lambda python_version: prebuild_image(PREBUILD_PATH, BASE_IMAGE_TEMPLATE, python_version)
-    }
+        'prebuild_hook': prebuild_hook
+    }}
 
     def _create_app(self):
         from flasgger import Swagger
@@ -145,5 +147,10 @@ class FlaskServer(BaseHTTPServer):
             rlogger.debug('Skipping direct flask application run')
 
 
-if __name__ == '__main__':
+def main():
+    from ebonite.ext.docker.prebuild import prebuild_missing_images
     prebuild_missing_images(PREBUILD_PATH, BASE_IMAGE_TEMPLATE)
+
+
+if __name__ == '__main__':
+    main()

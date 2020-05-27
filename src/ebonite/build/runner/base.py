@@ -50,12 +50,32 @@ class RunnerBase:
         """
 
     @abstractmethod
-    def logs(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params,
-             **kwargs) -> Generator[str, None, None]:
+    def logs(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params, **kwargs) \
+            -> Generator[str, None, None]:
+        # TODO :param stream: stream or just print latest
         """
         Exposes logs produced by given instance while running on given environment
 
         :param instance: instance to expose logs for
         :param env: environment to expose logs from
-        :return: generator of log strings
+
+        :return: generator of log strings or string with logs
+        """
+
+    @abstractmethod
+    def instance_exists(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params, **kwargs) -> bool:
+        """Checks if instance exists in environment
+
+        :param instance: instance params to check
+        :param env: environment to check in
+        :return: boolean flag
+        """
+
+    @abstractmethod
+    def remove_instance(self, instance: RuntimeInstance.Params, env: RuntimeEnvironment.Params, **kwargs):
+        """
+        Removes instance
+
+        :param instance: instance params to remove
+        :param env: environment to remove from
         """

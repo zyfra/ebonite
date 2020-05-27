@@ -53,13 +53,13 @@ def created_task(meta, project, task):
 
 
 @pytest.fixture
-def model(mock_model_wrapper):
-    return Model("Test Model", mock_model_wrapper, description='')
+def model(dummy_model_wrapper):
+    return Model("Test Model", dummy_model_wrapper, description='')
 
 
 @pytest.fixture
-def model2(mock_model_wrapper):
-    return Model("Test Model2", mock_model_wrapper, description='')
+def model2(dummy_model_wrapper):
+    return Model("Test Model2", dummy_model_wrapper, description='')
 
 
 @pytest.fixture
@@ -89,13 +89,14 @@ class TestBuildable(Buildable):
 
 @pytest.fixture
 def image():
-    return Image("Test Image", params=TestParams(123), source=TestBuildable())
+    return Image("Meta Test Image", params=TestParams(123), source=TestBuildable())
 
 
 @pytest.fixture
-def created_image(meta, created_task, image):
-    image = deepcopy(image)
+def created_image(meta, created_task, created_environment, image):
+    image: Image = deepcopy(image)
     image.task = created_task
+    image.environment = created_environment
     return meta.create_image(image)
 
 

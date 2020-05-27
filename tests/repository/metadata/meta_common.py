@@ -1138,8 +1138,9 @@ def test_delete_image__unsaved_image(meta: MetadataRepository, image):
         meta.delete_image(image)
 
 
-def test_save_image_ok_unsaved(meta: MetadataRepository, created_task, image):
+def test_save_image_ok_unsaved(meta: MetadataRepository, created_task, created_environment, image):
     image.task = created_task
+    image.environment = created_environment
     image = meta.save_image(image)
 
     assert image.id is not None
