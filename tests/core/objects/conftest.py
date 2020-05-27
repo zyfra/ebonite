@@ -8,7 +8,7 @@ from ebonite.core.objects.core import Buildable, Image, Model, Pipeline, Project
 from ebonite.repository import MetadataRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.metadata.local import LocalMetadataRepository
-from tests.conftest import MockModelWrapper
+from tests.conftest import DummyModelWrapper
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def model_factory(task_factory):
     def factory(saved=False):
         nonlocal counter
         counter += 1
-        model = Model('Test Model-{}'.format(counter), MockModelWrapper())
+        model = Model('Test Model-{}'.format(counter), DummyModelWrapper())
         if saved:
             task = task_factory(True)
             task.add_model(model)

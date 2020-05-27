@@ -233,6 +233,8 @@ class SImage(Base, Attaching):
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="images")
 
+    environment_id = Column(Integer, ForeignKey('environments.id'), nullable=False)
+
     params = Column(Text)
     source = Column(Text)
 
@@ -245,7 +247,8 @@ class SImage(Base, Attaching):
                       id=self.id,
                       task_id=self.task_id,
                       params=safe_loads(self.params, Image.Params),
-                      source=safe_loads(self.source, Buildable))
+                      source=safe_loads(self.source, Buildable),
+                      environment_id=self.environment_id)
         return self.attach(image)
 
     @classmethod
@@ -256,7 +259,8 @@ class SImage(Base, Attaching):
                     creation_date=image.creation_date,
                     task_id=image.task_id,
                     params=dumps(image.params),
-                    source=dumps(image.source))
+                    source=dumps(image.source),
+                    environment_id=image.environment_id)
 
 
 class SRuntimeEnvironment(Base, Attaching):

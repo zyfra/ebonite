@@ -15,7 +15,7 @@ def main():
     model: Model = ebnt.get_model(task=task, model_name='custom_code_model')
 
     # build docker container from model
-    image = ebnt.build_image('custom_code_model_container', model, force_overwrite=True)
+    image = ebnt.create_image('custom_code_model_container', model, force_overwrite=True)
 
     # run docker container
     ebnt.create_instance('custom_code_model_container', image).run(detach=False)

@@ -3,6 +3,7 @@ import shutil
 from abc import abstractmethod
 from contextlib import contextmanager
 
+from ebonite.build.provider import PythonProvider
 from ebonite.core.objects import core
 from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
@@ -35,21 +36,32 @@ class BuilderBase:
     """Abstract class for building images from ebonite objects"""
 
     @abstractmethod
-    def build(self):
+    def create_image(self, name: str, environment: 'core.RuntimeEnvironment', **kwargs) -> 'core.Image.Params':
+        """Abstract method to create image"""
+
+    @abstractmethod
+    def build_image(self, buildable: 'core.Buildable', image: 'core.Image.Params',
+                    environment: 'core.RuntimeEnvironment.Params', **kwargs):
         """Abstract method to build image"""
 
+    @abstractmethod
+    def delete_image(self, image: 'core.Image.Params', environment: 'core.RuntimeEnvironment.Params', **kwargs):
+        """Abstract method to delete image"""
 
-# noinspection PyAbstractClass
-class PythonBuilder(BuilderBase):
+    @abstractmethod
+    def image_exists(self, image: 'core.Image.Params', environment: 'core.RuntimeEnvironment.Params', **kwargs):
+        """Abstract method to check if image exists"""
+
+
+class PythonBuildContext:
     """
     Basic class for building python images from ebonite objects
 
-    :param buildable: A Buildable instance to get distribution from
+    :param provider: A ProviderBase instance to get distribution from
     """
 
-    def __init__(self, buildable: 'core.Buildable'):
-        self.buildable = buildable  # TODO move to build method argument
-        self.provider = self.buildable.get_provider()
+    def __init__(self, provider: PythonProvider):
+        self.provider = provider
 
     def _write_distribution(self, target_dir):
         """
