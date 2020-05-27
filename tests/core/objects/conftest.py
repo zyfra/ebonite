@@ -22,7 +22,7 @@ def artifact_repo():
 
 
 @pytest.fixture
-def project_factory(meta: MetadataRepository):
+def project_factory(meta: MetadataRepository, artifact_repo: InMemoryArtifactRepository):
     counter = 0
 
     def factory(saved=False):
@@ -31,6 +31,7 @@ def project_factory(meta: MetadataRepository):
         project = Project('Test Project-{}'.format(counter))
         if saved:
             p = meta.create_project(project)
+            p.bind_artifact_repo(artifact_repo)
             return p
         return project
 

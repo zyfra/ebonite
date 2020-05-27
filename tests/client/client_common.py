@@ -71,7 +71,7 @@ def test_delete_task_cascade_ok(ebnt: Ebonite, model: Model, mock_env, image: Im
     image.environment = ebnt.meta_repo.create_environment(mock_env)
     task.add_pipeline(pipeline)
     task.add_image(image)
-    task = ebnt.meta_repo.get_task_by_id(task.id)
+    task = ebnt.meta_repo.get_task_by_id(task.id).bind_as(task)
 
     assert ebnt.meta_repo.get_task_by_id(task.id) is not None
     assert ebnt.meta_repo.get_model_by_id(model.id) is not None

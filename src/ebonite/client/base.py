@@ -1,12 +1,13 @@
 import os
 import shutil
-from typing import Dict, Union
+from typing import Dict, List, Optional, TypeVar, Union
 
 from pyjackson import read, write
 from pyjackson.utils import resolve_subtype
 
-from ebonite.core.errors import ExistingImageError, ExistingInstanceError, ExistingModelError, ImageWithInstancesError
+from ebonite.core.errors import ExistingImageError, ExistingInstanceError
 from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.core.objects.core import EboniteObject, Project
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
@@ -15,7 +16,8 @@ from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
 from ebonite.runtime.server import Server
 from ebonite.utils.importing import module_importable
-from ebonite.utils.log import logger
+
+T = TypeVar('T', bound=EboniteObject)
 
 
 class Ebonite:
@@ -39,18 +41,15 @@ class Ebonite:
         self.meta_repo = meta_repo
         self.artifact_repo = artifact_repo
 
-    def delete_project(self, project, cascade=False):
-        """
-        Deletes project and(if required) all tasks associated with it from metadata repository
-
-        :param project: project which is meant to be deleted
-        :param cascade: whether should project be deleted with all associated tasks
-        :return: Nothing
-        """
-        if cascade:
-            for task in self.meta_repo.get_tasks(project):
-                self.delete_task(task, cascade=cascade)
-        self.meta_repo.delete_project(project)
+    def _bind(self, obj: Optional[Union[T, List[T]]]) -> Optional[Union[T, List[T]]]:
+        if obj is None:
+            return
+        if isinstance(obj, list):
+            for o in obj:
+                self._bind(o)
+        else:
+            obj.bind_meta_repo(self.meta_repo).bind_artifact_repo(self.artifact_repo)
+        return obj
 
     def push_model(self, model: Model, task: Task = None) -> Model:
         """
@@ -61,73 +60,8 @@ class Ebonite:
         task
         :return: same saved :py:class:`~ebonite.core.objects.Model` instance
         """
-        if model.id is not None:
-            raise ExistingModelError(model)
-        if task is not None:
-            if model.task_id is not None:
-                if model.task_id != task.id:
-                    raise ValueError('This model is already in task {}'.format(model.task_id))
-            else:
-                model.task = task
-
-        model = self.meta_repo.create_model(model)  # save model to get model.id
-        try:
-            self.artifact_repo.push_artifacts(model)
-        except:  # noqa
-            self.meta_repo.delete_model(model)
-            raise
-
-        model = self.meta_repo.save_model(model)
-        return model
-
-    def delete_model(self, model: Model, *, force=False):
-        """
-        Deletes :py:class:`~ebonite.core.objects.Model` instance from metadata and artifact repositories
-
-        :param model: model instance to delete
-        :param force: whether model artifacts' deletion errors should be ignored, default is false
-        :return: Nothing
-        """
-        if model.artifact is not None:
-            try:
-                self.artifact_repo.delete_artifact(model)
-            except:  # noqa
-                if force:
-                    logger.warning("Unable to delete artifacts associated with model: '%s'", model, exc_info=1)
-                else:
-                    raise
-
-        self.meta_repo.delete_model(model)
-        model.task_id = None
-
-    def get_or_create_task(self, project_name: str, task_name: str) -> Task:
-        """
-        Load task from repository if it exists and create it otherwise
-
-        :param project_name: project name to load task from
-        :param task_name: task name to load
-        :return: :py:class:`~ebonite.core.objects.Task` instance
-        """
-        task = self.meta_repo.get_or_create_task(project_name, task_name)
-        task.bind_artifact_repo(self.artifact_repo)
-        return task
-
-    def delete_task(self, task: Task, *, cascade=False):
-        """
-        Deletes task and(if required) all models associated with it
-
-        :param task: task which is meant to be deleted
-        :param cascade: whether should task be deleted with all associated models
-        :return: Nothing
-        """
-        if cascade:
-            for model in self.meta_repo.get_models(task):
-                self.delete_model(model)
-            for image in self.meta_repo.get_images(task):
-                self.delete_image(image, cascade=cascade)
-            for pipeline in self.meta_repo.get_pipelines(task):
-                self.delete_pipeline(pipeline)
-        self.meta_repo.delete_task(task)
+        self._bind(model)
+        return model.push(task)
 
     def create_model(self, model_name: str, model_object, model_input, *,
                      project_name: str = 'default_project', task_name: str = 'default_task'):
@@ -162,24 +96,13 @@ class Ebonite:
             model.load()
         return model
 
-    def get_pipeline(self, name: str, task: Task) -> Pipeline:
-        """
-        Load pipeline from repository
-
-        :param name: pipeline name to load
-        :param task: :py:class:`~ebonite.core.objects.Task` instance to load image from
-        :return: loaded :py:class:`~ebonite.core.objects.Pipeline` instance
-        """
-        return self.meta_repo.get_pipeline_by_name(name, task)
-
-    def delete_pipeline(self, pipeline: Pipeline):
-        self.meta_repo.delete_pipeline(pipeline)
-
     def create_image(self, name: str, obj, task: Task, server: Server = None, environment: RuntimeEnvironment = None,
                      debug=False, skip_build=False, builder_args: Dict[str, object] = None, **kwargs) -> Image:
         """
         Builds image of model service and stores it to repository
 
+        :param builder_args: kwargs for builder.create_image
+        :param skip_build: wheter to skip actual image build
         :param name: name of image to build
         :param obj: buildable object to wrap into service
         :param task: task to put image into
@@ -211,53 +134,6 @@ class Ebonite:
                 self.meta_repo.delete_image(image)
                 raise
         return self.meta_repo.save_image(image)
-
-    def delete_image(self, image: Image, meta_only: bool = False, *,
-                     cascade=False):
-        """
-        Deletes existing image from metadata repository and image provider
-
-        :param image: image to remove
-        :param meta_only: should image be deleted only from metadata
-        :param cascade: whether to delete nested RuntimeInstances
-        """
-        if cascade:
-            for instance in self.meta_repo.get_instances(image):
-                self.delete_instance(instance, meta_only=meta_only)
-        elif len(self.meta_repo.get_instances(image)) > 0:
-            raise ImageWithInstancesError(image)
-
-        if not meta_only:
-            image.delete()
-        self.meta_repo.delete_image(image)
-
-    def get_image(self, name: str, task: Task) -> Image:
-        """
-        Load image from repository
-
-        :param name: image name to load
-        :param task: :py:class:`~ebonite.core.objects.Model` instance to load image from
-        :return: loaded :py:class:`~ebonite.core.objects.Image` instance
-        """
-        return self.meta_repo.get_image_by_name(name, task)
-
-    def push_environment(self, environment: RuntimeEnvironment) -> RuntimeEnvironment:
-        """
-        Pushes runtime environment to repository
-
-        :param environment: environment to push
-        :return: same environment bound to repository
-        """
-        return self.meta_repo.create_environment(environment)
-
-    def get_environment(self, name: str) -> RuntimeEnvironment:
-        """
-        Load runtime environment from repository
-
-        :param name: name of environment to load
-        :return: loaded :py:class:`~ebonite.core.objects.RuntimeEnvironment` instance
-        """
-        return self.meta_repo.get_environment_by_name(name)
 
     def create_instance(self, name: str, image: Image, environment: RuntimeEnvironment = None, run=False,
                         runner_kwargs: Dict[str, object] = None,
@@ -315,31 +191,6 @@ class Ebonite:
         builder_kwargs = builder_kwargs or {}
         image = self.create_image(name, obj, task, environment=environment, **builder_kwargs)
         return self.create_instance(name, image, environment, **instance_kwargs).run(**runner_kwargs)
-
-    def get_instance(self, name: str, image: Image, environment: RuntimeEnvironment) -> RuntimeInstance:
-        """
-        Loads service instance from repository
-
-        :param name: name of instance to load
-        :param image: image of instance to load
-        :param environment: environment of instance to load
-        :return: loaded :class:`~ebonite.core.objects.RuntimeInstance` instance
-        """
-        return self.meta_repo.get_instance_by_name(name, image, environment)
-
-    def delete_instance(self, instance: RuntimeInstance, meta_only=False):
-        """
-        Stops instance of model service and deletes it from repository
-
-        :param instance: instance to stop
-        :param meta_only: only remove from metadata, do not stop instance
-        :return: nothing
-        """
-        if not meta_only:
-            instance.stop()
-            instance.remove()
-
-        self.meta_repo.delete_instance(instance)
 
     @classmethod
     def local(cls, path=None, clear=False) -> 'Ebonite':
@@ -434,16 +285,264 @@ class Ebonite:
             self.default_env = self.push_environment(self.default_env)
         return self.default_env
 
-    def delete_environment(self, environment: RuntimeEnvironment, *, cascade=False):
+    #  ########## AUTOGEN #####
+
+    #  ########## AUTOGEN META #####
+
+    def push_environment(self, environment: 'RuntimeEnvironment') -> RuntimeEnvironment:
         """
+        Creates runtime environment in the repository
+
+        :param environment: runtime environment to create
+        :return: created runtime environment
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing
+        """
+        return self._bind(self.meta_repo.create_environment(environment))
+
+    def get_environment(self, name: str) -> Optional[RuntimeEnvironment]:
+        """
+        Finds runtime environment by name.
+
+        :param name: expected runtime environment name
+        :return: found runtime environment if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_environment_by_name(name))
+
+    def get_environments(self) -> List[RuntimeEnvironment]:
+        """
+        Gets a list of runtime environments
+
+        :return: found runtime environments
+        """
+        return self._bind(self.meta_repo.get_environments())
+
+    def get_image(self, image_name: str, task: TaskVar, project: ProjectVar = None) -> Optional['Image']:
+        """
+        Finds image by name in given model, task and project.
+
+        :param image_name: expected image name
+        :param task: task to search for image in
+        :param project: project to search for image in
+        :return: found image if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_image_by_name(image_name, task, project))
+
+    def get_images(self, task: TaskVar, project: ProjectVar = None) -> List['Image']:
+        """
+        Gets a list of images in given model, task and project
+
+        :param task: task to search for images in
+        :param project: project to search for images in
+        :return: found images
+        """
+        return self._bind(self.meta_repo.get_images(task, project))
+
+    def get_instance(self, instance_name: str, image: Union[int, 'Image'],
+                     environment: Union[int, 'RuntimeEnvironment']) -> Optional['RuntimeInstance']:
+        """
+        Finds instance by name in given image and environment.
+
+        :param instance_name: expected instance name
+        :param image: image (or id) to search for instance in
+        :param environment: environment (or id) to search for instance in
+        :return: found instance if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_instance_by_name(instance_name, image, environment))
+
+    def get_instances(self, image: Union[int, 'Image'] = None,
+                      environment: Union[int, 'RuntimeEnvironment'] = None) -> List['RuntimeInstance']:
+        """
+        Gets a list of instances in given image or environment
+
+        :param image: image (or id) to search for instances in
+        :param environment: environment (or id) to search for instances in
+        :return: found instances
+        """
+        return self._bind(self.meta_repo.get_instances(image, environment))
+
+    def get_models(self, task: TaskVar, project: ProjectVar = None) -> List['Model']:
+        """
+        Gets a list of models in given project and task
+
+        :param task: task to search for models in
+        :param project: project to search for models in
+        :return: found models
+        """
+        return self._bind(self.meta_repo.get_models(task, project))
+
+    def get_or_create_project(self, name: str) -> Project:
+        """
+        Creates a project if not exists or gets existing project otherwise.
+
+        :param name: project name
+        :return: project
+        """
+        return self._bind(self.meta_repo.get_or_create_project(name))
+
+    def get_or_create_task(self, project: str, task_name: str) -> Task:
+        """
+        Creates a task if not exists or gets existing task otherwise.
+
+        :param project: project to search/create task in
+        :param task_name: expected name of task
+        :return: created/found task
+        """
+        return self._bind(self.meta_repo.get_or_create_task(project, task_name))
+
+    def get_pipeline(self, pipeline_name: str, task: TaskVar,
+                     project: ProjectVar = None) -> Optional['Pipeline']:
+        """
+        Finds model by name in given task and project.
+
+        :param pipeline_name: expected pipeline name
+        :param task: task to search for pipeline in
+        :param project: project to search for pipeline in
+        :return: found pipeline if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_pipeline_by_name(pipeline_name, task, project))
+
+    def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List['Pipeline']:
+        """
+        Gets a list of pipelines in given project and task
+
+        :param task: task to search for models in
+        :param project: project to search for models in
+        :return: found pipelines
+        """
+        return self._bind(self.meta_repo.get_pipelines(task, project))
+
+    def get_project(self, name: str) -> Optional['Project']:
+        """
+        Finds project in the repository by name
+
+        :param name: name of the project to return
+        :return: found project if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_project_by_name(name))
+
+    def get_projects(self) -> List['Project']:
+        """
+        Gets all projects in the repository
+
+        :return: all projects in the repository
+        """
+        return self._bind(self.meta_repo.get_projects())
+
+    def get_task(self, project: ProjectVar, task_name: str) -> Optional['Task']:
+        """
+        Finds task with given name in given project
+
+        :param project: project to search for task in
+        :param task_name: expected name of task
+        :return: task if exists or `None`
+        """
+        return self._bind(self.meta_repo.get_task_by_name(project, task_name))
+
+    def get_tasks(self, project: ProjectVar) -> List['Task']:
+        """
+        Gets a list of tasks for given project
+
+        :param project: project to search for tasks in
+        :return: project tasks
+        """
+        return self._bind(self.meta_repo.get_tasks(project))
+
+    #  ########## AUTOGEN META END #
+
+    #  ########## AUTOGEN PROJECT #
+
+    def delete_project(self, project: Project, cascade: bool = False):
+        """"
+        Deletes project and(if required) all tasks associated with it from metadata repository
+
+        :param project: project to delete
+        :param cascade: whether should project be deleted with all associated tasks
+        :return: Nothing
+        """
+        return project.delete(cascade)
+
+    #  ########## AUTOGEN PROJECT END #
+
+    #  ########## AUTOGEN TASK #
+
+    def delete_task(self, task: Task, cascade: bool = False):
+        """"
+        Deletes task from metadata
+
+        :param task: task to delete
+        :param cascade: whether should task be deleted with all associated objects
+        :return: Nothing
+        """
+        return task.delete(cascade)
+
+    #  ########## AUTOGEN TASK END #
+
+    #  ########## AUTOGEN MODEL #
+
+    def delete_model(self, model: Model, force: bool = False):
+        """"
+        Deletes model from metadata and artifact repositories
+
+        :param model: model to delete
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
+        :return: Nothing
+        """
+        return model.delete(force)
+
+    #  ########## AUTOGEN MODEL END #
+
+    #  ########## AUTOGEN PIPELINE #
+
+    def delete_pipeline(self, pipeline: Pipeline):
+        """"Deletes pipeline from metadata
+
+        :param pipeline: pipeline to delete
+        """
+        return pipeline.delete()
+
+    #  ########## AUTOGEN PIPELINE END #
+
+    #  ########## AUTOGEN IMAGE #
+
+    def delete_image(self, image: Image, meta_only: bool = False, cascade: bool = False):
+        """"
+        Deletes existing image from metadata repository and image provider
+
+        :param image: image ot delete
+        :param meta_only: should image be deleted only from metadata
+        :param cascade: whether to delete nested RuntimeInstances
+        """
+        return image.delete(meta_only, cascade)
+
+    #  ########## AUTOGEN IMAGE END #
+
+    #  ########## AUTOGEN INSTANCE #
+
+    def delete_instance(self, instance: RuntimeInstance, meta_only: bool = False):
+        """"
+        Stops instance of model service and deletes it from repository
+
+        :param instance: instance to delete
+        :param meta_only: only remove from metadata, do not stop instance
+        :return: nothing
+        """
+        return instance.delete(meta_only)
+
+    #  ########## AUTOGEN INSTANCE END #
+
+    #  ########## AUTOGEN ENVIRONMENT #
+
+    def delete_environment(self, environment: RuntimeEnvironment, meta_only: bool = False, cascade: bool = False):
+        """"
         Deletes environment from metadata repository and(if required) stops associated instances
 
-        :param environment: Environment which is meant to be deleted
+        :param environment: environment to delete
+        :param meta_only: wheter to only delete metadata
         :param cascade: Whether should environment be deleted with all associated instances
         :return: Nothing
         """
-        if cascade:
-            instances = self.meta_repo.get_instances(image=None, environment=environment)
-            for instance in instances:
-                self.delete_instance(instance)
-        self.meta_repo.delete_environment(environment)
+        return environment.delete(meta_only, cascade)
+
+    #  ########## AUTOGEN ENVIRONMENT END #
+
+    #  ########## AUTOGEN END #
