@@ -5,7 +5,7 @@ import pytest
 
 from ebonite import Ebonite
 from ebonite.client.autogen import AUTOGEN_CLASSES, find_exposed_methods
-from ebonite.client.expose import ExposedMethod, is_client_exposed
+from ebonite.client.expose import ExposedMethod, get_exposed_method
 from ebonite.core.objects.core import EboniteObject
 from ebonite.repository import ArtifactRepository, MetadataRepository
 from tests.conftest import MockMixin
@@ -36,7 +36,7 @@ def test_get_declaration():
                    kek: str = None,
                    lol=None):  # comment
 """.strip()
-    assert is_client_exposed(A.method).get_declaration() == expected
+    assert get_exposed_method(A.method).get_declaration() == expected
 
 
 @pytest.mark.parametrize('base', AUTOGEN_CLASSES)

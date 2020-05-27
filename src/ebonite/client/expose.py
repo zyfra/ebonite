@@ -48,5 +48,5 @@ class ExposedMethod:
         return get_function_signature(self.method)
 
 
-def is_client_exposed(f) -> Optional[ExposedMethod]:
+def get_exposed_method(f) -> Optional[ExposedMethod]:
     return getattr(f, EXPOSED_FIELD, None)

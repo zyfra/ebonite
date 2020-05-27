@@ -2,7 +2,7 @@ from typing import List
 
 import ebonite.client.base
 from ebonite import Ebonite
-from ebonite.client.expose import ExposedMethod, is_client_exposed
+from ebonite.client.expose import ExposedMethod, get_exposed_method
 from ebonite.core.objects import Image, Model, Pipeline, Project, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.repository.metadata.base import MetadataRepository
 
@@ -26,7 +26,7 @@ def find_exposed_methods(base_class, new_only=True) -> List[ExposedMethod]:
         if name.startswith('_'):
             continue
         value = getattr(base_class, name)
-        exposed = is_client_exposed(value)
+        exposed = get_exposed_method(value)
         if exposed is not None and (not new_only or exposed.name not in Ebonite.__dict__):
             new_methods.append(exposed)
     return new_methods
