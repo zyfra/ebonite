@@ -7,7 +7,7 @@ import tempfile
 from jinja2 import Environment, FileSystemLoader
 
 from ebonite.ext.docker import DockerIORegistry
-from ebonite.ext.docker.helpers import create_docker_client, image_exists_at_dockerhub, repository_tags_at_dockerhub
+from ebonite.ext.docker.utils import create_docker_client, image_exists_at_dockerhub, repository_tags_at_dockerhub
 from ebonite.utils.log import logger
 
 

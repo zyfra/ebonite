@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Generator, Type
+from typing import Dict, Generator, Type
 
 import docker.errors
 
@@ -36,10 +36,8 @@ class DockerRunner(RunnerBase):
     def instance_type(self) -> Type[DockerContainer]:
         return DockerContainer
 
-    def create_instance(self, name: str, **kwargs) -> DockerContainer:
-        ports_mapping = None
-        ports_mapping = kwargs.pop('ports_mapping', ports_mapping)
-        return DockerContainer(name, ports_mapping, kwargs)
+    def create_instance(self, name: str, port_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
+        return DockerContainer(name, port_mapping, kwargs)
 
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerEnv, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and

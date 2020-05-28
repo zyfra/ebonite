@@ -15,7 +15,7 @@ from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
-from ebonite.ext.docker.helpers import is_docker_running
+from ebonite.ext.docker.utils import is_docker_running
 from ebonite.repository.artifact.local import LocalArtifactRepository
 
 

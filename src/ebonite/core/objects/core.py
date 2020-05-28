@@ -143,6 +143,10 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     def save(self):
         """Saves object state to metadata repository"""
 
+    def _check_meta(self, saved=True):
+        if (self.id is None and saved) or not self.has_meta_repo:
+            raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+
 
 def _with_meta(saved=True):
     """
@@ -154,8 +158,7 @@ def _with_meta(saved=True):
     def dec(method):
         @wraps(method)
         def inner(self: EboniteObject, *args, **kwargs):
-            if (self.id is None and saved) or not self.has_meta_repo:
-                raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+            self._check_meta(saved)
             return method(self, *args, **kwargs)
 
         return inner
@@ -988,22 +991,28 @@ class _WithEnvironment(EboniteObject):
                  environment_id: int = None):
         super().__init__(id, name, author, creation_date)
         self.environment_id = environment_id
+        self._environment: Optional[RuntimeEnvironment] = None
 
     @property
-    @_with_meta
     def environment(self) -> RuntimeEnvironment:  # TODO caching
+        if self._environment is not None:
+            return self._environment
         if self.environment_id is None:
             raise errors.UnboundObjectError(f"{self} is not saved, cant access environment")
+        self._check_meta()
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
-        return e.bind_artifact_repo(self._art)
+        e = e.bind_as(self)
+        self._environment = e
+        return self._environment
 
     @environment.setter
     def environment(self, environment: RuntimeEnvironment):
         if not isinstance(environment, RuntimeEnvironment):
             raise ValueError(f'{environment} is not RuntimeEnvironment')
         self.environment_id = environment.id
+        self._environment = environment
         self.bind_as(environment)
 
 

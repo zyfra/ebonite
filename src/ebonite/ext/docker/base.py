@@ -9,7 +9,7 @@ from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 
 from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
-from ebonite.ext.docker.helpers import create_docker_client, image_exists_at_dockerhub
+from ebonite.ext.docker.utils import create_docker_client, image_exists_at_dockerhub
 from ebonite.utils.log import logger
 
 
@@ -55,7 +55,7 @@ class DockerRegistry(Comparable):
         :param client: DockerClient to use
         :param image: :class:`.DockerImage` to delete"""
         try:
-            client.images.remove(image.name)
+            client.images.remove(image.uri)
         except docker.errors.ImageNotFound:
             pass
 
