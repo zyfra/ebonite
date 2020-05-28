@@ -1,71 +1,53 @@
-import os
-import time
-from contextlib import contextmanager
-from threading import Lock
+from typing import Any, Dict
 
-import docker
-import requests
-from docker.errors import DockerException
+from ebonite.core.analyzer.buildable import BuildableAnalyzer
+from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
+from ebonite.ext.docker import DockerBuilder, DockerEnv, DockerRunner
+from ebonite.runtime.server import Server
 
 
-def _is_docker_running(client: docker.DockerClient) -> bool:
+def build_docker_image(name: str, obj, server: Server = None, env: DockerEnv = None, tag: str = None,
+                       repository: str = None, force_overwrite: bool = False, **kwargs) -> Image:
+    """Build docker image from object
+
+    :param name: name of the resultimg image
+    :param obj: obj to build image. must be convertible to Buildable: Model, Pipeline, list of one of those, etc.
+    :param server: server to build image with
+    :param env: DockerEnv to build in. Default - local docker daemon
+    :param tag: image tag
+    :param repository: image repository
+    :param force_overwrite: wheter to force overwrite existing image
+    :parma kwargs: additional arguments for DockerBuilder.build_image
     """
-    Check if docker binary and docker daemon are available
+    env = env or DockerEnv()
+    source = BuildableAnalyzer.analyze(obj, sever=server)
+    builder: DockerBuilder = env.get_builder()
+    params = builder.create_image(name, env, tag, repository)
+    builder.build_image(source, params, env, force_overwrite, **kwargs)
+    image = Image(name, source, params=params)
+    image.environment = RuntimeEnvironment('temp_env', params=env)
+    return image.bind_builder(builder)
 
-    :param client: DockerClient instance
-    :return: true or false
+
+def run_docker_instance(image: Image, name: str = None, env: DockerEnv = None,
+                        port_mapping: Dict[int, int] = None, instance_kwargs: Dict[str, Any] = None, rm: bool = False,
+                        detach: bool = True, **kwargs) -> RuntimeInstance:
+    """Create and run docker container
+
+    :param image: image to build from
+    :param name: name of the container. defaults to image name
+    :param env: DockerEnv to run in. Default - local docker daemon
+    :param port_mapping: port mapping for container
+    :param instance_kwargs: additional DockerInstance args
+    :param rm: wheter to remove container on exit
+    :param detach: wheter to detach from container after run
+    :param kwargs: additional args for DockerRunner.run
     """
-    try:
-        client.info()
-        return True
-    except (ImportError, IOError, DockerException):
-        return False
-
-
-def is_docker_running() -> bool:
-    """
-    Check if docker binary and docker daemon are available
-
-    :return: true or false
-    """
-    with create_docker_client(check=False) as c:
-        return _is_docker_running(c)
-
-
-_docker_host_lock = Lock()
-
-
-@contextmanager
-def create_docker_client(docker_host: str = '', check=True) -> docker.DockerClient:
-    """
-    Context manager for DockerClient creation
-
-    :param docker_host: DOCKER_HOST arg for DockerClient
-    :param check: check if docker is available
-    :return: DockerClient instance
-    """
-    with _docker_host_lock:
-        os.environ["DOCKER_HOST"] = docker_host  # The env var DOCKER_HOST is used to configure docker.from_env()
-        client = docker.from_env()
-    if check and not _is_docker_running(client):
-        raise RuntimeError("Docker daemon is unavailable")
-    try:
-        yield client
-    finally:
-        client.close()
-
-
-def image_exists_at_dockerhub(tag):
-    repo, tag = tag.split(':')
-    resp = requests.get(f'https://registry.hub.docker.com/v1/repositories/{repo}/tags/{tag}')
-    time.sleep(1)  # rate limiting
-    return resp.status_code == 200
-
-
-def repository_tags_at_dockerhub(repo):
-    resp = requests.get(f'https://registry.hub.docker.com/v1/repositories/{repo}/tags')
-    time.sleep(1)  # rate limiting
-    if resp.status_code != 200:
-        return {}
-    else:
-        return {tag['name'] for tag in resp.json()}
+    env = env or DockerEnv()
+    name = name or image.name
+    runner: DockerRunner = env.get_runner()
+    params = runner.create_instance(name, port_mapping, **instance_kwargs or {})
+    runner.run(params, image.params, env, rm, detach, **kwargs)
+    instance = RuntimeInstance(name, params=params, image_id=image.id).bind_runner(runner)
+    instance.environment = RuntimeEnvironment('temp_env', params=env)
+    return instance
