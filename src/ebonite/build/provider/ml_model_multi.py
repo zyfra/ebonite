@@ -64,10 +64,11 @@ class MLModelMultiProvider(MLModelProvider):
 
 
 class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
-    def __init__(self, model_ids: List[int], server_type: str):
+    def __init__(self, model_ids: List[int], server_type: str, debug: bool = False):
         super().__init__(server_type)
         self.model_ids = model_ids
         self.models_cache = None
+        self.debug = debug
 
     @property
     def models(self) -> List[Model]:
@@ -76,7 +77,7 @@ class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
         return self.models_cache
 
     def get_provider(self) -> MLModelMultiProvider:
-        return MLModelMultiProvider(self.models, self.server)
+        return MLModelMultiProvider(self.models, self.server, self.debug)
 
     @classmethod
     def from_models(cls, models: List[Model], **kwargs):

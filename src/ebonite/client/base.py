@@ -268,7 +268,7 @@ class Ebonite:
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
-        :param run:  whether to autoatically run instance after creation
+        :param run:  whether to automatically run instance after creation
         :param runner_kwargs: additional parameters for runner
         :param instance_kwargs: additional parameters for instance
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance
