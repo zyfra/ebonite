@@ -13,9 +13,9 @@ from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository,
 from ebonite.utils.log import logger
 
 
-class S3Config(Config):
-    ACCESS_KEY = Param('access_key', namespace='s3')
-    SECRET_KEY = Param('secret_key', namespace='s3')
+class S3Config(Config, namespace='s3'):
+    ACCESS_KEY = Param('access_key')
+    SECRET_KEY = Param('secret_key')
 
 
 class _WithS3Client:
