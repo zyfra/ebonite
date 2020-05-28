@@ -2,7 +2,7 @@ from ebonite.build.builder.base import BuilderBase
 from ebonite.build.helpers import validate_kwargs
 from ebonite.core.objects import Image
 from ebonite.core.objects.core import Buildable
-from ebonite.ext.docker.build_context import DockerBuildContext
+from ebonite.ext.docker.build_context import DockerBuildArgs, DockerBuildContext
 
 from .base import DockerEnv, DockerImage
 
@@ -14,7 +14,7 @@ class DockerBuilder(BuilderBase):
                      **kwargs) -> Image.Params:
         return DockerImage(name, tag, repository, environment.registry)
 
-    @validate_kwargs
+    @validate_kwargs(allowed_funcs=[DockerBuildArgs.__init__])
     def build_image(self, buildable: Buildable, image: DockerImage, environment: DockerEnv,
                     force_overwrite=False, **kwargs):
         context = DockerBuildContext(buildable.get_provider(), image, force_overwrite=force_overwrite, **kwargs)

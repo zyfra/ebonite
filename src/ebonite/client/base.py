@@ -186,6 +186,7 @@ class Ebonite:
         :param server: server to build image with
         :param environment: env to build for
         :param debug: flag to build debug image
+        :param builder_args: additional params for builder
         :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """

@@ -37,9 +37,9 @@ class DockerRunner(RunnerBase):
         return DockerContainer
 
     def create_instance(self, name: str, **kwargs) -> DockerContainer:
-        ports_mapping = None
-        ports_mapping = kwargs.pop('ports_mapping', ports_mapping)
-        return DockerContainer(name, ports_mapping, kwargs)
+        port_mapping = None
+        port_mapping = kwargs.pop('port_mapping', port_mapping)
+        return DockerContainer(name, port_mapping, kwargs)
 
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerEnv, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
@@ -54,7 +54,7 @@ class DockerRunner(RunnerBase):
                 container = client.containers.run(image.uri,
                                                   name=instance.name,
                                                   auto_remove=rm,
-                                                  ports=instance.ports_mapping,
+                                                  ports=instance.port_mapping,
                                                   detach=True,
                                                   **instance.params,
                                                   **kwargs)
