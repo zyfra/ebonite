@@ -160,7 +160,7 @@ def test_python_multi_builder__distr_loadable(tmpdir, python_multi_build_context
         python_multi_build_context._write_distribution(tmpdir)
 
     iface = _load(MultiModelLoader(), tmpdir)
-    prediction2 = iface.execute(f'{created_model.name}-predict', {'vector': pandas_data})
+    prediction2 = iface.execute(f'{created_model.name}_predict', {'vector': pandas_data})
 
     np.testing.assert_almost_equal(prediction, prediction2)
 
