@@ -6,7 +6,6 @@ from typing import Optional
 from pyjackson.utils import get_function_signature
 
 EXPOSED_FIELD = '_client_exposed'
-EXPOSED_FIELD_BIND = '_client_exposed_binded'
 
 
 class ExposedMethod:
