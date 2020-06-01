@@ -8,11 +8,7 @@ def validate_kwargs(f=None, *, allowed: List[str] = None, allowed_funcs: List[Ca
     def inner(func):
         all_fields = allowed or []
         if allowed_funcs is not None:
-            from_funcs = []
-            [from_funcs.extend(get_function_fields(allowed_func, False)) for allowed_func in allowed_funcs]
-            all_fields += [field.name for field in from_funcs]
-            if 'self' in all_fields:
-                all_fields.remove('self')
+            all_fields += [field.name for func in allowed_funcs for field in get_function_fields(func, False)]
         all_fields = set(all_fields)
         fields = get_function_fields(func, False)
         all_fields.update(field.name for field in fields)
