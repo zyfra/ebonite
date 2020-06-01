@@ -164,7 +164,7 @@ Request
 
 * `id`: id of image to delete
 * `cascade`: (optional, default - `0`) delete cascadely (stops and deletes running instances of image)
-* `host_only`: (optional, default - '1') delete image from host(docker) only if 1, if 0 also deletes image from metadata repository too
+* `meta_only`: (optional, default - `0`) delete image from metadata repository only if 1, if 0 also deletes image from host too
 
 Response
 ^^^^^^^^^^^^^^
