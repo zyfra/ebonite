@@ -42,6 +42,10 @@ class Ebonite:
         self.artifact_repo = artifact_repo
 
     def _bind(self, obj: Optional[Union[T, List[T]]]) -> Optional[Union[T, List[T]]]:
+        """Binds EboniteObject to meta and art repo of this client instance
+
+        :param obj: subclass of EboniteObject instance or list of them
+        """
         if obj is None:
             return
         if isinstance(obj, list):

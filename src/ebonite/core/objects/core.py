@@ -68,18 +68,18 @@ class ExposedObjectMethod(ExposedMethod):
 class WithMetadataRepository:
     _id = None
     _meta: 'ebonite.repository.MetadataRepository' = None
-    _meta_fk: List[str] = []
+    _nested_fields_meta: List[str] = []
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         self._meta = repo
-        for fk in self._meta_fk:
-            for obj in getattr(self, fk).values():
+        for field in self._nested_fields_meta:
+            for obj in getattr(self, field).values():
                 obj.bind_meta_repo(repo)
         return self
 
     def unbind_meta_repo(self):
-        for fk in self._meta_fk:
-            for obj in getattr(self, fk).values():
+        for field in self._nested_fields_meta:
+            for obj in getattr(self, field).values():
                 obj.unbind_meta_repo()
         del self._meta
         self._id = None
@@ -91,18 +91,18 @@ class WithMetadataRepository:
 
 class WithArtifactRepository:
     _art: 'ebonite.repository.ArtifactRepository' = None
-    _art_fk: List[str] = []
+    _nested_fields_art: List[str] = []
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         self._art = repo
-        for fk in self._art_fk:
-            for obj in getattr(self, fk).values():
+        for field in self._nested_fields_art:
+            for obj in getattr(self, field).values():
                 obj.bind_artifact_repo(repo)
         return self
 
     def unbind_artifact_repo(self):
-        for fk in self._art_fk:
-            for obj in getattr(self, fk).values():
+        for field in self._nested_fields_art:
+            for obj in getattr(self, field).values():
                 obj.unbind_artifact_repo()
         del self._art
 
@@ -190,7 +190,7 @@ class Project(EboniteObject):
     :param author: user that created that project
     :param creation_date: date when this project was created
     """
-    _meta_fk = _art_fk = ['_tasks']
+    _nested_fields_meta = _nested_fields_art = ['_tasks']
 
     def __init__(self, name: str, id: int = None, author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
@@ -271,7 +271,7 @@ class Task(EboniteObject):
     :param author: user that created that task
     :param creation_date: date when this task was created
     """
-    _meta_fk = _art_fk = ['_models', '_pipelines', '_images']
+    _nested_fields_meta = _nested_fields_art = ['_models', '_pipelines', '_images']
 
     def __init__(self, name: str, id: int = None, project_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
