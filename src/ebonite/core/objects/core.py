@@ -1,6 +1,7 @@
 import datetime
 import getpass
 import json
+import re
 import tempfile
 import warnings
 from abc import abstractmethod
@@ -13,6 +14,7 @@ from pyjackson.core import Comparable
 from pyjackson.decorators import make_string, type_field
 
 import ebonite.repository
+from ebonite.client.expose import ExposedMethod
 from ebonite.core import errors
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.analyzer.requirement import RequirementAnalyzer
@@ -22,6 +24,7 @@ from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
+from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
 
 
@@ -29,14 +32,55 @@ def _get_current_user():
     return getpass.getuser()
 
 
+class ExposedObjectMethod(ExposedMethod):
+    def __init__(self, name, param_name: str, param_type: str, param_doc: str = None):
+        super().__init__(name)
+        self.param_name = param_name
+        self.param_type = param_type
+        self.param_doc = param_doc
+
+    def get_doc(self):
+        doc = self.method.__doc__
+        if self.param_doc is not None:
+            if ':param' in doc:
+                mark = ':param'
+            elif ':' in doc:
+                mark = ':'
+            else:
+                mark = None
+            param_doc = f':param {self.param_name}: {self.param_doc}\n'
+            if mark is not None:
+                doc = re.sub(mark, param_doc + '        ' + mark, doc, count=1)
+            else:
+                doc += '\n\n        ' + param_doc + '        '
+        return doc
+
+    def generate_code(self):
+        declaration = self.get_declaration() \
+            .replace(f'{self.name}(self', f'{self.name}(self, {self.param_name}: {self.param_type}')
+        fields = self.get_signature().args
+        result = f'''{self.param_name}.{self.original_name}({', '.join(f.name for f in fields)})'''
+        return f'''    {declaration}
+        """"{self.get_doc()}"""
+        return {result}'''
+
+
 class WithMetadataRepository:
+    _id = None
     _meta: 'ebonite.repository.MetadataRepository' = None
+    _nested_fields_meta: List[str] = []
 
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         self._meta = repo
+        for field in self._nested_fields_meta:
+            for obj in getattr(self, field).values():
+                obj.bind_meta_repo(repo)
         return self
 
     def unbind_meta_repo(self):
+        for field in self._nested_fields_meta:
+            for obj in getattr(self, field).values():
+                obj.unbind_meta_repo()
         del self._meta
         self._id = None
 
@@ -47,12 +91,19 @@ class WithMetadataRepository:
 
 class WithArtifactRepository:
     _art: 'ebonite.repository.ArtifactRepository' = None
+    _nested_fields_art: List[str] = []
 
     def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
         self._art = repo
+        for field in self._nested_fields_art:
+            for obj in getattr(self, field).values():
+                obj.bind_artifact_repo(repo)
         return self
 
     def unbind_artifact_repo(self):
+        for field in self._nested_fields_art:
+            for obj in getattr(self, field).values():
+                obj.unbind_artifact_repo()
         del self._art
 
     @property
@@ -88,22 +139,28 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
             self.bind_artifact_repo(other._art)
         return self
 
+    @abstractmethod
+    def save(self):
+        """Saves object state to metadata repository"""
 
-def _with_meta(method):
+
+def _with_meta(saved=True):
     """
     Decorator for methods to check that object is binded to meta repo
 
-    :param method: method to apply decorator
-    :return: decorated method
+    :param saved: method to apply decorator
     """
 
-    @wraps(method)
-    def inner(self: EboniteObject, *args, **kwargs):
-        if self.id is None or not self.has_meta_repo:
-            raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
-        return method(self, *args, **kwargs)
+    def dec(method):
+        @wraps(method)
+        def inner(self: EboniteObject, *args, **kwargs):
+            if (self.id is None and saved) or not self.has_meta_repo:
+                raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+            return method(self, *args, **kwargs)
 
-    return inner
+        return inner
+
+    return dec(saved) if callable(saved) else dec
 
 
 def _with_artifact(method):
@@ -116,7 +173,7 @@ def _with_artifact(method):
 
     @wraps(method)
     def inner(self: EboniteObject, *args, **kwargs):
-        if self.id is None or not self.has_artifact_repo:
+        if not self.has_artifact_repo:
             raise errors.UnboundObjectError('{} is not bound to artifact repository'.format(self))
         return method(self, *args, **kwargs)
 
@@ -133,11 +190,28 @@ class Project(EboniteObject):
     :param author: user that created that project
     :param creation_date: date when this project was created
     """
+    _nested_fields_meta = _nested_fields_art = ['_tasks']
 
     def __init__(self, name: str, id: int = None, author: str = None, creation_date: datetime.datetime = None):
         super().__init__(id, name, author, creation_date)
         self._tasks: IndexDict[Task] = IndexDict('id', 'name')
         self.tasks: IndexDictAccessor[Task] = IndexDictAccessor(self._tasks)
+
+    @_with_meta
+    @ExposedObjectMethod(name='delete_project', param_name='project', param_type='Project',
+                         param_doc='project to delete')
+    def delete(self, cascade: bool = False):
+        """
+        Deletes project and(if required) all tasks associated with it from metadata repository
+
+        :param cascade: whether should project be deleted with all associated tasks
+        :return: Nothing
+        """
+        if cascade:
+            for task in self._meta.get_tasks(self):  # TODO cacheing?
+                self.delete_task(task, cascade=cascade)
+                # task.delete(cascade=cascade) # FIXME
+        self._meta.delete_project(self)
 
     @_with_meta
     def add_task(self, task: 'Task'):
@@ -152,7 +226,7 @@ class Project(EboniteObject):
         task.project_id = self.id
         self._meta.save_task(task)
         self._tasks.add(task)
-        return task.bind_artifact_repo(self._art)
+        return task.bind_as(self)
 
     @_with_meta
     def add_tasks(self, tasks: List['Task']):
@@ -165,32 +239,25 @@ class Project(EboniteObject):
             self.add_task(t)
 
     @_with_meta
-    def delete_task(self, task: 'Task'):
+    def delete_task(self, task: 'Task', cascade: bool = False):
         """
         Remove task from this project and delete it from meta repo
 
+        :param cascade: whether task should be deleted with all nested objects
         :param task: task to delete
         """
         if task.id not in self._tasks:
             raise errors.NonExistingTaskError(task)
         del self._tasks[task.id]
-        self._meta.delete_task(task)
+        task.delete(cascade)
         task.project_id = None
+
+    @_with_meta
+    def save(self):
+        self._meta.save_project(self)
 
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
-
-    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
-        super(Project, self).bind_meta_repo(repo)
-        for task in self._tasks.values():
-            task.bind_meta_repo(repo)
-        return self
-
-    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
-        super(Project, self).bind_artifact_repo(repo)
-        for task in self._tasks.values():
-            task.bind_artifact_repo(repo)
-        return self
 
 
 @make_string('id', 'name')
@@ -204,6 +271,7 @@ class Task(EboniteObject):
     :param author: user that created that task
     :param creation_date: date when this task was created
     """
+    _nested_fields_meta = _nested_fields_art = ['_models', '_pipelines', '_images']
 
     def __init__(self, name: str, id: int = None, project_id: int = None,
                  author: str = None, creation_date: datetime.datetime = None):
@@ -237,6 +305,25 @@ class Task(EboniteObject):
         self.bind_as(project)
 
     @_with_meta
+    @ExposedObjectMethod(name='delete_task', param_name='task', param_type='Task', param_doc='task to delete')
+    def delete(self, cascade: bool = False):
+        """
+        Deletes task from metadata
+
+        :param cascade: whether should task be deleted with all associated objects
+        :return: Nothing
+        """
+        if cascade:
+            for model in self._meta.get_models(self):
+                self.delete_model(model.bind_artifact_repo(self._art))
+            for image in self._meta.get_images(self):
+                self.delete_image(image, cascade=cascade)
+            for pipeline in self._meta.get_pipelines(self):
+                self.delete_pipeline(pipeline)
+
+        self._meta.delete_task(self)
+
+    @_with_meta
     def add_model(self, model: 'Model'):
         """
         Add model to task and save it to meta repo
@@ -249,7 +336,7 @@ class Task(EboniteObject):
         model.task_id = self.id
         self._meta.save_model(model)
         self._models.add(model)
-        return model.bind_artifact_repo(self._art)
+        return model.bind_as(self)
 
     @_with_meta
     def add_models(self, models: List['Model']):
@@ -273,8 +360,7 @@ class Task(EboniteObject):
         if model_id not in self._models:
             raise errors.NonExistingModelError(model)
 
-        from ebonite.client import Ebonite
-        Ebonite(self._meta, self._art).delete_model(model, force=force)
+        model.delete(force)
         del self._models[model_id]
 
     #  ##########API############
@@ -302,8 +388,8 @@ class Task(EboniteObject):
         :param model: :class:`Model` to push
         :return: same pushed :class:`Model`
         """
-        from ebonite.client import Ebonite
-        model = Ebonite(self._meta, self._art).push_model(model, self)
+        model.bind_as(self)
+        model = model.push(self)
         self._models.add(model)
         return model
 
@@ -342,7 +428,7 @@ class Task(EboniteObject):
         if pipeline_id not in self._pipelines:
             raise errors.NonExistingPipelineError(pipeline)
 
-        self._meta.delete_pipeline(pipeline)
+        pipeline.delete()
         del self._pipelines[pipeline_id]
         pipeline.task_id = None
 
@@ -371,43 +457,23 @@ class Task(EboniteObject):
             self.add_image(image)
 
     @_with_meta
-    def delete_image(self, image: 'Image'):
+    def delete_image(self, image: 'Image', meta_only: bool = False, cascade: bool = False):
         """
         Remove image from this model and delete it from meta repo
 
         :param image: image to delete
+        :param meta_only: should image be deleted only from metadata
+        :param cascade: whether image should be deleted with all instances
         """
         if image.id not in self._images:
             raise errors.NonExistingImageError(image)
         del self._images[image.id]
-        self._meta.delete_image(image)
+        image.delete(meta_only=meta_only, cascade=cascade)
         image.task_id = None
 
-    def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
-        super(Task, self).bind_meta_repo(repo)
-        for model in self._models.values():
-            model.bind_meta_repo(repo)
-
-        for pipeline in self._pipelines.values():
-            pipeline.bind_meta_repo(repo)
-
-        for image in self._images.values():
-            image.bind_meta_repo(repo)
-
-        return self
-
-    def bind_artifact_repo(self, repo: 'ebonite.repository.ArtifactRepository'):
-        super(Task, self).bind_artifact_repo(repo)
-        for model in self._models.values():
-            model.bind_artifact_repo(repo)
-
-        for pipeline in self._pipelines.values():
-            pipeline.bind_artifact_repo(repo)
-
-        for image in self._images.values():
-            image.bind_artifact_repo(repo)
-
-        return self
+    @_with_meta
+    def save(self):
+        self._meta.save_task(self)
 
 
 class _WrapperMethodAccessor:
@@ -666,6 +732,56 @@ class Model(EboniteObject):
         self.task_id = task.id
         self.bind_as(task)
 
+    @_with_meta
+    @_with_artifact
+    @ExposedObjectMethod('delete_model', 'model', 'Model', 'model to delete')
+    def delete(self, force: bool = False):
+        """
+        Deletes model from metadata and artifact repositories
+
+        :param force: whether model artifacts' deletion errors should be ignored, default is false
+        :return: Nothing
+        """
+        if self.artifact is not None:
+            try:
+                self._art.delete_artifact(self)
+            except:  # noqa
+                if force:
+                    logger.warning("Unable to delete artifacts associated with model: '%s'", self, exc_info=1)
+                else:
+                    raise
+
+        self._meta.delete_model(self)
+        self.task_id = None
+
+    @_with_meta(saved=False)
+    @_with_artifact
+    def push(self, task: Task = None) -> 'Model':
+        """
+        Pushes :py:class:`~ebonite.core.objects.Model` instance into metadata and artifact repositories
+
+        :param task: :py:class:`~ebonite.core.objects.Task` instance to save model to. Optional if model already has
+        task
+        :return: same saved :py:class:`~ebonite.core.objects.Model` instance
+        """
+        if self.id is not None:
+            raise errors.ExistingModelError(self)
+        if task is not None:
+            if self.task_id is not None:
+                if self.task_id != task.id:
+                    raise ValueError('This model is already in task {}'.format(self.task_id))
+            else:
+                self.task = task
+
+        self._meta.create_model(self)  # save model to get model.id
+        try:
+            self._art.push_artifacts(self)
+        except:  # noqa
+            self._meta.delete_model(self)
+            raise
+
+        return self._meta.save_model(self)
+
     def as_pipeline(self, method_name=None) -> 'Pipeline':
         """Create Pipeline that consists of this model's single method
 
@@ -682,6 +798,10 @@ class Model(EboniteObject):
             # no special dunder attributes
             raise AttributeError()
         return _WrapperMethodAccessor(self, item)
+
+    @_with_meta
+    def save(self):
+        self._meta.save_model(self)
 
 
 def _generate_model_name(wrapper: ModelWrapper):
@@ -751,6 +871,12 @@ class Pipeline(EboniteObject):
         self.bind_as(task)
 
     @_with_meta
+    @ExposedObjectMethod('delete_pipeline', 'pipeline', 'Pipeline', 'pipeline to delete')
+    def delete(self):
+        """Deletes pipeline from metadata"""
+        self._meta.delete_pipeline(self)
+
+    @_with_meta
     def load(self):
         task = self.task
         for step in self.steps:
@@ -783,6 +909,10 @@ class Pipeline(EboniteObject):
         self.models[model.name] = model
         self.output_data = model.wrapper.methods[method_name][2]  # TODO change it to namedtuple
         return self
+
+    @_with_meta
+    def save(self):
+        self._meta.save_pipeline(self)
 
 
 @type_field('type')
@@ -830,6 +960,26 @@ class RuntimeEnvironment(EboniteObject):
         super().__init__(id, name, author, creation_date)
         self.params = params
 
+    @_with_meta
+    @ExposedObjectMethod('delete_environment', 'environment', 'RuntimeEnvironment', 'environment to delete')
+    def delete(self, meta_only: bool = False, cascade: bool = False):
+        """
+        Deletes environment from metadata repository and(if required) stops associated instances
+
+        :param meta_only: wheter to only delete metadata
+        :param cascade: Whether should environment be deleted with all associated instances
+        :return: Nothing
+        """
+        if cascade:
+            instances = self._meta.get_instances(image=None, environment=self)
+            for instance in instances:
+                instance.delete(meta_only=meta_only)
+        self._meta.delete_environment(self)
+
+    @_with_meta
+    def save(self):
+        self._meta.save_environment(self)
+
 
 class _WithEnvironment(EboniteObject):
     """Utility class for objects with PK to :class:`.RuntimeEnvironment`"""
@@ -857,6 +1007,21 @@ class _WithEnvironment(EboniteObject):
         self.bind_as(environment)
 
 
+class _WithBuilder(_WithEnvironment):
+    builder = None
+
+    def bind_builder(self, builder):
+        self.builder = builder
+        return self
+
+    def unbind_builder(self):
+        del self.builder
+
+    @property
+    def has_builder(self):
+        return self.builder is not None
+
+
 def _with_auto_builder(method):
     """
     Decorator for methods to check that object is binded to builder
@@ -866,7 +1031,7 @@ def _with_auto_builder(method):
     """
 
     @wraps(method)
-    def inner(self: 'Image', *args, **kwargs):
+    def inner(self: _WithBuilder, *args, **kwargs):
         if not self.has_builder:
             if not self.has_meta_repo:
                 raise ValueError(f'{self} has no binded runner')
@@ -877,7 +1042,7 @@ def _with_auto_builder(method):
 
 
 @make_string('id', 'name')
-class Image(_WithEnvironment):
+class Image(_WithBuilder):
     """Class that represents metadata for image built from Buildable
     Actual type of image depends on `.params` field type
 
@@ -890,7 +1055,6 @@ class Image(_WithEnvironment):
     :param task_id: task.id this image belongs to
     :param environment_id: environment.id this image belongs to
     """
-    builder = None
 
     @type_field('type')
     class Params(EboniteParams):
@@ -921,20 +1085,29 @@ class Image(_WithEnvironment):
         self.task_id = task.id
         self.bind_as(task)
 
+    @_with_meta
+    @ExposedObjectMethod('delete_image', 'image', 'Image', 'image ot delete')
+    def delete(self, meta_only: bool = False, cascade: bool = False):
+        """
+        Deletes existing image from metadata repository and image provider
+
+        :param meta_only: should image be deleted only from metadata
+        :param cascade: whether to delete nested RuntimeInstances
+        """
+        if cascade:
+            for instance in self._meta.get_instances(self):
+                self.delete_instance(instance, meta_only=meta_only)
+        elif len(self._meta.get_instances(self)) > 0:
+            raise errors.ImageWithInstancesError(self)
+
+        if not meta_only:
+            self.remove()
+        self._meta.delete_image(self)
+
     def bind_meta_repo(self, repo: 'ebonite.repository.MetadataRepository'):
         super(Image, self).bind_meta_repo(repo)
         self.source.bind_meta_repo(repo)
-
-    def bind_builder(self, builder):
-        self.builder = builder
         return self
-
-    def unbind_builder(self):
-        del self.builder
-
-    @property
-    def has_builder(self):
-        return self.builder is not None
 
     @_with_auto_builder
     def is_built(self) -> bool:
@@ -953,9 +1126,28 @@ class Image(_WithEnvironment):
         return self
 
     @_with_auto_builder
-    def delete(self):
-        """Deletes this image (from environment, not from ebonite metadata)"""
+    def remove(self):
+        """remove this image (from environment, not from ebonite metadata)"""
         self.builder.delete_image(self.params, self.environment.params)
+
+    @_with_meta
+    def save(self):
+        self._meta.save_image(self)
+
+
+class _WithRunner(_WithEnvironment):
+    runner = None
+
+    def bind_runner(self, runner):
+        self.runner = runner
+        return self
+
+    def unbind_runner(self):
+        del self.runner
+
+    @property
+    def has_runner(self):
+        return self.runner is not None
 
 
 def _with_auto_runner(method):
@@ -967,7 +1159,7 @@ def _with_auto_runner(method):
     """
 
     @wraps(method)
-    def inner(self: 'RuntimeInstance', *args, **kwargs):
+    def inner(self: '_WithRunner', *args, **kwargs):
         if not self.has_runner:
             if not self.has_meta_repo:
                 raise ValueError(f'{self} has no binded runner')
@@ -977,7 +1169,7 @@ def _with_auto_runner(method):
     return inner
 
 
-class RuntimeInstance(_WithEnvironment):
+class RuntimeInstance(_WithRunner):
     """Class that represents metadata for instance running in environment
     Actual type of instance depends on `.params` field type
 
@@ -988,7 +1180,6 @@ class RuntimeInstance(_WithEnvironment):
     :param image_id: id of base image for htis instance
     :param params: :class:`.RuntimeInstance.Params` instance
     """
-    runner = None
 
     @type_field('type')
     class Params(EboniteParams):
@@ -1016,16 +1207,20 @@ class RuntimeInstance(_WithEnvironment):
         self.image_id = image.id
         self.bind_as(image)
 
-    def bind_runner(self, runner):
-        self.runner = runner
-        return self
+    @_with_meta
+    @ExposedObjectMethod('delete_instance', 'instance', 'RuntimeInstance', 'instance to delete')
+    def delete(self, meta_only: bool = False):
+        """
+        Stops instance of model service and deletes it from repository
 
-    def unbind_runner(self):
-        del self.runner
+        :param meta_only: only remove from metadata, do not stop instance
+        :return: nothing
+        """
+        if not meta_only:
+            self.stop()
+            self.remove()
 
-    @property
-    def has_runner(self):
-        return self.runner is not None
+        self._meta.delete_instance(self)
 
     @_with_auto_runner
     def run(self, **runner_kwargs) -> 'RuntimeInstance':
@@ -1080,3 +1275,7 @@ class RuntimeInstance(_WithEnvironment):
 
          :param kwargs: params for runner `remove_instance` method"""
         self.runner.remove_instance(self.params, self.environment.params, **kwargs)
+
+    @_with_meta
+    def save(self):
+        self._meta.save_instance(self)

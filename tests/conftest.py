@@ -69,7 +69,8 @@ class MoreMagicMock(MagicMock):
 
 
 class MockMethod:
-    def __init__(self, method):
+    def __init__(self, method, proxy_mode=True):
+        self.proxy_mode = proxy_mode
         self.method = method
 
     @property
@@ -87,8 +88,9 @@ class MockMethod:
 
     def _ensure_mock(self, instance):
         if self.__name not in instance.__dict__:
-            setattr(instance, self.__name, MoreMagicMock(side_effect=self._side_effect(instance),
-                                                         name=self.method.__name__))
+            setattr(instance, self.__name,
+                    MoreMagicMock(side_effect=self._side_effect(instance) if self.proxy_mode else None,
+                                  name=self.method.__name__))
 
 
 def mock_method(method):
@@ -96,15 +98,15 @@ def mock_method(method):
 
 
 class MockMixin:
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, proxy_mode=True):
         super().__init_subclass__()
         cls.__original = dict()
-        for base in (cls,) + cls.__bases__:
+        for base in cls.mro():
             for name, item in base.__dict__.items():
                 if name.startswith('_') or name in cls.__original or not callable(item):
                     continue
                 cls.__original[name] = item
-                setattr(cls, name, MockMethod(getattr(cls, name)))
+                setattr(cls, name, MockMethod(getattr(cls, name), proxy_mode))
 
 
 class DummyModelIO(ModelIO):

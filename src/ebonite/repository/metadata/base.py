@@ -4,6 +4,7 @@ from typing import List, Optional, Sequence, TypeVar, Union
 
 from pyjackson.decorators import type_field
 
+from ebonite.client.expose import ExposedMethod
 from ebonite.core import errors
 from ebonite.core.objects import core
 
@@ -21,6 +22,23 @@ TaskVar = NameOrIdOrObject[Task]
 ModelVar = NameOrIdOrObject[Model]
 PipelineVar = NameOrIdOrObject[Pipeline]
 EnvironmentVar = NameOrIdOrObject[RuntimeEnvironment]
+
+
+class ExposedMetadataMethod(ExposedMethod):
+    def __init__(self, bind=True, name: str = None):
+        super().__init__(name)
+        self.bind = bind
+        self.method = None
+
+    def generate_code(self):
+        fields = self.get_signature().args
+        declaration = self.get_declaration().replace('core.', '')
+        result = f'''self.meta_repo.{self.original_name}({', '.join(f.name for f in fields)})'''
+        if self.bind:
+            result = f'''self._bind({result})'''
+        return f'''    {declaration}
+        """{self.method.__doc__}"""
+        return {result}'''
 
 
 def bind_to_self(method):
@@ -53,6 +71,7 @@ class MetadataRepository:
     type = None
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_projects(self) -> List['core.Project']:
         """
         Gets all projects in the repository
@@ -61,6 +80,7 @@ class MetadataRepository:
         """
 
     @abstractmethod
+    @ExposedMetadataMethod(name='get_project')
     def get_project_by_name(self, name: str) -> Optional['core.Project']:
         """
         Finds project in the repository by name
@@ -124,6 +144,7 @@ class MetadataRepository:
                 raise errors.ExistingProjectError(existing_project)
         return self.update_project(project)
 
+    @ExposedMetadataMethod()
     def get_or_create_project(self, name: str) -> Project:
         """
         Creates a project if not exists or gets existing project otherwise.
@@ -138,6 +159,7 @@ class MetadataRepository:
         return project
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_tasks(self, project: ProjectVar) -> List['core.Task']:
         """
         Gets a list of tasks for given project
@@ -147,6 +169,7 @@ class MetadataRepository:
         """
 
     @abstractmethod
+    @ExposedMetadataMethod(name='get_task')
     def get_task_by_name(self, project: ProjectVar, task_name: str) -> Optional['core.Task']:
         """
         Finds task with given name in given project
@@ -165,6 +188,7 @@ class MetadataRepository:
         :return: task if exists or `None`
         """
 
+    @ExposedMetadataMethod()
     def get_or_create_task(self, project: str, task_name: str) -> Task:
         """
         Creates a task if not exists or gets existing task otherwise.
@@ -232,6 +256,7 @@ class MetadataRepository:
         return self.update_task(task)
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_models(self, task: TaskVar, project: ProjectVar = None) -> List['core.Model']:
         """
         Gets a list of models in given project and task
@@ -242,7 +267,7 @@ class MetadataRepository:
         """
 
     @abstractmethod
-    def get_model_by_name(self, model_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Model']:
+    def get_model_by_name(self, model_name: str, task: TaskVar, project: ProjectVar = None) -> Optional['core.Model']:
         """
         Finds model by name in given task and project.
 
@@ -315,6 +340,7 @@ class MetadataRepository:
     # ___________________
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List['core.Pipeline']:
         """
         Gets a list of pipelines in given project and task
@@ -325,7 +351,8 @@ class MetadataRepository:
         """
 
     @abstractmethod
-    def get_pipeline_by_name(self, pipeline_name, task: TaskVar,
+    @ExposedMetadataMethod(name='get_pipeline')
+    def get_pipeline_by_name(self, pipeline_name: str, task: TaskVar,
                              project: ProjectVar = None) -> Optional['core.Pipeline']:
         """
         Finds model by name in given task and project.
@@ -398,6 +425,7 @@ class MetadataRepository:
 
     # _______________
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_images(self, task: TaskVar, project: ProjectVar = None) -> List['core.Image']:
         """
         Gets a list of images in given model, task and project
@@ -408,7 +436,8 @@ class MetadataRepository:
         """
 
     @abstractmethod
-    def get_image_by_name(self, image_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Image']:
+    @ExposedMetadataMethod(name='get_image')
+    def get_image_by_name(self, image_name: str, task: TaskVar, project: ProjectVar = None) -> Optional['core.Image']:
         """
         Finds image by name in given model, task and project.
 
@@ -477,6 +506,7 @@ class MetadataRepository:
         return self.update_image(image)
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_environments(self) -> List[RuntimeEnvironment]:
         """
         Gets a list of runtime environments
@@ -485,7 +515,8 @@ class MetadataRepository:
         """
 
     @abstractmethod
-    def get_environment_by_name(self, name) -> Optional[RuntimeEnvironment]:
+    @ExposedMetadataMethod(name='get_environment')
+    def get_environment_by_name(self, name: str) -> Optional[RuntimeEnvironment]:
         """
         Finds runtime environment by name.
 
@@ -503,6 +534,7 @@ class MetadataRepository:
         """
 
     @abstractmethod
+    @ExposedMetadataMethod(name='push_environment')
     def create_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Creates runtime environment in the repository
@@ -554,6 +586,7 @@ class MetadataRepository:
         return self.update_environment(environment)
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_instances(self, image: Union[int, 'core.Image'] = None,
                       environment: Union[int, 'core.RuntimeEnvironment'] = None) -> List['core.RuntimeInstance']:
         """
@@ -565,6 +598,7 @@ class MetadataRepository:
         """
 
     @abstractmethod
+    @ExposedMetadataMethod(name='get_instance')
     def get_instance_by_name(self, instance_name: str, image: Union[int, 'core.Image'],
                              environment: Union[int, 'core.RuntimeEnvironment']) -> Optional['core.RuntimeInstance']:
         """

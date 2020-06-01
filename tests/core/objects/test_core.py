@@ -470,7 +470,7 @@ def test_task__delete_image(task_factory, image_factory):
     assert image.task_id is not None
     assert image.id is not None
 
-    task.delete_image(image)
+    task.delete_image(image, meta_only=True)
 
     assert len(task.images) == 0
     assert image.task_id is None
