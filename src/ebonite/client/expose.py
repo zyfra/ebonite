@@ -30,7 +30,7 @@ class ExposedMethod:
 
     @abstractmethod
     def generate_code(self):
-        """"""  # TODO docs
+        """Generate method code"""
         raise NotImplementedError()
 
     def get_declaration(self):
