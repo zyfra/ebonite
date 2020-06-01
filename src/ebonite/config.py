@@ -37,8 +37,8 @@ class _ConfigArgParseEnv(ConfigEnv):
             return self.cache[name]
         parser = argparse.ArgumentParser()
         parser.add_argument(f'--{name}')
-        args = parser.parse_known_args([name])
-        res = getattr(args, name, NO_VALUE)
+        args, _ = parser.parse_known_args()
+        res = getattr(args, name) or NO_VALUE
         self.cache[name] = res
         return res
 
@@ -66,7 +66,7 @@ class Param:
     def __get__(self, instance: 'Config', owner: Type['Config']):
         if instance is None:
             return self
-        return _config(key=self.key, namespace=self.namespace or instance.default_namespace,
+        return _config(key=self.key, namespace=self.namespace or instance.namespace,
                        default=self.default, alternate_keys=self.alternate_keys,
                        doc=self.doc, parser=self.parser,
                        raise_error=self.raise_error, raw_value=self.raw_value)
@@ -80,11 +80,7 @@ class _ConfigMeta(type):
 
 
 class Config(metaclass=_ConfigMeta):
-    default_namespace = None
-
-    def __init_subclass__(cls, default_namespace=None):
-        cls.default_namespace = default_namespace
-        super(Config).__init_subclass__()
+    namespace = None
 
     @classmethod
     def _try__get__(cls, value, default):
