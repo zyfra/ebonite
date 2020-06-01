@@ -83,7 +83,7 @@ class Config(metaclass=_ConfigMeta):
     default_namespace = None
 
     def __init_subclass__(cls, default_namespace=None):
-        cls.default_namespace = None
+        cls.default_namespace = default_namespace
         super(Config).__init_subclass__()
 
     @classmethod
