@@ -4,15 +4,17 @@ from abc import abstractmethod
 from contextlib import contextmanager
 
 from ebonite.build.provider import PythonProvider
+from ebonite.core.objects import core
 from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
-
 
 REQUIREMENTS = 'requirements.txt'
 EBONITE_FROM_PIP = True
 
 
 def ebonite_from_pip():
+    """
+    :return boolen flag if ebonite inside image must be installed from pip (or copied local dist instread)"""
     return EBONITE_FROM_PIP
 
 
@@ -32,18 +34,32 @@ def use_local_installation():
 
 class BuilderBase:
     """Abstract class for building images from ebonite objects"""
+
     @abstractmethod
-    def build(self):
-        pass  # pragma: no cover
+    def create_image(self, name: str, environment: 'core.RuntimeEnvironment', **kwargs) -> 'core.Image.Params':
+        """Abstract method to create image"""
+
+    @abstractmethod
+    def build_image(self, buildable: 'core.Buildable', image: 'core.Image.Params',
+                    environment: 'core.RuntimeEnvironment.Params', **kwargs):
+        """Abstract method to build image"""
+
+    @abstractmethod
+    def delete_image(self, image: 'core.Image.Params', environment: 'core.RuntimeEnvironment.Params', **kwargs):
+        """Abstract method to delete image"""
+
+    @abstractmethod
+    def image_exists(self, image: 'core.Image.Params', environment: 'core.RuntimeEnvironment.Params', **kwargs):
+        """Abstract method to check if image exists"""
 
 
-# noinspection PyAbstractClass
-class PythonBuilder(BuilderBase):
+class PythonBuildContext:
     """
     Basic class for building python images from ebonite objects
 
-    :param provider: An implementation of PythonProvider to get distribution from
+    :param provider: A ProviderBase instance to get distribution from
     """
+
     def __init__(self, provider: PythonProvider):
         self.provider = provider
 
@@ -93,10 +109,14 @@ class PythonBuilder(BuilderBase):
             requirements = self.provider.get_requirements()
             logger.debug('Auto-determined requirements for model: %s.', requirements.to_pip())
             if not ebonite_from_pip():
-                from setup import setup_args  # FIXME only for development
-                requirements += list(setup_args['install_requires'])
-                logger.debug('Adding Ebonite requirements as local installation is employed...')
-                logger.debug('Overall requirements for model: %s.', requirements.to_pip())
+                cwd = os.getcwd()
+                try:
+                    from setup import setup_args  # FIXME only for development
+                    requirements += list(setup_args['install_requires'])
+                    logger.debug('Adding Ebonite requirements as local installation is employed...')
+                    logger.debug('Overall requirements for model: %s.', requirements.to_pip())
+                finally:
+                    os.chdir(cwd)
             req.write('\n'.join(requirements.to_pip()))
 
     def _write_run_script(self, target_dir):

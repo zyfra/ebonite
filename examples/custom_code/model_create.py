@@ -11,14 +11,12 @@ def main():
     #  clear=True means it will erase previous data (this is for demo purposes)
     ebnt = Ebonite.local(clear=True)
 
-    #  create a Task, container for models
-    task = ebnt.get_or_create_task('custom_code_project', 'custom_code_task')
-
     #  create sample data
     data = pd.DataFrame([{'value': 1}])
     #  create model with name 'custom_code_model' from function 'run_my_model' and pandas data sample
     #  and push this model to repository
-    task.create_and_push_model(run_my_model, data, 'custom_code_model')
+    ebnt.create_model('custom_code_model', run_my_model, data,
+                      project_name='custom_code_project', task_name='custom_code_task')
 
 
 if __name__ == '__main__':

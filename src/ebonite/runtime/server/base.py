@@ -7,6 +7,7 @@ from pyjackson.errors import DeserializationError, SerializationError
 from ebonite.config import Config, Core, Param
 from ebonite.runtime.interface import ExecutionError, Interface, InterfaceLoader
 from ebonite.runtime.utils import registering_type
+from ebonite.utils.classproperty import classproperty
 from ebonite.utils.log import rlogger
 
 _ServerBase = registering_type('server')
@@ -55,6 +56,10 @@ class Server(_ServerBase):
         interface = loader.load()
         rlogger.info('Running server %s', self)
         return self.run(interface)
+
+    @classproperty
+    def type(cls):
+        return f'{cls.__module__}.{cls.__name__}'
 
 
 class HTTPServerConfig(Config):

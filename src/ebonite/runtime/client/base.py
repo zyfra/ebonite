@@ -21,12 +21,12 @@ class BaseClient:
     def __init__(self):
         self.methods = {}
 
-        iface: InterfaceDescriptor = self._interface_factory()
+        interface: InterfaceDescriptor = self._interface_factory()
 
-        if ebonite.__version__ != iface.version:
-            warn(f"Server Ebonite version {iface.version}, client Ebonite version {ebonite.__version__}")
+        if ebonite.__version__ != interface.version:
+            warn(f"Server Ebonite version {interface.version}, client Ebonite version {ebonite.__version__}")
 
-        for method in iface.methods:
+        for method in interface.methods:
             self.methods[method.name] = _bootstrap_method(method)
 
     @abstractmethod
@@ -93,7 +93,7 @@ class _MethodCall:
 
 
 def _bootstrap_method(method: InterfaceMethodDescriptor):
-    logger.debug(f'Bootstraping server method "%s" with %s argument(s)...', method.name, len(method.args))
+    logger.debug('Bootstraping server method "%s" with %s argument(s)...', method.name, len(method.args))
     args = []
     for arg_name, arg_type in method.args.items():
         args.append(_Argument(arg_name, arg_type))

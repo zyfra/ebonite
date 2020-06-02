@@ -17,7 +17,7 @@ MODELS_META_PATH = 'models.json'
 
 def model_interface(model_meta: Model):
     """
-    Creates an interface from given model with `predict` and (if available) `predict_proba` methods.
+    Creates an interface from given model with methods exposed by wrapper
     Methods signature is determined via metadata associated with given model.
 
     :param model_meta: model to create interface for

@@ -4,11 +4,11 @@ import pytest
 
 from ebonite.build.builder.base import use_local_installation
 from ebonite.client import Ebonite
-from tests.build.builder.test_docker import has_docker
 from tests.client.conftest import create_client_hooks
 # these imports are needed to ensure that these fixtures are available for use
-from tests.ext.s3.conftest import s3_artifact, s3server  # noqa
-from tests.ext.sqlalchemy.test_postgres.conftest import postgres_meta, postgres_server  # noqa
+from tests.conftest import has_docker
+from tests.ext.test_s3.conftest import s3_artifact, s3server  # noqa
+from tests.ext.test_sqlalchemy.test_postgres.conftest import postgres_meta, postgres_server  # noqa
 
 
 @pytest.fixture

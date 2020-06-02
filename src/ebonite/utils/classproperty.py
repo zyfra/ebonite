@@ -3,14 +3,14 @@ class ClassPropertyDescriptor(object):
     Wrapper which provides access to methods through property syntax
     """
 
-    def __init__(self, fget, fset=None):
-        self.fget = fget
-        self.fset = fset
+    def __init__(self, f_get, f_set=None):
+        self.f_get = f_get
+        self.f_set = f_set
 
     def __get__(self, obj, klass=None):
         if klass is None:
             klass = type(obj)
-        return self.fget.__get__(obj, klass)()
+        return self.f_get.__get__(obj, klass)()
 
 
 def classproperty(func):

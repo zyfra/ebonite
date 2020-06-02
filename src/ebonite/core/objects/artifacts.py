@@ -129,6 +129,7 @@ class InMemoryBlob(Blob, Unserializable):
 
         :param path: target path
         """
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'wb') as f:
             f.write(self.payload)
 
@@ -272,7 +273,7 @@ class CompositeArtifactCollection(ArtifactCollection):
         """
         Materializes every ArtifactCollection to path
 
-        :param path: taget dir
+        :param path: target dir
         """
         for a in self.artifacts:
             a.materialize(path)

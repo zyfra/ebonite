@@ -4,6 +4,7 @@ from typing import List, Optional, Sequence, TypeVar, Union
 
 from pyjackson.decorators import type_field
 
+from ebonite.client.expose import ExposedMethod
 from ebonite.core import errors
 from ebonite.core.objects import core
 
@@ -11,13 +12,33 @@ Project = 'core.Project'
 Task = 'core.Task'
 Model = 'core.Model'
 Image = 'core.Image'
+Pipeline = 'core.Pipeline'
+RuntimeEnvironment = 'core.RuntimeEnvironment'
 
 T = TypeVar('T')
 NameOrIdOrObject = Union[int, str, T]
-ProjectVar = NameOrIdOrObject['core.Project']
-TaskVar = NameOrIdOrObject['core.Task']
-ModelVar = NameOrIdOrObject['core.Model']
-EnvironmentVar = NameOrIdOrObject['core.RuntimeEnvironment']
+ProjectVar = NameOrIdOrObject[Project]
+TaskVar = NameOrIdOrObject[Task]
+ModelVar = NameOrIdOrObject[Model]
+PipelineVar = NameOrIdOrObject[Pipeline]
+EnvironmentVar = NameOrIdOrObject[RuntimeEnvironment]
+
+
+class ExposedMetadataMethod(ExposedMethod):
+    def __init__(self, bind=True, name: str = None):
+        super().__init__(name)
+        self.bind = bind
+        self.method = None
+
+    def generate_code(self):
+        fields = self.get_signature().args
+        declaration = self.get_declaration().replace('core.', '')
+        result = f'''self.meta_repo.{self.original_name}({', '.join(f.name for f in fields)})'''
+        if self.bind:
+            result = f'''self._bind({result})'''
+        return f'''    {declaration}
+        """{self.method.__doc__}"""
+        return {result}'''
 
 
 def bind_to_self(method):
@@ -50,15 +71,16 @@ class MetadataRepository:
     type = None
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_projects(self) -> List['core.Project']:
         """
         Gets all projects in the repository
 
         :return: all projects in the repository
         """
-        pass  # pragma: no cover
 
     @abstractmethod
+    @ExposedMetadataMethod(name='get_project')
     def get_project_by_name(self, name: str) -> Optional['core.Project']:
         """
         Finds project in the repository by name
@@ -66,7 +88,6 @@ class MetadataRepository:
         :param name: name of the project to return
         :return: found project if exists or `None`
         """
-        pass  # pragma: no cover
 
     @abstractmethod
     def get_project_by_id(self, id: int) -> Optional['core.Project']:
@@ -76,7 +97,6 @@ class MetadataRepository:
         :param id: project id
         :return: found project if exists or `None`
         """
-        pass  # pragma: no cover
 
     @abstractmethod
     def create_project(self, project: Project) -> Project:
@@ -87,7 +107,6 @@ class MetadataRepository:
         :return: created project
         :exception: :exc:`.errors.ExistingProjectError` if given project has the same name as existing one.
         """
-        pass  # pragma: no cover
 
     @abstractmethod
     def update_project(self, project: Project) -> Project:
@@ -98,7 +117,6 @@ class MetadataRepository:
         :return: updated project
         :exception: :exc:`.errors.NonExistingProjectError` if given project doesn't exist in the repository
         """
-        pass  # pragma: no cover
 
     @abstractmethod
     def delete_project(self, project: Project):
@@ -109,7 +127,6 @@ class MetadataRepository:
         :return: nothing
         :exception: :exc:`.errors.NonExistingProjectError` if given project doesn't exist in the repository
         """
-        pass  # pragma: no cover
 
     def save_project(self, project: Project) -> Project:
         """
@@ -127,6 +144,7 @@ class MetadataRepository:
                 raise errors.ExistingProjectError(existing_project)
         return self.update_project(project)
 
+    @ExposedMetadataMethod()
     def get_or_create_project(self, name: str) -> Project:
         """
         Creates a project if not exists or gets existing project otherwise.
@@ -141,6 +159,7 @@ class MetadataRepository:
         return project
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_tasks(self, project: ProjectVar) -> List['core.Task']:
         """
         Gets a list of tasks for given project
@@ -149,9 +168,8 @@ class MetadataRepository:
         :return: project tasks
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
+    @ExposedMetadataMethod(name='get_task')
     def get_task_by_name(self, project: ProjectVar, task_name: str) -> Optional['core.Task']:
         """
         Finds task with given name in given project
@@ -160,8 +178,6 @@ class MetadataRepository:
         :param task_name: expected name of task
         :return: task if exists or `None`
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def get_task_by_id(self, id: int) -> Optional['core.Task']:
@@ -172,8 +188,7 @@ class MetadataRepository:
         :return: task if exists or `None`
         """
 
-        pass  # pragma: no cover
-
+    @ExposedMetadataMethod()
     def get_or_create_task(self, project: str, task_name: str) -> Task:
         """
         Creates a task if not exists or gets existing task otherwise.
@@ -200,8 +215,6 @@ class MetadataRepository:
         :exception: :class:`.errors.ExistingTaskError` if given task has the same name and project as existing one
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def update_task(self, task: Task) -> Task:
         """
@@ -212,8 +225,6 @@ class MetadataRepository:
         :exception: :exc:`.errors.NonExistingTaskError` if given tasks doesn't exist in the repository
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def delete_task(self, task: Task):
         """
@@ -223,8 +234,6 @@ class MetadataRepository:
         :return: nothing
         :exception: :exc:`.errors.NonExistingTaskError` if given tasks doesn't exist in the repository
         """
-
-        pass  # pragma: no cover
 
     def save_task(self, task: Task) -> Task:
         """
@@ -247,6 +256,7 @@ class MetadataRepository:
         return self.update_task(task)
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_models(self, task: TaskVar, project: ProjectVar = None) -> List['core.Model']:
         """
         Gets a list of models in given project and task
@@ -256,10 +266,8 @@ class MetadataRepository:
         :return: found models
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def get_model_by_name(self, model_name, task: TaskVar, project: ProjectVar = None) -> Optional['core.Model']:
+    def get_model_by_name(self, model_name: str, task: TaskVar, project: ProjectVar = None) -> Optional['core.Model']:
         """
         Finds model by name in given task and project.
 
@@ -268,8 +276,6 @@ class MetadataRepository:
         :param project: project to search for model in
         :return: found model if exists or `None`
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def get_model_by_id(self, id: int) -> Optional['core.Model']:
@@ -280,8 +286,6 @@ class MetadataRepository:
         :return: found model if exists or `None`
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def create_model(self, model: Model) -> Model:
         """
@@ -291,7 +295,6 @@ class MetadataRepository:
         :return: created model
         :exception: :exc:`.errors.ExistingModelError` if given model has the same name and task as existing one
         """
-        pass  # pragma: no cover
 
     @abstractmethod
     def update_model(self, model: Model) -> Model:
@@ -303,8 +306,6 @@ class MetadataRepository:
         :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def delete_model(self, model: Model):
         """
@@ -314,8 +315,6 @@ class MetadataRepository:
         :return: nothing
         :exception: :exc:`.errors.NonExistingModelError` if given model doesn't exist in the repository
         """
-
-        pass  # pragma: no cover
 
     def save_model(self, model: Model) -> Model:
         """
@@ -338,33 +337,115 @@ class MetadataRepository:
                 raise errors.ExistingModelError(model)
         return self.update_model(model)
 
+    # ___________________
+
     @abstractmethod
-    def get_images(self, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> List['core.Image']:
+    @ExposedMetadataMethod()
+    def get_pipelines(self, task: TaskVar, project: ProjectVar = None) -> List['core.Pipeline']:
+        """
+        Gets a list of pipelines in given project and task
+
+        :param task: task to search for models in
+        :param project: project to search for models in
+        :return: found pipelines
+        """
+
+    @abstractmethod
+    @ExposedMetadataMethod(name='get_pipeline')
+    def get_pipeline_by_name(self, pipeline_name: str, task: TaskVar,
+                             project: ProjectVar = None) -> Optional['core.Pipeline']:
+        """
+        Finds model by name in given task and project.
+
+        :param pipeline_name: expected pipeline name
+        :param task: task to search for pipeline in
+        :param project: project to search for pipeline in
+        :return: found pipeline if exists or `None`
+        """
+
+    @abstractmethod
+    def get_pipeline_by_id(self, id: int) -> Optional['core.Pipeline']:
+        """
+        Finds model by identifier.
+
+        :param id: expected model id
+        :return: found model if exists or `None`
+        """
+
+    @abstractmethod
+    def create_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Creates model in the repository
+
+        :param pipeline: pipeline to create
+        :return: created pipeline
+        :exception: :exc:`.errors.ExistingPipelineError` if given model has the same name and task as existing one
+        """
+
+    @abstractmethod
+    def update_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Updates model in the repository
+
+        :param pipeline: pipeline to update
+        :return: updated model
+        :exception: :exc:`.errors.NonExistingPipelineError` if given pipeline doesn't exist in the repository
+        """
+
+    @abstractmethod
+    def delete_pipeline(self, pipeline: Pipeline):
+        """
+        Deletes model from the repository
+
+        :param pipeline: pipeline to delete
+        :return: nothing
+        :exception: :exc:`.errors.NonExistingPipelineError` if given pipeline doesn't exist in the repository
+        """
+
+    def save_pipeline(self, pipeline: Pipeline) -> Pipeline:
+        """
+        Saves pipeline in the repository
+
+        :param pipeline: model to save
+        :return: saved pipeline
+        :exception: :exc:`.errors.ExistingPipelineError` if given pipeline has the same name and task as existing one
+        """
+
+        if pipeline.task_id is None:
+            raise ValueError("A task is not assigned to the pipeline {}".format(pipeline))
+
+        existing_pipeline = self.get_pipeline_by_name(pipeline.name, pipeline.task_id)
+
+        if pipeline.id is None and existing_pipeline is None:
+            return self.create_pipeline(pipeline)
+        elif existing_pipeline is not None:
+            if pipeline.id is None or existing_pipeline.id != pipeline.id:
+                raise errors.ExistingPipelineError(pipeline)
+        return self.update_pipeline(pipeline)
+
+    # _______________
+    @abstractmethod
+    @ExposedMetadataMethod()
+    def get_images(self, task: TaskVar, project: ProjectVar = None) -> List['core.Image']:
         """
         Gets a list of images in given model, task and project
 
-        :param model: model to search for images in
         :param task: task to search for images in
         :param project: project to search for images in
         :return: found images
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def get_image_by_name(self, image_name, model: ModelVar, task: TaskVar = None, project: ProjectVar = None) -> \
-            Optional['core.Image']:
+    @ExposedMetadataMethod(name='get_image')
+    def get_image_by_name(self, image_name: str, task: TaskVar, project: ProjectVar = None) -> Optional['core.Image']:
         """
         Finds image by name in given model, task and project.
 
         :param image_name: expected image name
-        :param model: model to search for image in
         :param task: task to search for image in
         :param project: project to search for image in
         :return: found image if exists or `None`
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def get_image_by_id(self, id: int) -> Optional['core.Image']:
@@ -374,8 +455,6 @@ class MetadataRepository:
         :param id: expected image id
         :return: found image if exists or `None`
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def create_image(self, image: Image) -> Image:
@@ -387,8 +466,6 @@ class MetadataRepository:
         :exception: :exc:`.errors.ExistingImageError` if given image has the same name and model as existing one
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def update_image(self, image: Image) -> Image:
         """
@@ -398,8 +475,6 @@ class MetadataRepository:
         :return: updated image
         :exception: :exc:`.errors.NonExistingImageError` if given image doesn't exist in the repository
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def delete_image(self, image: Image):
@@ -411,8 +486,6 @@ class MetadataRepository:
         :exception: :exc:`.errors.NonExistingImageError` if given image doesn't exist in the repository
         """
 
-        pass  # pragma: no cover
-
     def save_image(self, image: Image) -> Image:
         """
         Saves image in the repository
@@ -423,7 +496,7 @@ class MetadataRepository:
         """
         self._validate_image(image)
 
-        existing_image = self.get_image_by_name(image.name, image.model_id)
+        existing_image = self.get_image_by_name(image.name, image.task_id)
 
         if image.id is None and existing_image is None:
             return self.create_image(image)
@@ -433,17 +506,17 @@ class MetadataRepository:
         return self.update_image(image)
 
     @abstractmethod
-    def get_environments(self) -> List['core.RuntimeEnvironment']:
+    @ExposedMetadataMethod()
+    def get_environments(self) -> List[RuntimeEnvironment]:
         """
         Gets a list of runtime environments
 
         :return: found runtime environments
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def get_environment_by_name(self, name) -> Optional['core.RuntimeEnvironment']:
+    @ExposedMetadataMethod(name='get_environment')
+    def get_environment_by_name(self, name: str) -> Optional[RuntimeEnvironment]:
         """
         Finds runtime environment by name.
 
@@ -451,10 +524,8 @@ class MetadataRepository:
         :return: found runtime environment if exists or `None`
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def get_environment_by_id(self, id: int) -> Optional['core.RuntimeEnvironment']:
+    def get_environment_by_id(self, id: int) -> Optional[RuntimeEnvironment]:
         """
         Finds runtime environment by identifier.
 
@@ -462,31 +533,27 @@ class MetadataRepository:
         :return: found runtime environment if exists or `None`
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def create_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    @ExposedMetadataMethod(name='push_environment')
+    def create_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Creates runtime environment in the repository
 
         :param environment: runtime environment to create
         :return: created runtime environment
-        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
-    def update_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def update_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Updates runtime environment in the repository
 
         :param environment: runtime environment to update
         :return: updated runtime environment
-        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the
+        repository
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def delete_environment(self, environment: 'core.RuntimeEnvironment'):
@@ -495,18 +562,17 @@ class MetadataRepository:
 
         :param environment: runtime environment to delete
         :return: nothing
-        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the repository
+        :exception: :exc:`.errors.NonExistingEnvironmentError` if given runtime environment doesn't exist in the
+        repository
         """
 
-        pass  # pragma: no cover
-
-    def save_environment(self, environment: 'core.RuntimeEnvironment') -> 'core.RuntimeEnvironment':
+    def save_environment(self, environment: 'core.RuntimeEnvironment') -> RuntimeEnvironment:
         """
         Saves runtime environment in the repository
 
         :param environment: runtime environment to save
         :return: saved runtime environment
-        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing one
+        :exception: :exc:`.errors.ExistingEnvironmentError` if given runtime environment has the same name as existing
         """
         self._validate_environment(environment)
 
@@ -520,6 +586,7 @@ class MetadataRepository:
         return self.update_environment(environment)
 
     @abstractmethod
+    @ExposedMetadataMethod()
     def get_instances(self, image: Union[int, 'core.Image'] = None,
                       environment: Union[int, 'core.RuntimeEnvironment'] = None) -> List['core.RuntimeInstance']:
         """
@@ -530,9 +597,8 @@ class MetadataRepository:
         :return: found instances
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
+    @ExposedMetadataMethod(name='get_instance')
     def get_instance_by_name(self, instance_name: str, image: Union[int, 'core.Image'],
                              environment: Union[int, 'core.RuntimeEnvironment']) -> Optional['core.RuntimeInstance']:
         """
@@ -544,8 +610,6 @@ class MetadataRepository:
         :return: found instance if exists or `None`
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def get_instance_by_id(self, id: int) -> Optional['core.RuntimeInstance']:
         """
@@ -554,8 +618,6 @@ class MetadataRepository:
         :param id: expected instance id
         :return: found instance if exists or `None`
         """
-
-        pass  # pragma: no cover
 
     @abstractmethod
     def create_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
@@ -568,8 +630,6 @@ class MetadataRepository:
             as existing one
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def update_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
         """
@@ -580,8 +640,6 @@ class MetadataRepository:
         :exception: :exc:`.errors.NonExistingInstanceError` if given instance doesn't exist in the repository
         """
 
-        pass  # pragma: no cover
-
     @abstractmethod
     def delete_instance(self, instance: 'core.RuntimeInstance'):
         """
@@ -591,8 +649,6 @@ class MetadataRepository:
         :return: nothing
         :exception: :exc:`.errors.NonExistingInstanceError` if given instance doesn't exist in the repository
         """
-
-        pass  # pragma: no cover
 
     def save_instance(self, instance: 'core.RuntimeInstance') -> 'core.RuntimeInstance':
         """
@@ -639,7 +695,7 @@ class MetadataRepository:
             raise ValueError('Cannot resolve model without task')
         return self.get_model_by_name(model, task, project)
 
-    def _resolve_environment(self, environment: EnvironmentVar) -> Optional['core.RuntimeEnvironment']:
+    def _resolve_environment(self, environment: EnvironmentVar) -> Optional[RuntimeEnvironment]:
         if isinstance(environment, core.RuntimeEnvironment):
             environment = environment.id if environment.id is not None else environment.name
         if isinstance(environment, int):
@@ -657,9 +713,13 @@ class MetadataRepository:
         if model.task_id is None:
             raise errors.ModelNotInTaskError(model)
 
+    def _validate_pipeline(self, pipeline: Pipeline):
+        if pipeline.task_id is None:
+            raise errors.PipelineNotInTaskError(pipeline)
+
     def _validate_image(self, image: Image):
-        if image.model_id is None:
-            raise errors.ImageNotInModelError(image)
+        if image.task_id is None:
+            raise errors.ImageNotInTaskError(image)
 
     def _validate_environment(self, environment: 'core.RuntimeEnvironment'):
         pass

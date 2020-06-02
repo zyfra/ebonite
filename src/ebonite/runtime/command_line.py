@@ -23,7 +23,7 @@ def start_runtime(loader=None, server=None):
         loader = config.Runtime.LOADER
         loader = InterfaceLoader.get(loader)
 
-    rlogger.info(f'Starting Ebonite runtime with loader %s and server %s ...',
+    rlogger.info('Starting Ebonite runtime with loader %s and server %s ...',
                  type(loader).__name__,
                  type(server).__name__)
     server.start(loader)
