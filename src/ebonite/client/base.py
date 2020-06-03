@@ -181,7 +181,7 @@ class Ebonite:
         Builds image of model service and stores it to repository
 
         :param name: name of image to build
-        :param obj: buildable object to wrap into service
+        :param obj: model/list of models/pipeline or any object that has existing Hook for it to wrap into service
         :param task: task to put image into
         :param server: server to build image with
         :param environment: env to build for
