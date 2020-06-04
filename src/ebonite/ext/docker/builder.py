@@ -21,9 +21,9 @@ class DockerBuilder(BuilderBase):
         image.image_id = docker_image.id
 
     @validate_kwargs
-    def delete_image(self, image: DockerImage, environment: DockerEnv, **kwargs):
+    def delete_image(self, image: DockerImage, environment: DockerEnv, force=False, **kwargs):
         with environment.daemon.client() as client:
-            image.delete(client)
+            image.delete(client, force, **kwargs)
 
     @validate_kwargs
     def image_exists(self, image: DockerImage, environment: DockerEnv, **kwargs) -> bool:

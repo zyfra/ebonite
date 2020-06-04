@@ -2,7 +2,9 @@ from typing import Any, Dict
 
 from ebonite.core.analyzer.buildable import BuildableAnalyzer
 from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
-from ebonite.ext.docker import DockerBuilder, DockerEnv, DockerRunner
+from ebonite.ext.docker.base import DockerEnv
+from ebonite.ext.docker.builder import DockerBuilder
+from ebonite.ext.docker.runner import DockerRunner
 from ebonite.runtime.server import Server
 
 

@@ -25,9 +25,10 @@ def dummy_buildable():
 
 @pytest.fixture
 def built_image(dummy_buildable):
-    image = build_docker_image('test_docker_helper_image', '', tag='test_tag', repository='test_repository')
+    image = build_docker_image('test_docker_helper_image', '', tag='test_tag', repository='test_repository',
+                               force_overwrite=True)
     yield image
-    image.remove()
+    image.remove(force=True)
     assert not image.is_built()
 
 
@@ -44,11 +45,11 @@ def test_build_docker_image(built_image):
 
 @docker_test
 def test_run_docker_instance(built_image):
-    instance = run_docker_instance(built_image, 'test_docker_helper_container', port_mapping={9000: 9000},
-                                   instance_kwargs={'run_cmd': 'sleep 1000'}, detach=True)
+    instance = run_docker_instance(built_image, 'test_docker_helper_container', port_mapping={9000: 9000}, detach=True,
+                                   command='sleep 1000')
     assert isinstance(instance.params, DockerContainer)
     assert instance.has_runner
-    assert instance.params.name == built_image.name
+    assert instance.params.name == 'test_docker_helper_container'
     assert instance.params.ports_mapping == {9000: 9000}
     assert instance.params.container_id is not None
     assert instance.exists()

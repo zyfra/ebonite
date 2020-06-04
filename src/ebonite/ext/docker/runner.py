@@ -29,7 +29,7 @@ class DockerRunner(RunnerBase):
         with env.daemon.client() as client:
             try:
                 c = client.containers.get(instance.name)
-                c.delete(**kwargs)
+                c.remove(**kwargs)
             except docker.errors.NotFound:
                 pass
 
