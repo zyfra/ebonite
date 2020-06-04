@@ -108,11 +108,12 @@ class Ebonite:
         :param builder_args: kwargs for builder.create_image
         :param skip_build: wheter to skip actual image build
         :param name: name of image to build
-        :param obj: buildable object to wrap into service
+        :param obj: model/list of models/pipeline or any object that has existing Hook for it to wrap into service
         :param task: task to put image into
         :param server: server to build image with
         :param environment: env to build for
         :param debug: flag to build debug image
+        :param builder_args: additional params for builder
         :param kwargs: additional kwargs for builder
         :return: :class:`~ebonite.core.objects.Image` instance representing built image
         """
@@ -148,7 +149,7 @@ class Ebonite:
         :param name: name of instance to run
         :param image: image to run instance from
         :param environment: environment to run instance in, if no given `localhost` is used
-        :param run:  whether to autoatically run instance after creation
+        :param run:  whether to automatically run instance after creation
         :param runner_kwargs: additional parameters for runner
         :param instance_kwargs: additional parameters for instance
         :return: :class:`~ebonite.core.objects.RuntimeInstance` instance representing run instance

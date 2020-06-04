@@ -19,7 +19,7 @@ def run_detached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerContainer(container_name, ports_mapping={80: 8080})
+    instance = DockerContainer(container_name, port_mapping={80: 8080})
     host = DockerHost()
 
     runner = DockerRunner()
@@ -31,7 +31,7 @@ def run_attached_and_remove():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerContainer(container_name, ports_mapping={80: 8080})
+    instance = DockerContainer(container_name, port_mapping={80: 8080})
     host = DockerHost()
 
     runner = DockerRunner()
@@ -43,7 +43,7 @@ def run_attached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('test_broken_image', registry=img_registry)
-    instance = DockerContainer(container_name, ports_mapping={80: 8080})
+    instance = DockerContainer(container_name, port_mapping={80: 8080})
     host = DockerHost()
 
     runner = DockerRunner()
@@ -55,7 +55,7 @@ def run_good():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('mike0sv/ebaklya', registry=img_registry)
-    instance = DockerContainer(container_name, ports_mapping={80: 8080})
+    instance = DockerContainer(container_name, port_mapping={80: 8080})
     host = DockerHost()
 
     runner = DockerRunner()
@@ -70,7 +70,7 @@ def run_good_attached():
 
     img_registry = DefaultDockerRegistry()
     img = DockerImage('mike0sv/ebaklya', registry=img_registry)
-    instance = DockerContainer(container_name, ports_mapping={80: 8080})
+    instance = DockerContainer(container_name, port_mapping={80: 8080})
     host = DockerHost()
 
     runner = DockerRunner()
