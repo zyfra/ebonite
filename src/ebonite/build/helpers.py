@@ -1,12 +1,15 @@
 from functools import wraps
-from typing import List
+from typing import List, Callable
 from pyjackson.utils import get_function_fields, turn_args_to_kwargs
 
 
-def validate_kwargs(f=None, *, allowed: List[str] = None):
+def validate_kwargs(f=None, *, allowed: List[str] = None, allowed_funcs: List[Callable] = None):
 
     def inner(func):
-        all_fields = set(allowed or [])
+        all_fields = allowed or []
+        if allowed_funcs is not None:
+            all_fields += [field.name for func in allowed_funcs for field in get_function_fields(func, False)]
+        all_fields = set(all_fields)
         fields = get_function_fields(func, False)
         all_fields.update(field.name for field in fields)
 

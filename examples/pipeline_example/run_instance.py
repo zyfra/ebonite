@@ -23,8 +23,8 @@ def main():
     task.push_model(s2)
     task.add_pipeline(p)
     with use_local_installation():
-        image = ebnt.create_image('ebnt_pipeline_test', p, task, FlaskServer(), force_overwrite=True)
-        instance = ebnt.run_instance('ebnt_pipeline_test', image)
+        image = ebnt.create_image('ebnt_pipeline_test', p, task, FlaskServer(), builder_args={'force_overwrite': True})
+        instance = ebnt.create_instance('ebnt_pipeline_test', image)
 
         print(instance.is_running())
 

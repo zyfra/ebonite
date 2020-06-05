@@ -209,7 +209,7 @@ class DockerContainer(RuntimeInstance.Params):
                  container_id: str = None):
         self.container_id = container_id
         self.name = name
-        self.ports_mapping = port_mapping or {}
+        self.port_mapping = port_mapping or {}
         self.params = params or {}
 
 

@@ -4,27 +4,29 @@ from typing import List
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
-from ebonite.build.provider.ml_model import MLModelProvider
 from ebonite.build.provider.utils import BuildableWithServer
 from ebonite.core.analyzer import CanIsAMustHookMixin
 from ebonite.core.analyzer.buildable import BuildableHook
+from ebonite.build.provider.ml_model import MLModelProvider, read
 from ebonite.core.objects import ArtifactCollection, Model, Requirements
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection
 from ebonite.core.objects.core import WithMetadataRepository
 from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODELS_META_PATH
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
+from ebonite.utils.log import logger
 
 
 class MLModelMultiProvider(MLModelProvider):
     """Provider to put multiple models in one service
 
     :param models: List of Model instances
-    :param server: Server instance to build with"""
+    :param server: Server instance to build with
+    :param debug: Debug for instance"""
 
-    def __init__(self, models: List[Model], server: Server):
+    def __init__(self, models: List[Model], server: Server, debug: bool = False):
         from ebonite.runtime.interface.ml_model import MultiModelLoader
-        super(MLModelProvider, self).__init__(server, MultiModelLoader())
+        super(MLModelProvider, self).__init__(server, MultiModelLoader(), debug)
         self.models: List[Model] = models
 
     @cached_property
@@ -42,7 +44,8 @@ class MLModelMultiProvider(MLModelProvider):
         """Returns models meta file and custom requirements"""
         return {
             MODELS_META_PATH: dumps([model.without_artifacts() for model in self.models]),
-            **self._get_sources()
+            **self._get_sources(),
+            **{os.path.basename(f): read(f) for f in self.server.additional_sources}
         }
 
     def get_artifacts(self) -> ArtifactCollection:
@@ -53,12 +56,19 @@ class MLModelMultiProvider(MLModelProvider):
             for i, m in enumerate(self.models)
         ])
 
+    def get_python_version(self):
+        versions = [model.params.get(Model.PYTHON_VERSION) for model in self.models]
+        if len(set(versions)) > 1:
+            logger.warn('Models in MultModelProvider have varying python versions in requirements')
+        return max(versions)
+
 
 class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
-    def __init__(self, model_ids: List[int], server_type: str):
+    def __init__(self, model_ids: List[int], server_type: str, debug: bool = False):
         super().__init__(server_type)
         self.model_ids = model_ids
         self.models_cache = None
+        self.debug = debug
 
     @property
     def models(self) -> List[Model]:
@@ -67,7 +77,7 @@ class MultiModelBuildable(BuildableWithServer, WithMetadataRepository):
         return self.models_cache
 
     def get_provider(self) -> MLModelMultiProvider:
-        return MLModelMultiProvider(self.models, self.server)
+        return MLModelMultiProvider(self.models, self.server, self.debug)
 
     @classmethod
     def from_models(cls, models: List[Model], **kwargs):

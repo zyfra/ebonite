@@ -89,14 +89,14 @@ def test_run_local_fail_inside_container(runner, dockerenv_remote, detach, runne
 @docker_test
 def test_instance_creation_with_kwargs(runner, dockerenv_remote):
     runner = DockerRunner()
-    kwargs = {'key': 'val', 'host': '', 'int_key': 1, 'ports_mapping': {8000: 8000}}
+    kwargs = {'key': 'val', 'host': '', 'int_key': 1, 'port_mapping': {8000: 8000}}
     instance = runner.create_instance('instance', **kwargs)
-    assert 'ports_mapping' not in instance.params
-    assert instance.ports_mapping == {8000: 8000}
+    assert 'port_mapping' not in instance.params
+    assert instance.port_mapping == {8000: 8000}
 
     kwargs = {'key': 'val', 'host': '', 'int_key': 1}
     instance = runner.create_instance('instance_2', **kwargs)
-    assert instance.ports_mapping == {}
+    assert instance.port_mapping == {}
 
 
 def _check_runner(runner, img, env: DockerEnv, **kwargs):
