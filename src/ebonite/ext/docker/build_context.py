@@ -201,6 +201,7 @@ class _DockerfileGenerator:
             import ebonite
             docker_args['ebonite_install'] = 'RUN ' + EBONITE_INSTALL_COMMAND.format(version=ebonite.__version__)
         elif isinstance(ebonite_pip, str):
-            docker_args['ebonite_install'] = f"COPY {ebonite_pip.split('/')[-1]} . \n RUN pip install {ebonite_pip.split('/')[-1]}"
+            docker_args['ebonite_install'] = f"COPY {os.path.basename(ebonite_pip)} . " \
+                                             f"\n RUN pip install {os.path.basename(ebonite_pip)}"
 
         return docker_tmpl.render(**docker_args)

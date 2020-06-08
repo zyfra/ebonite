@@ -9,13 +9,16 @@ from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
 
 REQUIREMENTS = 'requirements.txt'
-EBONITE_FROM_PIP = True
-
+_EBONITE_SOURCE = True
+# _EBONITE_SOURCE defines in which way ebonite will be installed inside of the instance. Depending on it's value
+# True - means that it will install ebonite from PIP
+# False - That it will use local ebonite installation
+# str, representing a path - that it will search for .whl file with ebonite package
 
 def ebonite_from_pip():
     """
     :return boolen flag if ebonite inside image must be installed from pip (or copied local dist instread)"""
-    return EBONITE_FROM_PIP
+    return _EBONITE_SOURCE
 
 
 @contextmanager
@@ -23,13 +26,13 @@ def use_local_installation():
     """Context manager that changes docker builder behaviour to copy
     this installation of ebonite instead of installing it from pip.
     This is needed for testing and examples"""
-    global EBONITE_FROM_PIP
-    tmp = EBONITE_FROM_PIP
-    EBONITE_FROM_PIP = False
+    global _EBONITE_SOURCE
+    tmp = _EBONITE_SOURCE
+    _EBONITE_SOURCE = False
     try:
         yield
     finally:
-        EBONITE_FROM_PIP = tmp
+        _EBONITE_SOURCE = tmp
 
 
 @contextmanager
@@ -37,13 +40,13 @@ def use_wheel_installation(path: str):
     """Context manager that changes docker builder behaviour to
     install ebonite from wheel.
     This is needed in the case you using ebonite from wheel"""
-    global EBONITE_FROM_PIP
-    tmp = EBONITE_FROM_PIP
-    EBONITE_FROM_PIP = path
+    global _EBONITE_SOURCE
+    tmp = _EBONITE_SOURCE
+    _EBONITE_SOURCE = path
     try:
         yield
     finally:
-        EBONITE_FROM_PIP = tmp
+        _EBONITE_SOURCE = tmp
 
 
 class BuilderBase:
