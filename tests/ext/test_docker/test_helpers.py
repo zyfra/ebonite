@@ -50,7 +50,7 @@ def test_run_docker_instance(built_image):
     assert isinstance(instance.params, DockerContainer)
     assert instance.has_runner
     assert instance.params.name == 'test_docker_helper_container'
-    assert instance.params.ports_mapping == {9000: 9000}
+    assert instance.params.port_mapping == {9000: 9000}
     assert instance.params.container_id is not None
     assert instance.exists()
     assert instance.is_running()
