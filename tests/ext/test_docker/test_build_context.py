@@ -80,4 +80,3 @@ def _cut_empty_lines(string):
 def _generate_dockerfile(unix_packages=None, **kwargs):
     with use_local_installation():
         return _cut_empty_lines(_DockerfileGenerator(DockerBuildArgs(**kwargs)).generate({}, unix_packages))
-

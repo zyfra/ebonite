@@ -15,6 +15,7 @@ _EBONITE_SOURCE = True
 # False - That it will use local ebonite installation
 # str, representing a path - that it will search for .whl file with ebonite package
 
+
 def ebonite_from_pip():
     """
     :return boolen flag if ebonite inside image must be installed from pip (or copied local dist instread)"""
