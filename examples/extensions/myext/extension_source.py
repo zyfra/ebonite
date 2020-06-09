@@ -5,8 +5,10 @@ from ebonite.core.analyzer.model import BindingModelHook
 from ebonite.core.objects.artifacts import Blobs
 from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
 
+# In order for you to use extensions you have to define class describing IO of your model,
+# model wrapper that is describing what behaviour you expect in service that will be built with ebonite and Hook,
+# so ebonite can see the models as part of it's code
 
-# TODO и тут бы больше описания
 class MyModelWrapper(ModelWrapper):
     type = 'mymodel'
 
