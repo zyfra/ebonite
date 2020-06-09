@@ -1,5 +1,5 @@
+from ebonite.ext.docker import DockerContainer, DockerEnv, DockerRegistry
 from ebonite.ext.docker.builder import DockerImage
-from ebonite.ext.docker import DockerContainer, DockerRegistry, DockerEnv
 from ebonite.ext.docker.runner import DockerRunner
 
 
