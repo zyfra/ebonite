@@ -22,7 +22,7 @@ def build_docker_image(name: str, obj, server: Server = None, env: DockerEnv = N
     :parma kwargs: additional arguments for DockerBuilder.build_image
     """
     env = env or DockerEnv()
-    source = BuildableAnalyzer.analyze(obj, sever=server)
+    source = BuildableAnalyzer.analyze(obj, server=server)
     builder: DockerBuilder = env.get_builder()
     params = builder.create_image(name, env, tag, repository)
     builder.build_image(source, params, env, force_overwrite, **kwargs)
