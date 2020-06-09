@@ -81,9 +81,9 @@ Installation
 Quickstart
 =============
 
-Before starting with Ebonite prepare your model.
-This could be a model from your favorite library (list of supported libraries is presented above) or
-a custom Python function working with typical machine learning data structures.
+Before you start with Ebonite you need to have your model.
+This could be a model from your favorite library (list of supported libraries is below) or
+just a custom Python function working with typical machine learning data.
 
 .. code-block:: python
 
@@ -91,11 +91,11 @@ a custom Python function working with typical machine learning data structures.
   def clf(data):
     return (np.sum(a, axis=-1) > 1).astype(np.int32)
 
-Moreover, your custom function could wrap a model from some library.
+Moreover, your custom function can wrap a model from some library.
 This gives you flexibility to use not only pure ML models but rule-based ones (e.g., as a service stub at project start)
 and hybrid (ML with pre/postprocessing) ones which are often applied to solve real world problems.
 
-When a model is prepared you should create a Ebonite client.
+When a model is prepared you should create an Ebonite client.
 
 .. code-block:: python
 
@@ -112,7 +112,7 @@ Sample data is required for Ebonite to determine structure of inputs and outputs
 
 You are awesome! Now your model is safely persisted in a repository.
 
-Later on in other Python process you can load your model from this repo and do some wonderful stuff with it,
+Later on in other Python process you can load your model from this repository and do some wonderful stuff with it,
 e.g., create a Docker image named `my_service` with an HTTP service wrapping your model.
 
 .. code-block:: python
@@ -132,8 +132,8 @@ Documentation
 
 Examples
 ========
-... is available in the `folder </examples/>`_.
-It contains a lot of examples:
+... are available in this `folder </examples/>`_.
+Here are some of them:
 
 * `Jupyter Notebook guide </examples/notebook_tutorial/ebonite_tutorial.ipynb>`_
 * `Scikit-learn guide </examples/sklearn_model/>`_
@@ -183,6 +183,7 @@ Supported libraries and repositories
 
   * aiohttp
 
+Create an issue if you need support for something other than that!
 
 
 Contributing
