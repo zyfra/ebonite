@@ -196,8 +196,12 @@ class _DockerfileGenerator:
             'package_install_cmd': self.package_install_cmd,
             'packages': [p.package_name for p in packages or []]
         }
-        if ebonite_from_pip():
+        ebonite_pip = ebonite_from_pip()
+        if ebonite_pip is True:
             import ebonite
             docker_args['ebonite_install'] = 'RUN ' + EBONITE_INSTALL_COMMAND.format(version=ebonite.__version__)
+        elif isinstance(ebonite_pip, str):
+            docker_args['ebonite_install'] = f"COPY {os.path.basename(ebonite_pip)} . " \
+                                             f"\n RUN pip install {os.path.basename(ebonite_pip)}"
 
         return docker_tmpl.render(**docker_args)
