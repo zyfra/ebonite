@@ -2,7 +2,6 @@
 
 import ebonite
 from ebonite.core.objects.core import Model, Task
-from ebonite.build.builder.base import use_local_installation
 
 
 def main():
@@ -19,7 +18,7 @@ def main():
     image = ebnt.create_image('custom_code_model_container', model, task, builder_args={'force_overwrite': True})
 
     # run docker container
-    ebnt.create_instance('custom_code_model_container', image, port_mapping = {9000: 9000}).run(detach=False)
+    ebnt.create_instance('custom_code_model_container', image, port_mapping={9000: 9000}).run(detach=False)
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 
 

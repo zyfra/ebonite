@@ -2,7 +2,6 @@
 
 import pandas as pd
 from examples.custom_code._custom_code import run_my_model
-from ebonite.build.builder.base import use_local_installation
 
 from ebonite import Ebonite
 
