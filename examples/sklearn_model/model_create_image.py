@@ -2,6 +2,7 @@
 
 from ebonite import Ebonite
 
+
 def main():
     #  create local ebonite client. This client stores metadata and artifacts on local fs.
 
@@ -14,7 +15,7 @@ def main():
     ebnt.build_and_run_instance("sklearn_model_service", model, task,
                                 runner_kwargs={'detach': False},
                                 builder_kwargs={'force_overwrite': True},
-                                instance_kwargs={'port_mapping': {9000:9000}}
+                                instance_kwargs={'port_mapping': {9000: 9000}}
                                 )
     # now you can use client.py to call this service or go to http://localhost:9000/apidocs to view swagger ui
 

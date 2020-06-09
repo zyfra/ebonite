@@ -2,6 +2,7 @@
 
 import ebonite
 
+
 def main():
     # load extension
     # you just use plain module name, if it's installed from pip

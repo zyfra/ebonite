@@ -9,6 +9,7 @@ from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrap
 # model wrapper that is describing what behaviour you expect in service that will be built with ebonite and Hook,
 # so ebonite can see the models as part of it's code
 
+
 class MyModelWrapper(ModelWrapper):
     type = 'mymodel'
 

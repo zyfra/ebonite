@@ -1,5 +1,4 @@
 from ebonite import Ebonite, create_model
-from ebonite.build.builder.base import use_local_installation
 from ebonite.ext.flask import FlaskServer
 
 
