@@ -7,7 +7,7 @@ from pyjackson.errors import DeserializationError, SerializationError
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.dataset import DatasetHook
 from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
-from ebonite.ext.numpy.dataset import _python_type_from_np_string_repr
+from ebonite.ext.numpy.dataset import python_type_from_np_string_repr
 
 
 class DMatrixDatasetType(LibDatasetTypeMixin):
@@ -35,7 +35,7 @@ class DMatrixDatasetType(LibDatasetTypeMixin):
 
     @property
     def feature_types(self):
-        return [_python_type_from_np_string_repr(t) for t in self.feature_type_names]
+        return [python_type_from_np_string_repr(t) for t in self.feature_type_names]
 
     def get_spec(self) -> ArgList:
         return [Field(n, t, False) for n, t in zip(self.feature_names, self.feature_types)]

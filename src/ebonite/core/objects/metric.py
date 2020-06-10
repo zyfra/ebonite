@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Dict
 
-from pyjackson.decorators import type_field, cached_property
+from pyjackson.decorators import cached_property, type_field
 
 from ebonite.core.objects.base import EboniteParams
 from ebonite.utils.importing import import_string

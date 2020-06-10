@@ -24,12 +24,10 @@ def main():
     #  clear=True means it will erase previous data (this is for demo purposes)
     ebnt = ebonite.Ebonite.local(clear=True)
 
-    #  create a Task, container for models
-    task = ebnt.get_or_create_task('my_project', 'regression_is_my_profession')
     #  create model named 'mymodel' from sklearn model object and pandas data sample
     #  then push it to repositories. this will create .ebonite dir with metadata.json and artifacts dir
     #  metadata will contain everything ebonite knows about this model and artifacts will contain model.pkl binary
-    task.create_and_push_model(reg, data, 'mymodel')
+    ebnt.create_model('mymodel', reg, data, project_name='my_project', task_name='regression_is_my_profession')
 
 
 if __name__ == '__main__':

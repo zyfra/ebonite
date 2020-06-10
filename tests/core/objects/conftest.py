@@ -8,7 +8,7 @@ from ebonite.core.objects.core import Buildable, Image, Model, Pipeline, Project
 from ebonite.repository import MetadataRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.metadata.local import LocalMetadataRepository
-from tests.conftest import MockModelWrapper
+from tests.conftest import DummyModelWrapper
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def artifact_repo():
 
 
 @pytest.fixture
-def project_factory(meta: MetadataRepository):
+def project_factory(meta: MetadataRepository, artifact_repo: InMemoryArtifactRepository):
     counter = 0
 
     def factory(saved=False):
@@ -31,6 +31,7 @@ def project_factory(meta: MetadataRepository):
         project = Project('Test Project-{}'.format(counter))
         if saved:
             p = meta.create_project(project)
+            p.bind_artifact_repo(artifact_repo)
             return p
         return project
 
@@ -60,7 +61,7 @@ def model_factory(task_factory):
     def factory(saved=False):
         nonlocal counter
         counter += 1
-        model = Model('Test Model-{}'.format(counter), MockModelWrapper())
+        model = Model('Test Model-{}'.format(counter), DummyModelWrapper())
         if saved:
             task = task_factory(True)
             task.add_model(model)
@@ -107,14 +108,14 @@ def image_factory(task_factory):
 
 
 @pytest.fixture
-def task_b(task_factory):
+def task_saved(task_factory):
     return task_factory(True)
 
 
 @pytest.fixture
-def task_b2(task_b: Task):
-    task_b.bind_artifact_repo(InMemoryArtifactRepository())
-    return task_b
+def task_saved_art(task_saved):
+    task_saved.bind_artifact_repo(InMemoryArtifactRepository())
+    return task_saved
 
 
 @pytest.fixture
@@ -123,8 +124,13 @@ def task(task_factory):
 
 
 @pytest.fixture
-def project_b(project_factory):
+def project_saved(project_factory):
     return project_factory(True)
+
+
+@pytest.fixture
+def project_saved_art(project_saved):
+    return project_saved.bind_artifact_repo(InMemoryArtifactRepository())
 
 
 @pytest.fixture

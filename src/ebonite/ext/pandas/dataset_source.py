@@ -1,12 +1,11 @@
 from abc import abstractmethod
-from collections import Iterable
-from typing import Dict, Any
+from typing import Any, Dict
+
+import pandas as pd
 
 from ebonite.core.objects import DatasetType
 from ebonite.core.objects.artifacts import Blob
 from ebonite.core.objects.dataset_source import DatasetSource
-
-import pandas as pd
 
 
 class PandasDataset(DatasetSource):

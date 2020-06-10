@@ -1,12 +1,11 @@
 from abc import abstractmethod
 from collections import Iterable
 
-from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
-from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.base import EboniteParams
+from ebonite.core.objects.dataset_type import DatasetType
 
 
 @type_field('type')

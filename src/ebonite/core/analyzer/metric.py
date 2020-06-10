@@ -1,8 +1,8 @@
 from abc import abstractmethod
 
-from ebonite.core.analyzer import Hook, analyzer_class, TypeHookMixin
+from ebonite.core.analyzer import Hook, TypeHookMixin, analyzer_class
 from ebonite.core.analyzer.base import LibHookMixin
-from ebonite.core.objects.metric import Metric, LibFunctionMetric
+from ebonite.core.objects.metric import LibFunctionMetric, Metric
 
 
 class MetricHook(Hook):

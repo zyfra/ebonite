@@ -18,6 +18,7 @@ class NoSuchArtifactError(ArtifactError):
     """
     Exception which is thrown if artifact is not found in the repository
     """
+
     def __init__(self, artifact_id, repo: 'ArtifactRepository'):
         super(NoSuchArtifactError, self).__init__('No artifact with id {} found in {}'.format(artifact_id, repo))
 
@@ -26,6 +27,7 @@ class ArtifactExistsError(ArtifactError):
     """
     Exception which is thrown if artifact already exists in the repository
     """
+
     def __init__(self, artifact_id, repo: 'ArtifactRepository'):
         super(ArtifactExistsError, self).__init__('Artifact with id {} already in {}'.format(artifact_id, repo))
 
@@ -52,10 +54,13 @@ class ArtifactRepository:
         :param model: model to store artifacts in the repository for
         :return: nothing
         """
+
         def _persister(artifact):
             with artifact.blob_dict() as files:
                 return self.push_artifact(model, files)
+
         model.persist_artifacts(_persister)
+        model.bind_artifact_repo(self)
 
     def push_artifact(self, model: 'core.Model', blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
         """
@@ -66,6 +71,7 @@ class ArtifactRepository:
         :return: :class:`.ArtifactCollection` object containing stored artifacts
         :exception: :exc:`.ArtifactExistsError` if there are already artifacts stored for this model
         """
+        model.bind_artifact_repo(self)
         return self._push_artifact(self.get_model_id(model), blobs)
 
     def get_artifact(self, model: 'core.Model') -> ArtifactCollection:
@@ -87,6 +93,7 @@ class ArtifactRepository:
         :exception: :exc:`.NoSuchArtifactError` if no artifacts were associated with given model
         """
         self._delete_artifact(self.get_model_id(model))
+        model.unbind_artifact_repo()
 
     @abstractmethod
     def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:

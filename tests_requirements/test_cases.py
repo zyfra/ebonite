@@ -3,7 +3,9 @@ import shutil
 import subprocess
 
 import dill
+from test_pack_1 import TestM
 
+from ebonite.client.helpers import create_model
 from ebonite.utils import fs
 from ebonite.utils.module import get_object_requirements
 
@@ -41,3 +43,10 @@ def test_requirements_analyzer__model_works(tmpdir):
 
     cp = subprocess.run('python use_model.py', shell=True, cwd=tmpdir)
     assert cp.returncode == 0
+
+
+def test_model_custom_requirements():
+    model = create_model(TestM(), 1, 'test_model')
+    reqs = [x.name for x in model.requirements.custom]
+    assert 'test_pack_1' in reqs
+    assert 'test_pack_2' in reqs

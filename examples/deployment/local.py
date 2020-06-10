@@ -13,17 +13,17 @@ def main():
     model = create_model(model_function, 0, model_name='dummy_function')
     task.add_model(model)
 
-    image = ebnt.build_image('dummy_image', model, force_overwrite=True)
+    image = ebnt.create_image('dummy_image', model, force_overwrite=True)
 
-    service = ebnt.run_instance('dummy_service', image)
-
-    for log in service.logs(stream=True):
+    instance = ebnt.create_instance('dummy_service', image)
+    instance.run()
+    for log in instance.logs(stream=True):
         try:
             print(log, end='')
         except KeyboardInterrupt:  # FIXME does not work since we stuck in generator
             break
 
-    ebnt.stop_instance(service)
+    ebnt.delete_instance(instance)
 
 
 if __name__ == '__main__':

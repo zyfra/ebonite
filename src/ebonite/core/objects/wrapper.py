@@ -177,7 +177,7 @@ class ModelWrapper(EboniteParams):
 
         :return: :class:`.Requirements` object representing runtime requirements of bound module object
         """
-        return get_object_requirements(self.model)
+        return get_object_requirements(self)
 
     @abstractmethod
     def _exposed_methods_mapping(self) -> typing.Dict[str, str]:
@@ -220,7 +220,10 @@ class ModelWrapper(EboniteParams):
         return obj
 
     def resolve_method(self, method_name=None):
-        # TODO docs
+        """Checks if method with this name exists
+
+        :param method_name: name of the method.
+        If not provided, this wrapper must have only one method and it will be used"""
         if method_name is None:
             methods = self.exposed_methods
             if len(methods) > 1:
