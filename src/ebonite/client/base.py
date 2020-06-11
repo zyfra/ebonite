@@ -194,7 +194,7 @@ class Ebonite:
         instance_kwargs = instance_kwargs or {}
         runner_kwargs = runner_kwargs or {}
         builder_kwargs = builder_kwargs or {}
-        image = self.create_image(name, obj, task, environment=environment, **builder_kwargs)
+        image = self.create_image(name, obj, task, environment=environment, builder_args=builder_kwargs)
         return self.create_instance(name, image, environment, **instance_kwargs).run(**runner_kwargs)
 
     @classmethod
