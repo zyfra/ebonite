@@ -143,6 +143,31 @@ class InMemoryBlob(Blob, Unserializable):
         yield io.BytesIO(self.payload)
 
 
+class LazyBlob(Blob, Unserializable):
+    # TODO docs
+    def __init__(self, source: typing.Callable[[], typing.BinaryIO]):
+        self.source = source
+
+    def materialize(self, path):
+        """
+        Writes payload to path
+
+        :param path: target path
+        """
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'wb') as f:
+            f.write(self.source().read())
+
+    @contextlib.contextmanager
+    def bytestream(self) -> StreamContextManager:
+        """
+        Creates BytesIO object from bytes
+
+        :yields: file-like object
+        """
+        yield self.source()
+
+
 @type_field('type')
 class ArtifactCollection(EboniteParams):
     """
