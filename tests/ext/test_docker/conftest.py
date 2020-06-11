@@ -8,18 +8,6 @@ from ebonite.build.builder.base import use_local_installation
 from ebonite.ext.docker import DockerEnv, RemoteRegistry
 from ebonite.ext.docker.base import DockerDaemon
 
-# def has_local_image(img_name: str) -> bool:
-#     if not has_docker():
-#         return False
-#     with create_docker_client() as client:
-#         try:
-#             client.images.get(img_name)
-#         except docker.errors.ImageNotFound:
-#             return False
-#     return True
-#
-
-
 EXTERNAL_REGISTRY_PORT = 2374
 INTERNAL_REGISTRY_PORT = 5000
 DAEMON_PORT = 2375
@@ -27,7 +15,8 @@ DAEMON_PORT = 2375
 
 @pytest.fixture(scope='session')
 def dockerenv_local():
-    yield DockerEnv()
+    with use_local_installation():
+        yield DockerEnv()
 
 
 @pytest.fixture(scope='session')
