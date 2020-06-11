@@ -4,6 +4,18 @@ Changelog
 Current release candidate
 -------------------------
 
+0.6.0 (2020-06-12)
+------------------
+
+* Prebuilt flask server images for faster image build
+* More and better methods in Ebonite client
+* Pipelines - chain Models methods into one Model-like objects
+* Refactioring of image and instance API
+* Rework of pandas DatasetType: now with column types, even non-primitive (e.g. datetimes)
+* Helper functions for stanalone docker build/run
+* Minor bugfixes and features
+
+
 0.5.2 (2020-05-16)
 ------------------
 
