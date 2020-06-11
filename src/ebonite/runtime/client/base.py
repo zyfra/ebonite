@@ -21,12 +21,12 @@ class BaseClient:
     def __init__(self):
         self.methods = {}
 
-        iface: InterfaceDescriptor = self._interface_factory()
+        interface: InterfaceDescriptor = self._interface_factory()
 
-        if ebonite.__version__ != iface.version:
-            warn(f"Server Ebonite version {iface.version}, client Ebonite version {ebonite.__version__}")
+        if ebonite.__version__ != interface.version:
+            warn(f"Server Ebonite version {interface.version}, client Ebonite version {ebonite.__version__}")
 
-        for method in iface.methods:
+        for method in interface.methods:
             self.methods[method.name] = _bootstrap_method(method)
 
     @abstractmethod

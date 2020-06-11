@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
+from pyjackson import deserialize, serialize
 
 from ebonite.core.errors import MetadataError, NonExistingModelError, NonExistingTaskError, UnboundObjectError
 from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
-from ebonite.core.objects.core import Model, Project, Task
+from ebonite.core.objects.core import Model, Pipeline, Project, Task, _WrapperMethodAccessor
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
 from ebonite.ext.sklearn import SklearnModelWrapper
 from ebonite.repository import MetadataRepository
@@ -271,62 +272,208 @@ def test_model_with_wrapper_meta_serde(model):
     serde_and_compare(model, Model)
 
 
-def test_model__no_images(model_factory):
-    model = model_factory(True)
+def test_model__as_pipeline(created_model):
+    wrapper = created_model.wrapper
+    method = wrapper.resolve_method('predict')
+    _, input_data, output_data = wrapper.methods[method]
+    pipeline = created_model.as_pipeline(method)
+    assert isinstance(pipeline, Pipeline)
+    assert pipeline.input_data == input_data
+    assert pipeline.output_data == output_data
+    assert len(pipeline.steps) == 1
 
-    assert len(model.images) == 0
+    step = pipeline.steps[0]
+    assert step.model_name == created_model.name
+    assert step.method_name == method
 
 
-def test_model__add_images(model_factory, image_factory):
-    model = model_factory(True)
+def test_model__method_accessor(created_model):
+    with pytest.raises(AttributeError):
+        created_model.non_existing_method
+
+    method = created_model.predict
+    assert isinstance(method, _WrapperMethodAccessor)
+    assert method.model == created_model
+    assert method.method_name == 'predict'
+
+
+# ################PIPELINES###########
+
+@pytest.fixture
+def double_model():
+    def f1(a):
+        return a + a
+
+    model = Model.create(f1, 'a', '1')
+    model._id = 1
+    return model
+
+
+@pytest.fixture
+def len_model():
+    def f2(a):
+        return len(a)
+
+    model = Model.create(f2, 'a', '2')
+    model._id = 2
+    return model
+
+
+def test_pipeline__append(double_model, len_model):
+    p1 = double_model.as_pipeline()
+    p2 = p1.append(len_model)
+    assert isinstance(p2, Pipeline)
+    assert p1 == p2
+
+    method = double_model.wrapper.resolve_method()
+    assert p2.input_data == double_model.wrapper.methods[method][1]
+    assert p2.output_data == len_model.wrapper.methods[method][2]
+    assert len(p2.steps) == 2
+    step1, step2 = p2.steps
+    assert step1.model_name == double_model.name
+    assert step1.method_name == method
+    assert step2.model_name == len_model.name
+    assert step2.method_name == method
+
+
+def test_pipeline__load(meta, model, task_saved_art):
+    task_saved_art.push_model(model)
+
+    p = model.as_pipeline('predict')
+    task_saved_art.add_pipeline(p)
+
+    p = deserialize(serialize(meta.get_pipeline_by_id(p.id)), Pipeline)
+    assert p is not None
+    assert len(p.models) == 0
+    p.bind_meta_repo(meta)
+    p.load()
+    assert len(p.models) == 1
+    assert model.name in p.models
+    assert p.models[model.name] == model
+
+
+def test_pipeline__run(created_model, pandas_data):
+    p = created_model.as_pipeline('predict')
+    result = p.run(pandas_data)
+    assert len(result) == len(pandas_data)
+
+
+def test_task__no_pipelines(task_factory):
+    task = task_factory(True)
+
+    assert len(task.pipelines) == 0
+
+
+def test_task__add_pipelines(task_factory, pipeline_factory):
+    task = task_factory(True)
+    pipeline1 = pipeline_factory()
+    pipeline2 = pipeline_factory()
+
+    assert len(task.pipelines) == 0
+    assert pipeline1.task_id is None
+    assert pipeline1.id is None
+    assert pipeline2.task_id is None
+    assert pipeline2.id is None
+
+    task.add_pipelines([pipeline1, pipeline2])
+
+    assert len(task.pipelines) == 2
+    assert task.pipelines[pipeline1.id] is pipeline1
+    assert pipeline1.task_id is not None
+    assert pipeline1.task == task
+    assert pipeline1.id is not None
+    assert task.pipelines[pipeline2.id] is pipeline2
+    assert pipeline2.task_id is not None
+    assert pipeline2.task == task
+    assert pipeline2.id is not None
+
+
+def test_task__add_pipeline__wrong_task(task_factory, pipeline_factory):
+    task = task_factory(True)
+    pipeline = pipeline_factory(True)
+
+    with pytest.raises(MetadataError):
+        task.add_pipeline(pipeline)
+
+
+def test_task__delete_pipeline(task_factory, pipeline_factory):
+    task = task_factory(True)
+    pipeline = pipeline_factory()
+
+    assert len(task.pipelines) == 0
+    assert pipeline.task_id is None
+    assert pipeline.id is None
+
+    task.add_pipeline(pipeline)
+
+    assert len(task.pipelines) == 1
+    assert pipeline.task_id is not None
+    assert pipeline.id is not None
+
+    task.delete_pipeline(pipeline)
+
+    assert len(task.pipelines) == 0
+    assert pipeline.task_id is None
+    assert pipeline.id is None
+
+
+# ################IMAGES###########
+def test_task__no_images(task_factory):
+    task = task_factory(True)
+
+    assert len(task.images) == 0
+
+
+def test_task__add_images(task_factory, image_factory):
+    task = task_factory(True)
     image1 = image_factory()
     image2 = image_factory()
 
-    assert len(model.images) == 0
-    assert image1.model_id is None
+    assert len(task.images) == 0
+    assert image1.task_id is None
     assert image1.id is None
-    assert image2.model_id is None
+    assert image2.task_id is None
     assert image2.id is None
 
-    model.add_images([image1, image2])
+    task.add_images([image1, image2])
 
-    assert len(model.images) == 2
-    assert model.images[image1.id] is image1
-    assert image1.model_id is not None
-    assert image1.model == model
+    assert len(task.images) == 2
+    assert task.images[image1.id] is image1
+    assert image1.task_id is not None
+    assert image1.task == task
     assert image1.id is not None
-    assert model.images[image2.id] is image2
-    assert image2.model_id is not None
-    assert image2.model == model
+    assert task.images[image2.id] is image2
+    assert image2.task_id is not None
+    assert image2.task == task
     assert image2.id is not None
 
 
-def test_model__add_image__wrong_model(model_factory, image_factory):
-    model = model_factory(True)
+def test_task__add_image__wrong_task(task_factory, image_factory):
+    task = task_factory(True)
     image = image_factory(True)
 
     with pytest.raises(MetadataError):
-        model.add_image(image)
+        task.add_image(image)
 
 
-def test_model__delete_image(model_factory, image_factory):
-    model = model_factory(True)
+def test_task__delete_image(task_factory, image_factory):
+    task = task_factory(True)
     image = image_factory()
 
-    assert len(model.images) == 0
-    assert image.model_id is None
+    assert len(task.images) == 0
+    assert image.task_id is None
     assert image.id is None
 
-    model.add_image(image)
+    task.add_image(image)
 
-    assert len(model.images) == 1
-    assert image.model_id is not None
+    assert len(task.images) == 1
+    assert image.task_id is not None
     assert image.id is not None
 
-    model.delete_image(image)
+    task.delete_image(image, meta_only=True)
 
-    assert len(model.images) == 0
-    assert image.model_id is None
+    assert len(task.images) == 0
+    assert image.task_id is None
     assert image.id is None
 
 

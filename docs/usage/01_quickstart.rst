@@ -32,7 +32,7 @@ Now you need to create task to push your model into
 .. literalinclude:: ../../examples/sklearn_model/model_train.py
    :linenos:
    :language: python
-   :lines: 28,32
+   :lines: 30
    :dedent: 4
 ..
 
@@ -62,7 +62,7 @@ Or create and start a docker container like this
 .. literalinclude:: ../../examples/sklearn_model/model_create_image.py
    :linenos:
    :language: python
-   :lines: 18
+   :lines: 14-16
    :dedent: 8
 ..
 

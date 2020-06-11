@@ -5,7 +5,7 @@ from testcontainers.core.container import DockerContainer
 
 from ebonite.ext.sqlalchemy.models import Base
 from ebonite.ext.sqlalchemy.repository import SQLAlchemyMetaRepository
-from tests.build.builder.test_docker import has_docker
+from tests.conftest import has_docker
 from tests.repository.metadata.conftest import create_metadata_hooks
 
 PG_PORT = 5432

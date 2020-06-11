@@ -3,7 +3,8 @@ from copy import deepcopy
 
 import pytest
 
-from ebonite.core.objects.core import Image, Model, Project, RuntimeEnvironment, RuntimeInstance, Task
+from ebonite.core.objects.core import (Buildable, Image, Model, Pipeline, PipelineStep, Project, RuntimeEnvironment,
+                                       RuntimeInstance, Task)
 from tests.conftest import interface_hook_creator
 
 
@@ -45,22 +46,36 @@ def task2():
 
 
 @pytest.fixture
-def model(mock_model_wrapper):
-    return Model("Test Model", mock_model_wrapper, description='')
-
-
-@pytest.fixture
-def model2(mock_model_wrapper):
-    return Model("Test Model2", mock_model_wrapper, description='')
-
-
-@pytest.fixture
-def created_model(meta, project, task, model):
+def created_task(meta, project, task):
     project = meta.create_project(project)
     task.project = project
-    task = meta.create_task(task)
-    model.task = task
+    return meta.create_task(task)
+
+
+@pytest.fixture
+def model(dummy_model_wrapper):
+    return Model("Test Model", dummy_model_wrapper, description='')
+
+
+@pytest.fixture
+def model2(dummy_model_wrapper):
+    return Model("Test Model2", dummy_model_wrapper, description='')
+
+
+@pytest.fixture
+def created_model(meta, created_task, model):
+    model.task = created_task
     return meta.create_model(model)
+
+
+@pytest.fixture
+def pipeline():
+    return Pipeline('Test Pipeline', [PipelineStep('a', 'b')], None, None)
+
+
+@pytest.fixture
+def pipeline2():
+    return Pipeline('Test Pipeline2', [PipelineStep('b', 'c')], None, None)
 
 
 class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params):
@@ -68,15 +83,20 @@ class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params
         self.key = key
 
 
+class TestBuildable(Buildable):
+    pass
+
+
 @pytest.fixture
 def image():
-    return Image("Test Image", params=TestParams(123))
+    return Image("Meta Test Image", params=TestParams(123), source=TestBuildable())
 
 
 @pytest.fixture
-def created_image(meta, created_model, image):
-    image = deepcopy(image)
-    image.model = created_model
+def created_image(meta, created_task, created_environment, image):
+    image: Image = deepcopy(image)
+    image.task = created_task
+    image.environment = created_environment
     return meta.create_image(image)
 
 

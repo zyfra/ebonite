@@ -1,11 +1,6 @@
 import itertools
-import os
 import uuid
 from io import BytesIO
-
-import flask
-from flasgger import Swagger, swag_from
-from flask import jsonify, redirect, request, send_file
 
 from ebonite.config import Config, Core, Param
 from ebonite.runtime.interface import Interface
@@ -16,7 +11,6 @@ from ebonite.utils.fs import current_module_path
 from ebonite.utils.log import rlogger
 
 current_app = None
-TEMPLATES_DIR = 'build_templates'
 
 
 def create_executor_function(interface: Interface, method: str):
@@ -27,6 +21,7 @@ def create_executor_function(interface: Interface, method: str):
     :param method: method name
     :return: callable view function
     """
+    from flask import g, jsonify, request, send_file
 
     def ef():
         try:
@@ -35,7 +30,7 @@ def create_executor_function(interface: Interface, method: str):
             else:
                 request_data = dict(itertools.chain(request.form.items(), request.files.items()))
 
-            result = BaseHTTPServer._execute_method(interface, method, request_data, flask.g.ebonite_id)
+            result = BaseHTTPServer._execute_method(interface, method, request_data, g.ebonite_id)
 
             if isinstance(result, bytes):
                 return send_file(BytesIO(result), mimetype='image/png')
@@ -49,6 +44,8 @@ def create_executor_function(interface: Interface, method: str):
 
 
 def _register_method(app, interface, method_name, signature):
+    from flasgger import swag_from
+
     swag = swag_from(create_spec(method_name, signature))
     executor_function = swag(create_executor_function(interface, method_name))
     app.add_url_rule('/' + method_name, method_name, executor_function, methods=['POST'])
@@ -62,6 +59,8 @@ def create_interface_routes(app, interface: Interface):
 
 
 def create_schema_route(app, interface: Interface):
+    from flask import jsonify
+
     schema = InterfaceDescriptor.from_interface(interface).to_dict()
     rlogger.debug('Creating /interface.json route with schema: %s', schema)
     app.add_url_rule('/interface.json', 'schema', lambda: jsonify(schema))
@@ -74,6 +73,14 @@ class FlaskConfig(Config):
 if Core.DEBUG:
     FlaskConfig.log_params()
 
+PREBUILD_PATH = current_module_path('prebuild')
+BASE_IMAGE_TEMPLATE = 'zyfraai/flask:{}'
+
+
+def prebuild_hook(python_version):
+    from ebonite.ext.docker.prebuild import prebuild_image
+    prebuild_image(PREBUILD_PATH, BASE_IMAGE_TEMPLATE, python_version)
+
 
 class FlaskServer(BaseHTTPServer):
     """
@@ -81,25 +88,21 @@ class FlaskServer(BaseHTTPServer):
     """
 
     additional_sources = [
-        current_module_path('build_templates', 'flask-site-nginx.conf'),
-        current_module_path('build_templates', 'nginx.conf'),
-        current_module_path('build_templates', 'supervisord.conf'),
-        current_module_path('build_templates', 'uwsgi.ini')
+        current_module_path('build', 'app.py')  # replace stub in base image
     ]
 
-    # TODO somehow make this depend on builder implementation?
-    additional_options = {
-        'templates_dir': os.path.join(os.path.dirname(__file__), TEMPLATES_DIR),
-        'run_cmd': '["/usr/bin/supervisord"]'
-    }
-
-    def __init__(self):
-        # we do not reference real Flask/Flasgger objects here and this breaks `get_object_requirements`
-        self.__requires = Swagger
-        super().__init__()
+    additional_options = {'docker': {
+        'templates_dir': current_module_path('build'),
+        'base_image': lambda python_version: BASE_IMAGE_TEMPLATE.format(python_version),
+        'run_cmd': False,  # base image has already specified command
+        'prebuild_hook': prebuild_hook
+    }}
 
     def _create_app(self):
-        app = flask.Flask(__name__)
+        from flasgger import Swagger
+        from flask import Flask, g, redirect, request
+
+        app = Flask(__name__)
         app.config['SWAGGER'] = {
             'uiversion': 3,
             'openapi': '3.0.2'
@@ -116,7 +119,7 @@ class FlaskServer(BaseHTTPServer):
 
         @app.before_request
         def log_request_info():
-            flask.g.ebonite_id = str(uuid.uuid4())
+            g.ebonite_id = str(uuid.uuid4())
             app.logger.debug('Headers: %s', request.headers)
             app.logger.debug('Body: %s', request.get_data())
 
@@ -142,3 +145,12 @@ class FlaskServer(BaseHTTPServer):
             app.run(HTTPServerConfig.host, HTTPServerConfig.port)
         else:
             rlogger.debug('Skipping direct flask application run')
+
+
+def main():
+    from ebonite.ext.docker.prebuild import prebuild_missing_images
+    prebuild_missing_images(PREBUILD_PATH, BASE_IMAGE_TEMPLATE)
+
+
+if __name__ == '__main__':
+    main()

@@ -7,15 +7,20 @@ import boto3
 from botocore.exceptions import ClientError
 from pyjackson.decorators import cached_property
 
-from ebonite.config import Config, Param
+from ebonite.config import Config, Core, Param
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, StreamContextManager
 from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
 from ebonite.utils.log import logger
 
 
 class S3Config(Config):
-    ACCESS_KEY = Param('access_key', namespace='s3')
-    SECRET_KEY = Param('secret_key', namespace='s3')
+    namespace = 's3'
+    ACCESS_KEY = Param('access_key')
+    SECRET_KEY = Param('secret_key')
+
+
+if Core.DEBUG:
+    S3Config.log_params()
 
 
 class _WithS3Client:

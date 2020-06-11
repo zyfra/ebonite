@@ -22,7 +22,7 @@ def main():
 
     #  create local ebonite client. This client stores metadata and artifacts on local fs.
     #  clear=True means it will erase previous data (this is for demo purposes)
-    ebnt = ebonite.Ebonite.local()
+    ebnt = ebonite.Ebonite.local(clear=True)
 
     #  create model named 'mymodel' from sklearn model object and pandas data sample
     #  then push it to repositories. this will create .ebonite dir with metadata.json and artifacts dir

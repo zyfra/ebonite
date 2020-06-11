@@ -34,13 +34,13 @@ class InterfaceMetaclass(type):
     Metaclass for :class:`Interface` which keeps track of exposed methods
     """
 
-    def __new__(cls, *args, **kwargs):
-        newcls = super().__new__(cls, *args, **kwargs)
-        newcls.exposed = dict()
-        for name, attr in newcls.__dict__.items():
+    def __new__(mcs, *args, **kwargs):
+        new_cls = super().__new__(mcs, *args, **kwargs)
+        new_cls.exposed = dict()
+        for name, attr in new_cls.__dict__.items():
             if hasattr(attr, 'is_exposed') and getattr(attr, 'is_exposed'):
-                newcls.exposed[name] = get_function_signature(attr)
-        return newcls
+                new_cls.exposed[name] = get_function_signature(attr)
+        return new_cls
 
 
 class Interface(metaclass=InterfaceMetaclass):

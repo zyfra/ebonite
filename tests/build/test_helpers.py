@@ -1,51 +1,31 @@
-import time
-
 import pytest
 
-from ebonite.build.builder.base import use_local_installation
-from ebonite.build.helpers import is_docker_container_running, run_docker_img
-
-from ebonite.ext.flask import FlaskServer
-
-from tests.build.conftest import has_docker, rm_container, rm_image
+from ebonite.build.helpers import validate_kwargs
 
 
-@pytest.fixture
-def server():
-    return FlaskServer()
+class A:
+    @validate_kwargs
+    def method1(self, a, b, **kwargs):
+        return a, b
+
+    @validate_kwargs(allowed=['c'])
+    def method2(self, a, b, **kwargs):
+        return a, b, kwargs.get('c')
 
 
-@pytest.fixture
-def img_name():
-    img_name = "helper-test-image"
-    with use_local_installation():
-        yield img_name
+def test_validate_kwargs():
+    a = A()
 
-    rm_image(img_name + ":latest")  # FIXME later
+    assert a.method1(1, 2) == (1, 2)
 
+    with pytest.raises(TypeError):
+        a.method1(1, 2, 3)
 
-@pytest.fixture
-def container_name():
-    container_name = "ebaklya"
-    yield container_name
-    rm_container(container_name)
+    with pytest.raises(TypeError):
+        a.method1(1, 2, c=3)
 
+    assert a.method2(1, 2) == (1, 2, None)
+    assert a.method2(1, 2, c=3) == (1, 2, 3)
 
-@pytest.fixture
-def service_name():
-    service_name = 'ebnt-test-service'
-    yield service_name
-    rm_container(service_name)
-    rm_image(service_name + ":latest")
-
-
-@pytest.mark.docker
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
-def test_run_docker_img(container_name):
-    run_docker_img(container_name, 'mike0sv/ebaklya', ports_mapping={80: None}, detach=True)
-    _assert_docker_container_running(container_name)
-
-
-def _assert_docker_container_running(name):
-    time.sleep(.1)
-    assert is_docker_container_running(name)
+    with pytest.raises(TypeError):
+        a.method2(1, 2, d=3)

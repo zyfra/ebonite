@@ -20,7 +20,7 @@ class _MergedInterface(Interface):
         executors = {**self.executors}
         for pre, iface in ifaces.items():
             for meth in iface.exposed_methods():
-                pre_meth = '{}-{}'.format(pre, meth)
+                pre_meth = '{}_{}'.format(pre, meth)
                 exposed[pre_meth] = iface.exposed_method_signature(meth)
                 executors[pre_meth] = self._exec_factory(iface, meth)
         self.exposed = exposed

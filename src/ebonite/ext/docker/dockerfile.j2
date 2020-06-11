@@ -20,5 +20,7 @@ ENV {{ name }}={{ value }}
 {% endfor %}
 {% include "post_copy.j2" ignore missing %}
 
+{% if run_cmd is not false %}
 CMD {{ run_cmd }}
+{% endif %}
 

@@ -49,8 +49,8 @@ class Hook(ABC):
     def __init_subclass__(cls, **kwargs):
         if hasattr(cls, '__init__'):
             init = getattr(cls, '__init__')
-            argspec = inspect.getfullargspec(init)
-            if len(argspec.args) > 1:
+            arg_spec = inspect.getfullargspec(init)
+            if len(arg_spec.args) > 1:
                 raise ValueError('Hook type [{}] cannot have __init__ with arguments'.format(cls.__name__))
 
         if not inspect.isabstract(cls):

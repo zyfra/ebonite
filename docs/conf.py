@@ -29,7 +29,7 @@ project = 'Ebonite'
 year = '2019 - 2020'
 author = 'Zyfra'
 copyright = '{0}, {1}'.format(year, author)
-version = release = '0.5.2'
+version = release = '0.6.0'
 
 pygments_style = 'trac'
 templates_path = ['.']
@@ -37,6 +37,7 @@ extlinks = {
     'issue': ('https://github.com/zyfra/ebonite/issues/%s', '#'),
     'pr': ('https://github.com/zyfra/ebonite/pull/%s', 'PR #'),
 }
+# noinspection PyPep8
 import sphinx_rtd_theme
 
 html_theme = "sphinx_rtd_theme"

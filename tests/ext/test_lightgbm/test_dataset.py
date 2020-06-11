@@ -74,7 +74,7 @@ def test_np__schema(dtype_np):
 
 def test_df__schema(dtype_df):
     schema = spec.type_to_schema(dtype_df)
-    assert schema == {'properties': {'values': {'items': {'properties': {'a': {'type': 'number'}},
+    assert schema == {'properties': {'values': {'items': {'properties': {'a': {'type': 'integer'}},
                                                           'required': ['a'],
                                                           'type': 'object'},
                                                 'type': 'array'}},

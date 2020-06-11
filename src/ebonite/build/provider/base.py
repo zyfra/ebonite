@@ -18,7 +18,7 @@ class ProviderBase:
 
     @abstractmethod
     def get_artifacts(self) -> ArtifactCollection:
-        """Abstact method for binaries"""
+        """Abstract method for binaries"""
         pass  # pragma: no cover
 
     @abstractmethod

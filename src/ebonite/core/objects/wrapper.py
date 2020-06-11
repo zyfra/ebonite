@@ -36,6 +36,7 @@ class ModelIO(EboniteParams):
 
     Must be pyjackson-serializable
     """
+
     @abstractmethod
     def dump(self, model) -> FilesContextManager:
         """
@@ -217,6 +218,20 @@ class ModelWrapper(EboniteParams):
         for field in get_class_fields(cls):
             setattr(obj, field.name, getattr(self, field.name))
         return obj
+
+    def resolve_method(self, method_name=None):
+        """Checks if method with this name exists
+
+        :param method_name: name of the method.
+        If not provided, this wrapper must have only one method and it will be used"""
+        if method_name is None:
+            methods = self.exposed_methods
+            if len(methods) > 1:
+                raise ValueError(f'Please provide one of {methods} as method name')
+            method_name = next(iter(methods))
+        else:
+            self._check_method(method_name)
+        return method_name
 
 
 class LibModelWrapperMixin(ModelWrapper):
