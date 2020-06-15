@@ -19,6 +19,7 @@ from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, Comp
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.requirements import InstallableRequirement, Requirements
+from ebonite.utils.fs import switch_curdir
 from ebonite.utils.module import get_object_requirements
 from ebonite.utils.pickling import EbonitePickler
 
@@ -71,6 +72,7 @@ class ModelWrapper(EboniteParams):
         self.methods: typing.Optional[Methods] = None
         self.requirements: Requirements = None
         self.io = io
+        self.curdir = '.'
 
     @contextlib.contextmanager
     def dump(self) -> FilesContextManager:
@@ -81,6 +83,7 @@ class ModelWrapper(EboniteParams):
             })
 
     def load(self, path):
+        self.curdir = os.path.abspath(path)
         self.model = self.io.load(path)
         self.methods = read(os.path.join(path, self.methods_json), typing.Optional[Methods])
         self.requirements = read(os.path.join(path, self.requirements_json), Requirements)
@@ -165,9 +168,10 @@ class ModelWrapper(EboniteParams):
             raise ValueError(f"Wrapper '{self}' obj doesn't expose method '{name}'")
 
     def _call_method(self, wrapped, input_data):
-        if hasattr(self, wrapped):
-            return getattr(self, wrapped)(input_data)
-        return getattr(self.model, wrapped)(input_data)
+        with switch_curdir(self.curdir):
+            if hasattr(self, wrapped):
+                return getattr(self, wrapped)(input_data)
+            return getattr(self.model, wrapped)(input_data)
 
     def _model_requirements(self) -> Requirements:
         """

@@ -99,7 +99,7 @@ def test_delete_task_with_models(ebnt: Ebonite, model: Model):
 def test_create_model(ebnt: Ebonite, regression_and_data):
     reg, data = regression_and_data
 
-    model = ebnt.create_model('test model', reg, data)
+    model = ebnt.create_model(reg, data, 'sklearn_model')
     assert isinstance(model, Model)
     assert ebnt.get_model(model.name, model.task) == model
 
@@ -261,11 +261,11 @@ def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_na
     mock_env = ebnt.meta_repo.create_environment(mock_env)
     check_ebonite_port_free()
 
-    model = ebnt.create_model('test model', reg, data)
+    model = ebnt.create_model(reg, data, 'test_model')
 
     p = mock_env.params
     with p.builder.build_image.called_within_context(), p.runner.run.called_within_context():
-        instance = ebnt.build_and_run_instance(container_name, model, model.task, mock_env)
+        instance = ebnt.build_and_run_instance(model, container_name, environment=mock_env)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment
     assert ebnt.get_image(instance.image.name, instance.image.task) == instance.image
