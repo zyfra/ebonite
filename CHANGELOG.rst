@@ -4,6 +4,11 @@ Changelog
 Current release candidate
 -------------------------
 
+0.6.1 (2020-06-15)
+------------------
+
+* Deleted accidental debug 'print' call :/
+
 0.6.0 (2020-06-12)
 ------------------
 
