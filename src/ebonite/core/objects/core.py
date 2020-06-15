@@ -1104,7 +1104,7 @@ class Image(_WithBuilder):
         """
         if cascade:
             for instance in self._meta.get_instances(self):
-                self.delete_instance(instance, meta_only=meta_only)
+                instance.delete(meta_only=meta_only)
         elif len(self._meta.get_instances(self)) > 0:
             raise errors.ImageWithInstancesError(self)
 

@@ -3,7 +3,7 @@ import pytest
 from ebonite.client import Ebonite
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingModelError, ImageWithInstancesError,
                                  ProjectWithTasksError, TaskWithFKError)
-from ebonite.core.objects.core import Image, Model, Pipeline, Task
+from ebonite.core.objects.core import Image, Model, Pipeline, RuntimeInstance, Task
 from tests.build.conftest import check_ebonite_port_free
 from tests.conftest import docker_test
 from tests.core.objects.conftest import BuildableMock
@@ -237,10 +237,13 @@ def delete_image_ok(ebnt: Ebonite, model: Model):
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
-def test_delete_image__only_meta_ok(ebnt: Ebonite, image_to_delete: Image, mock_env_params):
+def test_delete_image__only_meta_ok(ebnt: Ebonite, image_to_delete: Image, instance: RuntimeInstance, mock_env_params):
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    instance.image = image_to_delete
+    instance.environment = image_to_delete.environment
+    ebnt.meta_repo.save_instance(instance)
     with mock_env_params.builder.delete_image.called_within_context(times=0):
-        ebnt.delete_image(image_to_delete, True)
+        ebnt.delete_image(image_to_delete, True, True)
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
 
 

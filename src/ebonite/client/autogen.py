@@ -74,7 +74,7 @@ def clear(filename, dry_run=True):
 
 
 def main():
-    dry_run = False
+    dry_run = True
     # clear(FILENAME, dry_run)
     patch(AUTOGEN_CLASSES, FILENAME, dry_run)
 
