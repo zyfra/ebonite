@@ -29,7 +29,7 @@ project = 'Ebonite'
 year = '2019 - 2020'
 author = 'Zyfra'
 copyright = '{0}, {1}'.format(year, author)
-version = release = '0.6.0'
+version = release = '0.6.1'
 
 pygments_style = 'trac'
 templates_path = ['.']

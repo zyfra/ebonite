@@ -487,7 +487,6 @@ class _WrapperMethodAccessor:
 
     def __init__(self, model: 'Model', method_name: str):
         if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
-            print(model, method_name)
             raise AttributeError(f'{model} does not have {method_name} method')
         self.model = model
         self.method_name = method_name
