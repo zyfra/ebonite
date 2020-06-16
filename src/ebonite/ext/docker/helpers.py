@@ -8,7 +8,7 @@ from ebonite.ext.docker.runner import DockerRunner
 from ebonite.runtime.server import Server
 
 
-def build_docker_image(name: str, obj, server: Server = None, env: DockerEnv = None, tag: str = None,
+def build_docker_image(name: str, obj, server: Server = None, env: DockerEnv = None, tag: str = 'latest',
                        repository: str = None, force_overwrite: bool = False, **kwargs) -> Image:
     """Build docker image from object
 
@@ -21,6 +21,12 @@ def build_docker_image(name: str, obj, server: Server = None, env: DockerEnv = N
     :param force_overwrite: wheter to force overwrite existing image
     :parma kwargs: additional arguments for DockerBuilder.build_image
     """
+    if server is None:
+        try:
+            from ebonite.ext.flask import FlaskServer
+            server = FlaskServer()
+        except ImportError:
+            raise RuntimeError('cannot use default FlaskServer - flask or flasgger are not installed')
     env = env or DockerEnv()
     source = BuildableAnalyzer.analyze(obj, server=server)
     builder: DockerBuilder = env.get_builder()

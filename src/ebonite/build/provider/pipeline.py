@@ -1,6 +1,7 @@
 import os
 import warnings
 from functools import reduce
+from typing import Optional, Union
 
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
@@ -9,8 +10,9 @@ from ebonite.build.provider import PythonProvider
 from ebonite.build.provider.utils import BuildableWithServer
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.buildable import BuildableHook
-from ebonite.core.objects import ArtifactCollection, Model, Pipeline, Requirements
+from ebonite.core.objects import ArtifactCollection, Model, Pipeline, Requirements, Task
 from ebonite.core.objects.artifacts import Blobs, CompositeArtifactCollection, LocalFileBlob, _RelativePathWrapper
+from ebonite.core.objects.core import _with_meta
 from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineLoader, PipelineMeta
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
@@ -101,15 +103,26 @@ class PipelineProvider(PythonProvider):
 
 
 class PipelineBuildable(BuildableWithServer):
-    def __init__(self, pipeline_id: int, server_type: str, debug: bool = False):
+    def __init__(self, pipeline_id: Union[int, Pipeline], server_type: str, debug: bool = False):
         super().__init__(server_type)
         self.debug = debug
-        self.pipeline_id = pipeline_id
-        self.pipeline_cache = None
+        if isinstance(pipeline_id, int):
+            self.pipeline_id = pipeline_id
+            self.pipeline_cache = None
+        else:
+            self.pipeline_cache = pipeline_id
+            self.pipeline_id = pipeline_id.id
+            self.bind_meta_repo(self.pipeline_cache._meta)
 
     @property
+    def task(self) -> Optional[Task]:
+        return self.pipeline.task
+
+    @property
+    @_with_meta(False)
     def pipeline(self):
         if self.pipeline_cache is None:
+            self._check_meta(False)
             self.pipeline_cache = self._meta.get_pipeline_by_id(self.pipeline_id)
         return self.pipeline_cache
 
@@ -122,4 +135,5 @@ class BuildableModelHook(BuildableHook, TypeHookMixin):
 
     def process(self, obj, **kwargs):
         server = kwargs.get('server')  # TODO ???
-        return PipelineBuildable(obj.id, server.type)
+        debug = kwargs.get('debug', False)
+        return PipelineBuildable(obj, server.type, debug)

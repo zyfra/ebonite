@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 import os
 
@@ -13,3 +14,14 @@ def current_module_path(*path):
     stack = inspect.stack()
     caller_path = stack[1][1]
     return os.path.join(os.path.dirname(caller_path), *path)
+
+
+@contextlib.contextmanager
+def switch_curdir(path):
+    """Context manager to temproary switch current dir"""
+    prev_path = os.path.abspath('.')
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(prev_path)

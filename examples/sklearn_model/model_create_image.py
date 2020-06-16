@@ -12,7 +12,7 @@ def main():
     model = task.models('mymodel')
 
     #  build docker image from model and run it
-    ebnt.build_and_run_instance("sklearn_model_service", model, task,
+    ebnt.build_and_run_instance(model, "sklearn_model_service",
                                 runner_kwargs={'detach': False},
                                 builder_kwargs={'force_overwrite': True},
                                 instance_kwargs={'port_mapping': {9000: 9000}}

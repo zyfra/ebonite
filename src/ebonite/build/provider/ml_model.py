@@ -1,11 +1,12 @@
 import os
+from typing import Optional, Union
 
 from ebonite.build.provider import PythonProvider
 from ebonite.build.provider.utils import BuildableWithServer
 from ebonite.core.analyzer import TypeHookMixin
 from ebonite.core.analyzer.buildable import BuildableHook
 from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifactCollection, Blobs, LocalFileBlob
-from ebonite.core.objects import ArtifactCollection, Model, Requirements
+from ebonite.core.objects import ArtifactCollection, Model, Requirements, Task
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
 
@@ -87,27 +88,30 @@ class MLModelProvider(PythonProvider):
 
 
 class ModelBuildable(BuildableWithServer, WithMetadataRepository):
-    def __init__(self, model_id: int, server_type: str, debug: bool = False):
+    def __init__(self, model_id: Union[int, Model], server_type: str, debug: bool = False):
         super().__init__(server_type)
         self.debug = debug
-        self.model_id = model_id
-        self.model_cache = None
+        if isinstance(model_id, int):
+            self.model_id = model_id
+            self.model_cache = None
+        else:
+            self.model_cache = model_id
+            self.bind_meta_repo(self.model_cache._meta)
+            self.model_id = model_id.id
+
+    @property
+    def task(self) -> Optional[Task]:
+        return self.model.task
 
     @property
     def model(self):
         if self.model_cache is None:
+            self._check_meta(False)
             self.model_cache = self._meta.get_model_by_id(self.model_id)
         return self.model_cache
 
     def get_provider(self) -> MLModelProvider:
         return MLModelProvider(self.model, self.server, self.debug)
-
-    @classmethod
-    def from_model(cls, model: Model, **kwargs):
-        mb = ModelBuildable(model.id, **kwargs)
-        mb.bind_meta_repo(model._meta)
-        mb.model_cache = model
-        return mb
 
 
 class BuildableModelHook(BuildableHook, TypeHookMixin):
@@ -115,4 +119,5 @@ class BuildableModelHook(BuildableHook, TypeHookMixin):
 
     def process(self, obj, **kwargs):
         server = kwargs.get('server')  # TODO ???
-        return ModelBuildable.from_model(obj, server_type=server.type)
+        debug = kwargs.get('debug', False)
+        return ModelBuildable(obj, server_type=server.type, debug=debug)
