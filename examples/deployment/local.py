@@ -13,9 +13,9 @@ def main():
     model = create_model(model_function, 0, model_name='dummy_function')
     task.add_model(model)
 
-    image = ebnt.create_image('dummy_image', model, force_overwrite=True)
+    image = ebnt.create_image(model, 'dummy_image', force_overwrite=True)
 
-    instance = ebnt.create_instance('dummy_service', image)
+    instance = ebnt.create_instance(image, 'dummy_service')
     instance.run()
     for log in instance.logs(stream=True):
         try:

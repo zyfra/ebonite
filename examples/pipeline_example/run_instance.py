@@ -21,8 +21,8 @@ def main():
     task.push_model(s1)
     task.push_model(s2)
     task.add_pipeline(p)
-    image = ebnt.create_image('ebnt_pipeline_test', p, task, FlaskServer(), builder_args={'force_overwrite': True})
-    instance = ebnt.create_instance('ebnt_pipeline_test', image, port_mapping={9000: 9000}).run(detach=True)
+    image = ebnt.create_image(p, 'ebnt_pipeline_test', server=FlaskServer(), builder_args={'force_overwrite': True})
+    instance = ebnt.create_instance(image, 'ebnt_pipeline_test', port_mapping={9000: 9000}).run(detach=True)
 
     print(f'Instance is running - {instance.is_running()}')
 

@@ -88,6 +88,13 @@ class WithMetadataRepository:
     def has_meta_repo(self):
         return self._meta is not None
 
+    def _check_meta(self, saved=True):
+        """Checks if object is binded to meta repo
+
+        :param saved: force object to be also saved (have id)"""
+        if (self._id is None and saved) or not self.has_meta_repo:
+            raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+
 
 class WithArtifactRepository:
     _art: 'ebonite.repository.ArtifactRepository' = None
@@ -142,10 +149,6 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     @abstractmethod
     def save(self):
         """Saves object state to metadata repository"""
-
-    def _check_meta(self, saved=True):
-        if (self.id is None and saved) or not self.has_meta_repo:
-            raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
 
 
 def _with_meta(saved=True):
@@ -806,6 +809,15 @@ class Model(EboniteObject):
         self._meta.save_model(self)
 
 
+def _generate_name(prefix='', postfix=''):
+    """Generates name from current date
+
+    :param prefix: str to put before
+    :param postfix: str to put after"""
+    now = datetime.datetime.now()
+    return f'{prefix}{now.strftime("%Y%m%d_%H_%M_%S_%f")}{postfix}'
+
+
 def _generate_model_name(wrapper: ModelWrapper):
     """
     Generates name for Model instance
@@ -813,8 +825,8 @@ def _generate_model_name(wrapper: ModelWrapper):
     :param wrapper: model wrapper
     :return: str
     """
-    now = datetime.datetime.now()
-    return '{}_model_{}'.format(wrapper.type, now.strftime('%Y%m%d_%H_%M_%S'))
+
+    return _generate_name('{}_model_'.format(wrapper.type))
 
 
 class PipelineStep(EboniteParams):
@@ -926,6 +938,11 @@ class Buildable(EboniteParams, WithMetadataRepository):
     @abstractmethod
     def get_provider(self):
         """Abstract method to get a provider for this Buildable"""
+
+    @property
+    @abstractmethod
+    def task(self) -> Optional[Task]:
+        """property to get task (can be None, whick forces to provide task manually)"""
 
 
 class RuntimeEnvironment(EboniteObject):
@@ -1068,12 +1085,12 @@ class Image(_WithBuilder):
     class Params(EboniteParams):
         """Abstract class that represents different types of images"""
 
-    def __init__(self, name: str, source: Buildable, id: int = None,
+    def __init__(self, name: Optional[str], source: Buildable, id: int = None,
                  params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None,
                  task_id: int = None,
                  environment_id: int = None):
-        super().__init__(id, name, author, creation_date, environment_id)
+        super().__init__(id, name or _generate_name('ebnt_image_'), author, creation_date, environment_id)
         self.task_id = task_id
         self.source = source
         self.params = params
@@ -1104,7 +1121,7 @@ class Image(_WithBuilder):
         """
         if cascade:
             for instance in self._meta.get_instances(self):
-                self.delete_instance(instance, meta_only=meta_only)
+                instance.delete(meta_only=meta_only)
         elif len(self._meta.get_instances(self)) > 0:
             raise errors.ImageWithInstancesError(self)
 
@@ -1193,10 +1210,10 @@ class RuntimeInstance(_WithRunner):
     class Params(EboniteParams):
         """Abstract class that represents different types of images"""
 
-    def __init__(self, name: str, id: int = None,
+    def __init__(self, name: Optional[str], id: int = None,
                  image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(id, name, author, creation_date, environment_id)
+        super().__init__(id, name or _generate_name('ebnt_instance_'), author, creation_date, environment_id)
         self.image_id = image_id
         self.params = params
 
