@@ -70,19 +70,19 @@ def python_build_context_mock() -> PythonBuildContext:
 
 @pytest.fixture
 def python_build_context_sync(created_model) -> PythonBuildContext:
-    buildable = ModelBuildable.from_model(created_model, server_type=FlaskServer.type)
+    buildable = ModelBuildable(created_model, server_type=FlaskServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
 def python_build_context_async(created_model) -> PythonBuildContext:
-    buildable = ModelBuildable.from_model(created_model, server_type=AIOHTTPServer.type)
+    buildable = ModelBuildable(created_model, server_type=AIOHTTPServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
 def python_multi_build_context(created_model) -> PythonBuildContext:
-    buildable = MultiModelBuildable.from_models([created_model], server_type=FlaskServer.type)
+    buildable = MultiModelBuildable([created_model], server_type=FlaskServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 

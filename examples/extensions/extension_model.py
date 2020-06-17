@@ -14,13 +14,13 @@ def main():
     ebnt = ebonite.Ebonite.local(clear=True)
 
     # create a model using myext extension
-    model = ebnt.create_model('ahaha', 1, 'model')
+    model = ebnt.create_model('my_extended_model', 'model', 1)
 
     # your extension code will be inside docker image in form of files if you have local files
     # or requirement if you installed it from pip
-    image = ebnt.create_image('local_ext_model', model, force_overwrite=True)
+    image = ebnt.create_image(model, 'local_ext_model', builder_args={'force_overwrite': True})
 
-    ebnt.create_instance('local_ext_model', image).run(detach=False)
+    ebnt.create_instance(image, 'local_ext_model').run(detach=False)
 
 
 if __name__ == '__main__':

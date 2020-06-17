@@ -3,7 +3,7 @@ import pytest
 from ebonite.client import Ebonite
 from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingModelError, ImageWithInstancesError,
                                  ProjectWithTasksError, TaskWithFKError)
-from ebonite.core.objects.core import Image, Model, Pipeline, Task
+from ebonite.core.objects.core import Image, Model, Pipeline, RuntimeInstance, Task
 from tests.build.conftest import check_ebonite_port_free
 from tests.conftest import docker_test
 from tests.core.objects.conftest import BuildableMock
@@ -46,6 +46,8 @@ def test_get_or_create_task(ebnt: Ebonite):
     assert task.name == "Task"
     assert task.project.name == "Project"
     assert task.id in project.tasks
+    assert task.has_meta_repo
+    assert task.has_artifact_repo
 
 
 def test_get_or_create_task_exists(ebnt: Ebonite):
@@ -99,7 +101,7 @@ def test_delete_task_with_models(ebnt: Ebonite, model: Model):
 def test_create_model(ebnt: Ebonite, regression_and_data):
     reg, data = regression_and_data
 
-    model = ebnt.create_model('test model', reg, data)
+    model = ebnt.create_model(reg, data, 'sklearn_model')
     assert isinstance(model, Model)
     assert ebnt.get_model(model.name, model.task) == model
 
@@ -109,7 +111,10 @@ def test_get_model(ebnt: Ebonite, regression_and_data):
     reg, data = regression_and_data
     model = task.create_and_push_model(reg, data, 'mymodel')
 
-    assert ebnt.get_model(project='Project', task='Task', model_name='mymodel') == model
+    get_model = ebnt.get_model(project='Project', task='Task', model_name='mymodel')
+    assert get_model == model
+    assert get_model.has_meta_repo
+    assert get_model.has_artifact_repo
 
 
 def test_push_model(ebnt: Ebonite, model: Model):
@@ -237,10 +242,13 @@ def delete_image_ok(ebnt: Ebonite, model: Model):
     assert ebnt.meta_repo.get_image_by_id(image.id) is None
 
 
-def test_delete_image__only_meta_ok(ebnt: Ebonite, image_to_delete: Image, mock_env_params):
+def test_delete_image__only_meta_ok(ebnt: Ebonite, image_to_delete: Image, instance: RuntimeInstance, mock_env_params):
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is not None
+    instance.image = image_to_delete
+    instance.environment = image_to_delete.environment
+    ebnt.meta_repo.save_instance(instance)
     with mock_env_params.builder.delete_image.called_within_context(times=0):
-        ebnt.delete_image(image_to_delete, True)
+        ebnt.delete_image(image_to_delete, True, True)
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
 
 
@@ -258,11 +266,11 @@ def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_na
     mock_env = ebnt.meta_repo.create_environment(mock_env)
     check_ebonite_port_free()
 
-    model = ebnt.create_model('test model', reg, data)
+    model = ebnt.create_model(reg, data, 'test_model')
 
     p = mock_env.params
     with p.builder.build_image.called_within_context(), p.runner.run.called_within_context():
-        instance = ebnt.build_and_run_instance(container_name, model, model.task, mock_env)
+        instance = ebnt.build_and_run_instance(model, container_name, environment=mock_env)
 
     assert ebnt.get_environment(instance.environment.name) == instance.environment
     assert ebnt.get_image(instance.image.name, instance.image.task) == instance.image

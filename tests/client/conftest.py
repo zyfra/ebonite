@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 
 from ebonite import Ebonite
 from ebonite.build import BuilderBase, RunnerBase
-from ebonite.core.objects.core import Image, Model, RuntimeEnvironment
+from ebonite.core.objects.core import Image, Model, RuntimeEnvironment, RuntimeInstance
 from tests.client.test_func import func
 from tests.conftest import MockMixin, has_docker, interface_hook_creator
 from tests.core.objects.conftest import BuildableMock
@@ -99,6 +99,11 @@ def image():
 @pytest.fixture
 def pipeline(model):
     return model.as_pipeline()
+
+
+@pytest.fixture
+def instance():
+    return RuntimeInstance('Test Instance')
 
 
 create_client_hooks = interface_hook_creator('tests/client/', 'client_common.py', 'ebnt')
