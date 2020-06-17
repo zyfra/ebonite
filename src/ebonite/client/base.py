@@ -99,7 +99,7 @@ class Ebonite:
         model: Model = self.meta_repo.get_model_by_name(model_name, task, project)
         if model is not None and load_artifacts:
             model.load()
-        return model
+        return self._bind(model)
 
     def create_image(self, obj, name: str = None, task: Task = None, server: Server = None,
                      environment: RuntimeEnvironment = None,
@@ -145,7 +145,7 @@ class Ebonite:
             except Exception:
                 self.meta_repo.delete_image(image)
                 raise
-        return self.meta_repo.save_image(image)
+        return self._bind(self.meta_repo.save_image(image))
 
     def create_instance(self, image: Image, name: str = None, environment: RuntimeEnvironment = None, run=False,
                         runner_kwargs: Dict[str, object] = None,
@@ -180,7 +180,7 @@ class Ebonite:
         if run:
             runner_kwargs = runner_kwargs or {}
             instance.run(**runner_kwargs)
-        return instance
+        return self._bind(instance)
 
     def build_and_run_instance(self, obj, name: str = None, task: Task = None, environment: RuntimeEnvironment = None,
                                builder_kwargs: Dict[str, object] = None, runner_kwargs: Dict[str, object] = None,
