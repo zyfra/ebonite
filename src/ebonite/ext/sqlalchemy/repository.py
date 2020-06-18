@@ -10,7 +10,7 @@ from ebonite.core.errors import (EnvironmentWithInstancesError, ExistingEnvironm
                                  ExistingTaskError, ImageWithInstancesError, NonExistingEnvironmentError,
                                  NonExistingImageError, NonExistingInstanceError, NonExistingModelError,
                                  NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
-                                 ProjectWithTasksError, TaskWithFKError)
+                                 ProjectWithTasksError, TaskWithFKError, UnknownMetadataError)
 from ebonite.core.objects.core import (EboniteObject, Image, Model, Pipeline, Project, RuntimeEnvironment,
                                        RuntimeInstance, Task)
 from ebonite.repository.metadata import MetadataRepository
@@ -130,7 +130,10 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 s.delete(p)
                 s.commit()
             except IntegrityError:
-                raise ie_error_type(obj)
+                if p.to_obj().has_children():
+                    raise ie_error_type(obj)
+                else:
+                    raise UnknownMetadataError
 
     @bind_to_self
     def get_projects(self) -> List[Project]:

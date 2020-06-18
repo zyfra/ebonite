@@ -150,6 +150,10 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     def save(self):
         """Saves object state to metadata repository"""
 
+    @abstractmethod
+    def has_children(self):
+        """Checks if object has existing relationship"""
+
 
 def _with_meta(saved=True):
     """
@@ -261,6 +265,10 @@ class Project(EboniteObject):
     @_with_meta
     def save(self):
         self._meta.save_project(self)
+
+    @_with_meta
+    def has_children(self):
+        return len(self.tasks) > 0
 
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
@@ -480,6 +488,10 @@ class Task(EboniteObject):
     @_with_meta
     def save(self):
         self._meta.save_task(self)
+
+    @_with_meta
+    def has_children(self):
+        return len(self.models) > 0 or len(self.pipelines) > 0 or len(self.images) > 0
 
 
 class _WrapperMethodAccessor:
@@ -808,6 +820,10 @@ class Model(EboniteObject):
     def save(self):
         self._meta.save_model(self)
 
+    @_with_meta
+    def has_children(self):
+        return False
+
 
 def _generate_name(prefix='', postfix=''):
     """Generates name from current date
@@ -928,6 +944,10 @@ class Pipeline(EboniteObject):
     def save(self):
         self._meta.save_pipeline(self)
 
+    @_with_meta
+    def has_children(self):
+        return False
+
 
 @type_field('type')
 class Buildable(EboniteParams, WithMetadataRepository):
@@ -998,6 +1018,10 @@ class RuntimeEnvironment(EboniteObject):
     @_with_meta
     def save(self):
         self._meta.save_environment(self)
+
+    @_with_meta
+    def has_children(self):
+        return False
 
 
 class _WithEnvironment(EboniteObject):
@@ -1159,6 +1183,10 @@ class Image(_WithBuilder):
     def save(self):
         self._meta.save_image(self)
 
+    @_with_meta
+    def has_children(self):
+        return False
+
 
 class _WithRunner(_WithEnvironment):
     runner = None
@@ -1302,3 +1330,7 @@ class RuntimeInstance(_WithRunner):
     @_with_meta
     def save(self):
         self._meta.save_instance(self)
+
+    @_with_meta
+    def has_children(self):
+        return False

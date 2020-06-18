@@ -179,3 +179,8 @@ class EnvironmentWithInstancesError(MetadataError):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
         super(EnvironmentWithInstancesError, self).__init__(f'Environment {environment} '
                                                             f'has foreign key and can not be deleted')
+
+
+class UnknownMetadataError(MetadataError):
+    def __init__(self):
+        super(UnknownMetadataError).__init__('Unknown error during query execution')
