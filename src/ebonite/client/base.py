@@ -8,7 +8,7 @@ from pyjackson.utils import resolve_subtype
 from ebonite.core.errors import ExistingImageError, ExistingInstanceError
 from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
 from ebonite.core.objects.core import EboniteObject, Project
-from ebonite.core.objects.dataset_source import InMemoryDataset
+from ebonite.core.objects.dataset_source import Dataset
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
@@ -562,7 +562,7 @@ class Ebonite:
 
     def create_dataset(self, data, target=None):
         # TODO persisting to art repo?
-        return InMemoryDataset.from_object(data, target)
+        return Dataset.from_object(data)
 
     def create_metric(self, metric_obj):
         from ebonite.core.analyzer.metric import MetricAnalyzer

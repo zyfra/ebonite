@@ -12,7 +12,6 @@ from ebonite.core.objects.requirements import InstallableRequirement, Requiremen
 from ebonite.core.objects.typing import SizedTypedListType, TypeWithSpec
 
 
-# noinspection PyAbstractClass
 @type_field('type')
 class DatasetType(EboniteParams, TypeWithSpec):
     """
@@ -29,7 +28,14 @@ class DatasetType(EboniteParams, TypeWithSpec):
     @property
     @abstractmethod
     def requirements(self) -> Requirements:
-        pass  # pragma: no cover
+        """"""  # TODO docs
+
+    @abstractmethod
+    def get_writer(self):
+        """"""  # TODO docs
+        from ebonite.core.objects.dataset_source import InMemoryDatasetWriter
+        return InMemoryDatasetWriter()
+        # raise NotImplementedError()
 
 
 class LibDatasetTypeMixin(DatasetType):

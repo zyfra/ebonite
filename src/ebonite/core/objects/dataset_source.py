@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import Iterable
-from typing import Any
+from typing import Any, Optional
 
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
@@ -11,13 +11,8 @@ from ebonite.core.objects.dataset_type import DatasetType
 
 
 class AbstractDataset(Unserializable):
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType = None):
-        self.target_type = target_type
+    def __init__(self, dataset_type: DatasetType):
         self.dataset_type = dataset_type
-
-    @property
-    def has_target(self):
-        return self.target_type is not None
 
     @abstractmethod
     def iterate(self) -> Iterable:
@@ -27,16 +22,11 @@ class AbstractDataset(Unserializable):
     def get(self):
         pass
 
-    @abstractmethod
-    def get_target(self):
-        pass
-
 
 class Dataset(AbstractDataset):
-    def __init__(self, data: Any, dataset_type: DatasetType, target: Any = None, target_type: DatasetType = None):
-        super().__init__(dataset_type, target_type)
+    def __init__(self, data: Any, dataset_type: DatasetType):
+        super().__init__(dataset_type)
         self.data = data
-        self.target = target
 
     @abstractmethod
     def iterate(self) -> Iterable:
@@ -46,26 +36,44 @@ class Dataset(AbstractDataset):
     def get(self):
         return self.data
 
-    @abstractmethod
-    def get_target(self):
-        return self.target
-
     @classmethod
-    def from_object(cls, data, target=None):
-        return cls(data, DatasetAnalyzer.analyze(data),
-                   target, DatasetAnalyzer.analyze(target) if target is not None else None)
+    def from_object(cls, data):
+        return cls(data, DatasetAnalyzer.analyze(data))
 
 
 @type_field('type')
 class DatasetSource(EboniteParams):
     # TODO docs
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType = None):
-        self.target_type = target_type
+    def __init__(self, dataset_type: DatasetType):
         self.dataset_type = dataset_type
 
     @abstractmethod
     def read(self) -> Dataset:
         raise NotImplementedError()
+
+    def cache(self):
+        return CachedDatasetSource(self)
+
+
+class CachedDatasetSource(DatasetSource):
+    def __init__(self, source: DatasetSource):
+        super().__init__(source.dataset_type)
+        self.source = source
+        self._cache: Optional[Dataset] = None
+
+    def read(self) -> Dataset:
+        if self._cache is None:
+            self._cache = self.source.read()
+        return self._cache
+
+    def cache(self):
+        return self
+
+
+class InMemoryDatasetSource(CachedDatasetSource, ):  # Unserializable
+    def __init__(self, dataset: Dataset):
+        super().__init__(DatasetSource(dataset.dataset_type))
+        self._cache = dataset
 
 
 @type_field('type')
@@ -74,6 +82,10 @@ class DatasetWriter(EboniteParams):
     def write(self, dataset: Dataset) -> DatasetSource:
         pass
 
+
+class InMemoryDatasetWriter(DatasetWriter):
+    def write(self, dataset: Dataset) -> DatasetSource:
+        return InMemoryDatasetSource(dataset)
 # class BlobDatasetSource(DatasetSource):
 #     def __init__(self, blob: Blob, dataset_type: DatasetType, target_type: DatasetType = None):
 #         super(BlobDatasetSource, self).__init__(dataset_type, target_type)

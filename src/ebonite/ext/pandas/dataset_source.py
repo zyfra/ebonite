@@ -10,11 +10,8 @@ from ebonite.core.objects.dataset_source import Dataset, DatasetSource, DatasetW
 
 
 class _PandasDatasetSource(DatasetSource):
-    def __init__(self, dataset_type: DatasetType, kwargs: Dict[str, Any] = None,
-                 target_type: DatasetType = None,
-                 target_col: str = None):  # TODO better target
-        super().__init__(dataset_type, target_type)
-        self.target_col = target_col
+    def __init__(self, dataset_type: DatasetType, kwargs: Dict[str, Any] = None):  # TODO better target
+        super().__init__(dataset_type)
         self.kwargs = kwargs or {}
         self._data = None
 
@@ -33,13 +30,8 @@ class _PandasDatasetSource(DatasetSource):
 
     def read(self) -> Dataset:
         data = self._read()
-        if self.target_col is not None:
-            target = data[self.target_col]
-            data = data.drop(self.target_col, axis=0)
-        else:
-            target = None
         # TODO type validation
-        return Dataset(data, self.dataset_type, target, self.target_type)
+        return Dataset(data, self.dataset_type)
 
 
 class PandasBlobDatasetSource(_PandasDatasetSource):
@@ -56,10 +48,8 @@ class PandasBlobDatasetSource(_PandasDatasetSource):
         'pickle': pd.read_pickle,
     }
 
-    def __init__(self, format: str, blob: Blob, dataset_type: DatasetType, kwargs: Dict[str, Any] = None,
-                 target_type: DatasetType = None,
-                 target_col: str = None):  # TODO better target
-        super().__init__(dataset_type, kwargs, target_type, target_col)
+    def __init__(self, format: str, blob: Blob, dataset_type: DatasetType, kwargs: Dict[str, Any] = None):
+        super().__init__(dataset_type, kwargs)
         self.blob = blob
         self.format = format
 
@@ -71,9 +61,9 @@ class PandasBlobDatasetSource(_PandasDatasetSource):
 
 
 class PandasJdbcDatasetSource(_PandasDatasetSource):
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType, table: str, connection: str,
-                 kwargs: Dict[str, Any] = None, target_col: str = None):
-        super().__init__(dataset_type, kwargs, target_type, target_col)
+    def __init__(self, dataset_type: DatasetType, table: str, connection: str,
+                 kwargs: Dict[str, Any] = None):
+        super().__init__(dataset_type, kwargs)
         self.connection = connection
         self.table = table
 
@@ -89,4 +79,4 @@ class CsvBlobPandasWriter(DatasetWriter):
             return buf
 
         blob = LazyBlob(source)
-        return PandasBlobDatasetSource('csv', blob, dataset.dataset_type, target_type=dataset.target_type)
+        return PandasBlobDatasetSource('csv', blob, dataset.dataset_type)

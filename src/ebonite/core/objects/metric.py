@@ -11,7 +11,7 @@ from ebonite.utils.importing import import_string
 class Metric(EboniteParams):
     @abstractmethod
     def evaluate(self, truth, prediction):
-        pass  # pragma: no cover
+        raise NotImplementedError()
 
 
 class LibFunctionMetric(Metric):
