@@ -128,7 +128,7 @@ class DockerRunner(RunnerBase):
             try:
                 container = client.containers.get(instance.name)
                 container.stop()
-             except docker.errors.NotFound:
+            except docker.errors.NotFound:
                 pass
 
     @classmethod
