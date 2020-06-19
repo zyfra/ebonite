@@ -116,6 +116,7 @@ class DataFrameType(_PandasDatasetType):
     built-in Python dicts with the only key `values` and value in a form of records list.
 
     """
+
     real_type = pd.DataFrame
 
     def deserialize(self, obj):
@@ -152,3 +153,7 @@ class DataFrameType(_PandasDatasetType):
     @cached_property
     def row_type(self):
         return SeriesType(self.columns, self.dtypes)
+
+    def get_writer(self):
+        from ebonite.ext.pandas.dataset_source import PandasWriter, PandasFormat
+        return PandasWriter(PandasFormat('csv'))

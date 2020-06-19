@@ -1,82 +1,65 @@
 import io
-from abc import abstractmethod
-from typing import Any, Dict
+import typing
+from typing import Any, Dict, Tuple
 
 import pandas as pd
 
-from ebonite.core.objects import DatasetType
-from ebonite.core.objects.artifacts import Blob, LazyBlob
-from ebonite.core.objects.dataset_source import Dataset, DatasetSource, DatasetWriter
+from ebonite.core.objects.artifacts import ArtifactCollection, LazyBlob
+from ebonite.core.objects.dataset_source import Dataset, DatasetReader, DatasetWriter
 
 
-class _PandasDatasetSource(DatasetSource):
-    def __init__(self, dataset_type: DatasetType, kwargs: Dict[str, Any] = None):  # TODO better target
-        super().__init__(dataset_type)
-        self.kwargs = kwargs or {}
-        self._data = None
-
-    def get(self):
-        return self.data
-
-    @property
-    def data(self) -> pd.DataFrame:
-        if self._data is None:
-            self._data = self._read()
-        return self._data
-
-    @abstractmethod
-    def _read(self) -> pd.DataFrame:
-        pass
-
-    def read(self) -> Dataset:
-        data = self._read()
-        # TODO type validation
-        return Dataset(data, self.dataset_type)
-
-
-class PandasBlobDatasetSource(_PandasDatasetSource):
-    FORMATS = {
-        'csv': pd.read_csv,
-        'json': pd.read_json,
-        'html': pd.read_html,
-        'excel': pd.read_excel,
-        'hdf': pd.read_hdf,
-        'feather': pd.read_feather,
-        'parquet': pd.read_parquet,
-        'stata': pd.read_stata,
-        'sas': pd.read_sas,
-        'pickle': pd.read_pickle,
+class PandasFormat:
+    FORMATS: Dict[str, Tuple[typing.Callable, typing.Callable, typing.Type[typing.IO]]] = {
+        'csv': (pd.read_csv, pd.DataFrame.to_csv, io.StringIO),
+        'json': (pd.read_json, pd.DataFrame.to_json, io.StringIO),
+        'html': (pd.read_html, pd.DataFrame.to_html, io.StringIO),
+        'excel': (pd.read_excel, pd.DataFrame.to_excel, io.BytesIO),
+        'hdf': (pd.read_hdf, pd.DataFrame.to_hdf, io.BytesIO),
+        'feather': (pd.read_feather, pd.DataFrame.to_feather, io.BytesIO),
+        'parquet': (pd.read_parquet, pd.DataFrame.to_parquet, io.BytesIO),
+        'stata': (pd.read_stata, pd.DataFrame.to_stata, io.BytesIO),
+        'pickle': (pd.read_pickle, pd.DataFrame.to_pickle, io.BytesIO),
     }
 
-    def __init__(self, format: str, blob: Blob, dataset_type: DatasetType, kwargs: Dict[str, Any] = None):
-        super().__init__(dataset_type, kwargs)
-        self.blob = blob
+    def __init__(self, format: str, kwargs: Dict[str, Any] = None):
+        if format not in self.FORMATS:
+            raise ValueError(f'Unknown format {format}')
+        self.format = format
+        self.kwargs = kwargs or {}
+
+    def read(self, file_or_path):
+        return self.FORMATS[self.format][0](file_or_path, **self.kwargs)
+
+    def write(self, dataframe) -> typing.IO:
+        _, writer, buf = self.FORMATS[self.format]
+        buf = buf()
+        writer(dataframe, buf, **self.kwargs)
+        return buf
+
+
+class PandasReader(DatasetReader):
+    def __init__(self, format: PandasFormat):
         self.format = format
 
-    def _read(self) -> pd.DataFrame:
-        if self.format not in self.FORMATS:
-            raise ValueError('Unknown format {}'.format(self.format))
+    def read(self, artifacts: ArtifactCollection) -> Dataset:
         with self.blob.bytestream() as b:
-            return self.FORMATS[self.format](b, **self.kwargs)
+            return Dataset.from_object(self.format.read(b))
 
 
-class PandasJdbcDatasetSource(_PandasDatasetSource):
-    def __init__(self, dataset_type: DatasetType, table: str, connection: str,
-                 kwargs: Dict[str, Any] = None):
-        super().__init__(dataset_type, kwargs)
-        self.connection = connection
-        self.table = table
+class PandasWriter(DatasetWriter):
+    def __init__(self, format: PandasFormat):
+        self.format = format
 
-    def _read(self):
-        return pd.read_sql_table(self.table, self.connection, **self.kwargs)
+    def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
+        blob = LazyBlob(lambda: self.format.write(dataset.data))
+        return PandasReader(self.format), ArtifactCollection.from_blobs({'data': blob})
 
-
-class CsvBlobPandasWriter(DatasetWriter):
-    def write(self, dataset: Dataset) -> DatasetSource:
-        def source():
-            buf = io.BytesIO()
-            dataset.data.to_csv(buf, header=True, index=False)
-            return buf
-
-        blob = LazyBlob(source)
-        return PandasBlobDatasetSource('csv', blob, dataset.dataset_type)
+# class PandasJdbcDatasetSource(_PandasDatasetSource):
+#     def __init__(self, dataset_type: DatasetType, table: str, connection: str,
+#                  kwargs: Dict[str, Any] = None):
+#         super().__init__(dataset_type, kwargs)
+#         self.connection = connection
+#         self.table = table
+#
+#     def _read(self):
+#         return pd.read_sql_table(self.table, self.connection, **self.kwargs)

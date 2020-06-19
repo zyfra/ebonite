@@ -1,11 +1,12 @@
 from abc import abstractmethod
 from collections import Iterable
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
+from ebonite.core.objects import ArtifactCollection
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_type import DatasetType
 
@@ -13,6 +14,8 @@ from ebonite.core.objects.dataset_type import DatasetType
 class AbstractDataset(Unserializable):
     def __init__(self, dataset_type: DatasetType):
         self.dataset_type = dataset_type
+        self.writer = None
+        self.reader = None
 
     @abstractmethod
     def iterate(self) -> Iterable:
@@ -21,6 +24,16 @@ class AbstractDataset(Unserializable):
     @abstractmethod
     def get(self):
         pass
+
+    @abstractmethod
+    def get_writer(self) -> 'DatasetWriter':
+        """"""  # TODO docs
+        return self.writer or self.dataset_type.get_writer()
+
+    @abstractmethod
+    def get_reader(self) -> 'DatasetReader':
+        """"""
+        return self.reader or self.dataset_type.get_reader()
 
 
 class Dataset(AbstractDataset):
@@ -40,9 +53,14 @@ class Dataset(AbstractDataset):
     def from_object(cls, data):
         return cls(data, DatasetAnalyzer.analyze(data))
 
+    def to_inmemory_source(self) -> 'InMemoryDatasetSource':
+        return InMemoryDatasetSource(self)
+
 
 @type_field('type')
 class DatasetSource(EboniteParams):
+    is_dynamic = False
+
     # TODO docs
     def __init__(self, dataset_type: DatasetType):
         self.dataset_type = dataset_type
@@ -70,28 +88,21 @@ class CachedDatasetSource(DatasetSource):
         return self
 
 
-class InMemoryDatasetSource(CachedDatasetSource, ):  # Unserializable
+class InMemoryDatasetSource(CachedDatasetSource, Unserializable):
     def __init__(self, dataset: Dataset):
         super().__init__(DatasetSource(dataset.dataset_type))
         self._cache = dataset
 
 
 @type_field('type')
-class DatasetWriter(EboniteParams):
+class DatasetReader(EboniteParams):
     @abstractmethod
-    def write(self, dataset: Dataset) -> DatasetSource:
+    def read(self, artifacts: ArtifactCollection) -> Dataset:
         pass
 
 
-class InMemoryDatasetWriter(DatasetWriter):
-    def write(self, dataset: Dataset) -> DatasetSource:
-        return InMemoryDatasetSource(dataset)
-# class BlobDatasetSource(DatasetSource):
-#     def __init__(self, blob: Blob, dataset_type: DatasetType, target_type: DatasetType = None):
-#         super(BlobDatasetSource, self).__init__(dataset_type, target_type)
-#         self.blob = blob
-
-# class ArtifactDatasetSource(DatasetSource):
-#     def __init__(self, artifacts: ArtifactCollection, dataset_type: DatasetType, target_type: DatasetType = None):
-#         super(ArtifactDatasetSource, self).__init__(dataset_type, target_type)
-#         self.artifacts = artifacts
+@type_field('type')
+class DatasetWriter(EboniteParams):
+    @abstractmethod
+    def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
+        pass

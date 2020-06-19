@@ -1,5 +1,6 @@
 from pprint import pprint
 
+import numpy as np
 import pandas as pd
 from pyjackson import serialize
 from sklearn.metrics import roc_auc_score
@@ -9,20 +10,20 @@ import ebonite
 
 def get_data():
     data = pd.DataFrame([[1, 0], [0, 1]], columns=['a', 'b'])
-    target = [1, 0]
+    target = np.array([1, 0])
     return data, target
 
 
 def constant(data):
-    return [0 for _ in range(len(data))]
+    return np.array([0 for _ in range(len(data))])
 
 
 def truth(data: pd.DataFrame):
-    return [int(r[0]) for _, r in data.iterrows()]
+    return np.array([r[0] for _, r in data.iterrows()])
 
 
 def main():
-    ebnt = ebonite.Ebonite.inmemory()
+    ebnt = ebonite.Ebonite.local(clear=True)
 
     data, target = get_data()
     # we want easy way to transform anything to datasets, so its either this or ebonite.create_dataset (same for metrics)
@@ -50,7 +51,8 @@ def main():
     result = task.evaluate_all()
 
     print(result['train'].scores)
-
+    ebnt._bind(task)
+    task.save()
     pprint(serialize(task))
 
 

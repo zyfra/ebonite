@@ -7,11 +7,13 @@ from pyjackson.utils import resolve_subtype
 
 from ebonite.core.errors import ExistingImageError, ExistingInstanceError
 from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
-from ebonite.core.objects.core import EboniteObject, Project
+from ebonite.core.objects.core import EboniteObject, Project, WithDatasetRepository
 from ebonite.core.objects.dataset_source import Dataset
+from ebonite.repository import DatasetRepository
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
+from ebonite.repository.dataset.artifact import ArtifactDatasetRepository
 from ebonite.repository.metadata import MetadataRepository
 from ebonite.repository.metadata.base import ProjectVar, TaskVar
 from ebonite.repository.metadata.local import LocalMetadataRepository
@@ -38,9 +40,11 @@ class Ebonite:
     default_server: Server = None
     default_env: RuntimeEnvironment = None
 
-    def __init__(self, meta_repo: MetadataRepository, artifact_repo: ArtifactRepository):
+    def __init__(self, meta_repo: MetadataRepository, artifact_repo: ArtifactRepository,
+                 dataset_repo: DatasetRepository = None):
         self.meta_repo = meta_repo
         self.artifact_repo = artifact_repo
+        self.dataset_repo = dataset_repo or ArtifactDatasetRepository(self.artifact_repo)
 
     def _bind(self, obj: Optional[Union[T, List[T]]]) -> Optional[Union[T, List[T]]]:
         """Binds EboniteObject to meta and art repo of this client instance
@@ -53,7 +57,10 @@ class Ebonite:
             for o in obj:
                 self._bind(o)
         else:
+
             obj.bind_meta_repo(self.meta_repo).bind_artifact_repo(self.artifact_repo)
+            if isinstance(obj, WithDatasetRepository):
+                obj.bind_dataset_repo(self.dataset_repo)
         return obj
 
     def push_model(self, model: Model, task: Task = None) -> Model:

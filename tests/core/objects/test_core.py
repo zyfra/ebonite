@@ -250,7 +250,7 @@ def test_create_model_with_additional_artifact(artifact, sklearn_model_obj, pand
     model = Model.create(sklearn_model_obj, pandas_data, additional_artifacts=artifact)
     assert model is not None
     model._id = 'test_model'
-    artifact_repository.push_artifacts(model)
+    artifact_repository.push_model_artifacts(model)
     assert len(model.artifact_req_persisted.bytes_dict()) == 4
 
     model_payloads = model.artifact_req_persisted.bytes_dict()

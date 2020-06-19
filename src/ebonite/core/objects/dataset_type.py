@@ -33,9 +33,6 @@ class DatasetType(EboniteParams, TypeWithSpec):
     @abstractmethod
     def get_writer(self):
         """"""  # TODO docs
-        from ebonite.core.objects.dataset_source import InMemoryDatasetWriter
-        return InMemoryDatasetWriter()
-        # raise NotImplementedError()
 
 
 class LibDatasetTypeMixin(DatasetType):

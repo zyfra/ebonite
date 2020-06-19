@@ -21,7 +21,7 @@ from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.analyzer.requirement import RequirementAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.base import EboniteParams
-from ebonite.core.objects.dataset_source import AbstractDataset, Dataset, DatasetSource
+from ebonite.core.objects.dataset_source import AbstractDataset, Dataset, DatasetSource, InMemoryDatasetSource
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
@@ -121,6 +121,28 @@ class WithArtifactRepository:
         return self._art is not None
 
 
+class WithDatasetRepository:
+    _dataset: 'ebonite.repository.DatasetRepository' = None
+    _nested_fields_dataset: List[str] = []
+
+    def bind_dataset_repo(self, repo: 'ebonite.repository.DatasetRepository'):
+        self._dataset = repo
+        for field in self._nested_fields_dataset:
+            for obj in getattr(self, field).values():
+                obj.bind_dataset_repo(repo)
+        return self
+
+    def unbind_dataset_repo(self):
+        for field in self._nested_fields_dataset:
+            for obj in getattr(self, field).values():
+                obj.unbind_dataset_repo()
+        del self._dataset
+
+    @property
+    def has_dataset_repo(self):
+        return self._dataset is not None
+
+
 class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     """
     Base class for high level ebonite objects.
@@ -184,6 +206,23 @@ def _with_artifact(method):
     def inner(self: EboniteObject, *args, **kwargs):
         if not self.has_artifact_repo:
             raise errors.UnboundObjectError('{} is not bound to artifact repository'.format(self))
+        return method(self, *args, **kwargs)
+
+    return inner
+
+
+def _with_dataset(method):
+    """
+    Decorator for methods to check that object is binded to dataset repo
+
+    :param method: method to apply decorator
+    :return: decorated method
+    """
+
+    @wraps(method)
+    def inner(self: WithDatasetRepository, *args, **kwargs):
+        if not self.has_dataset_repo:
+            raise errors.UnboundObjectError('{} is not bound to dataset repository'.format(self))
         return method(self, *args, **kwargs)
 
     return inner
@@ -286,7 +325,7 @@ AnyMetric = Union[str, Metric, Any]
 
 
 @make_string('id', 'name')
-class Task(EboniteObject):
+class Task(EboniteObject, WithDatasetRepository):
     """
     Task is a collection of models
 
@@ -507,6 +546,7 @@ class Task(EboniteObject):
 
     @_with_meta
     def save(self):
+        self.push_datasets()
         self._meta.save_task(self)
 
     def _resolve_dataset(self, dataset: AnyDataset, name: str) -> str:
@@ -540,15 +580,21 @@ class Task(EboniteObject):
         metrics = [self._resolve_metric(m, f'{name}_{i}') for i, m in enumerate(metrics)]
         self.evaluation_sets[name] = EvaluationSet(data, target, metrics)
 
+    @_with_dataset
     def add_dataset(self, name, dataset: Union[DatasetSource, AbstractDataset, Any]):
         if name in self.datasets:
             raise ValueError(f'dataset {name} already in task {self}')
         if not isinstance(dataset, DatasetSource):
             if not isinstance(dataset, AbstractDataset):
                 dataset = Dataset.from_object(dataset)
-            dataset = dataset.dataset_type.get_writer().write(dataset)
-        # TODO checks and stuff
+            dataset = dataset.to_inmemory_source()
         self.datasets[name] = dataset
+
+    @_with_dataset
+    def push_datasets(self):
+        for name, dataset in list(self.datasets.items()):
+            if isinstance(dataset, InMemoryDatasetSource):
+                self.datasets[name] = self._dataset.save(f'{self.id}/{name}', dataset.read())
 
     def add_metric(self, name, metric: Union[Metric, Any]):
         if name in self.metrics:
@@ -874,7 +920,7 @@ class Model(_InTaskEvaluatable):
         """
         if self.artifact is not None:
             try:
-                self._art.delete_artifact(self)
+                self._art.delete_model_artifact(self)
             except:  # noqa
                 if force:
                     logger.warning("Unable to delete artifacts associated with model: '%s'", self, exc_info=1)
@@ -905,7 +951,7 @@ class Model(_InTaskEvaluatable):
 
         self._meta.create_model(self)  # save model to get model.id
         try:
-            self._art.push_artifacts(self)
+            self._art.push_model_artifacts(self)
         except:  # noqa
             self._meta.delete_model(self)
             raise
@@ -930,7 +976,9 @@ class Model(_InTaskEvaluatable):
         return _WrapperMethodAccessor(self, item)
 
     @_with_meta
+    @_with_artifact
     def save(self):
+        self._art.push_model_artifacts(self)
         self._meta.save_model(self)
 
     def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric]) -> EvaluationResult:

@@ -145,7 +145,8 @@ class InMemoryBlob(Blob, Unserializable):
 
 class LazyBlob(Blob, Unserializable):
     # TODO docs
-    def __init__(self, source: typing.Callable[[], typing.BinaryIO]):
+    def __init__(self, source: typing.Callable[[], typing.Union[str, bytes, typing.IO]], encoding: str = 'utf8'):
+        self.encoding = encoding
         self.source = source
 
     def materialize(self, path):
@@ -156,7 +157,13 @@ class LazyBlob(Blob, Unserializable):
         """
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'wb') as f:
-            f.write(self.source().read())
+            source = self.source()
+            if not isinstance(source, (str, bytes)):
+                source.seek(0)
+                source = source.read()
+            if isinstance(source, str):
+                source = source.encode(self.encoding)
+            f.write(source)
 
     @contextlib.contextmanager
     def bytestream(self) -> StreamContextManager:
@@ -216,6 +223,10 @@ class ArtifactCollection(EboniteParams):
         if not isinstance(other, ArtifactCollection):
             raise ValueError('Cant and {} to ArtifactCollection'.format(other))
         return CompositeArtifactCollection([self, other])
+
+    @staticmethod
+    def from_blobs(files: typing.Dict[str, 'Blob']):
+        return Blobs(files)
 
 
 @make_string
