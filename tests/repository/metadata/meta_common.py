@@ -13,6 +13,7 @@ from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, E
 from ebonite.core.objects.core import Model, Pipeline, Project, Task
 from ebonite.repository.metadata import MetadataRepository
 
+
 # from tests.ext.sqlalchemy.conftest import sqlalchemy_meta as meta
 # from tests.repository.metadata.test_local.conftest import local_meta as meta
 # _ = [meta]
@@ -126,7 +127,9 @@ def test_update_project_with_tasks(meta: MetadataRepository, project: Project, t
     project.add_task(task)
 
     project = update_object_fields(project, excepted_fields=['id', 'tasks'])
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
 
     updated_project = meta.update_project(project)
 
@@ -353,7 +356,9 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     model = meta.create_model(model)
     task.add_model(model)
 
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
                                                          'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
     updated_task = meta.update_task(task)
@@ -380,7 +385,9 @@ def test_update_task_source_is_changed(meta: MetadataRepository, project: Projec
     model.task = saved_task
     model = meta.create_model(model)
 
-    saved_task = update_object_fields(saved_task, excepted_fields=['id', 'models', 'project_id'])
+    saved_task = update_object_fields(saved_task,
+                                      excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets',
+                                                       'metrics', 'project_id'])
 
     saved_task.add_model(model)
     saved_task = meta.update_task(saved_task)
@@ -456,7 +463,9 @@ def test_save_updated_existing_task(meta: MetadataRepository, project: Project):
     task.project = project
     task = meta.create_task(task)
 
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
 
     saved_task = meta.save_task(task)
     assert saved_task == task

@@ -341,16 +341,10 @@ class Task(EboniteObject, WithDatasetRepository):
                  author: str = None, creation_date: datetime.datetime = None,
                  datasets: Dict[str, DatasetSource] = None,
                  metrics: Dict[str, Metric] = None,
-                 evaluation_sets: Dict[str, EvaluationSet] = None,
-                 input_type: DatasetType = None,
-                 output_type: DatasetType = None):
+                 evaluation_sets: Dict[str, EvaluationSet] = None):
         super().__init__(id, name, author, creation_date)
         self.evaluation_sets = evaluation_sets or {}
-        self.output_type = output_type
-        self.input_type = input_type
         self.datasets = datasets or {}
-        self._main_dataset = None if not len(self.datasets) else next(
-            datasets.values())  # FIXME lil kostyl for model creation
         self.metrics = metrics or {}
         self.project_id = project_id
         self._models: IndexDict[Model] = IndexDict('id', 'name')
@@ -474,8 +468,6 @@ class Task(EboniteObject, WithDatasetRepository):
         if pipeline.task_id is not None and pipeline.task_id != self.id:
             raise errors.MetadataError('Pipeline is already in task {}. Delete it first'.format(pipeline.task_id))
 
-        if pipeline.input_data != self.input_type or pipeline.output_data != self.output_type:
-            raise errors.EboniteError("")
         pipeline.task_id = self.id
         self._meta.save_pipeline(pipeline)
         self._pipelines.add(pipeline)
