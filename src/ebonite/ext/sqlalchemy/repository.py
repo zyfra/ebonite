@@ -398,7 +398,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
         self._validate_instance(instance)
-        if self._get_sql_object_by_id(self.images, instance.image_id):
+        if self._get_sql_object_by_id(self.images, instance.image_id) is None:
             raise NonExistingImageError(instance.image_id)
         return self._create_object(self.instances, instance, ExistingInstanceError)
 
