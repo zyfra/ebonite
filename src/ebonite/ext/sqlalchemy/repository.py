@@ -191,6 +191,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_task(self, task: Task) -> Task:
         self._validate_task(task)
+        if self._get_sql_object_by_id(self.projects, task.project_id) is None:
+            raise NonExistingProjectError(task.project_id)
         return self._create_object(self.tasks, task, ExistingTaskError)
 
     def update_task(self, task: Task) -> Task:
@@ -245,6 +247,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_model(self, model: Model) -> Model:
         self._validate_model(model)
+        if self._get_sql_object_by_id(self.tasks, model.task_id) is None:
+            raise NonExistingTaskError(model.task_id)
         return self._create_object(self.models, model, ExistingModelError)
 
     def update_model(self, model: Model) -> Model:
@@ -280,6 +284,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_pipeline(self, pipeline: Pipeline) -> Pipeline:
         self._validate_pipeline(pipeline)
+        if self._get_sql_object_by_id(self.tasks, pipeline.task_id) is None:
+            raise NonExistingTaskError(pipeline.task_id)
         return self._create_object(self.pipelines, pipeline, ExistingPipelineError)
 
     def update_pipeline(self, pipeline: Pipeline) -> Pipeline:
@@ -315,6 +321,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_image(self, image: Image) -> Image:
         self._validate_image(image)
+        if self._get_sql_object_by_id(self.tasks, image.task_id) is None:
+            raise NonExistingTaskError(image.task_id)
         return self._create_object(self.images, image, ExistingImageError)
 
     def update_image(self, image: Image) -> Image:
@@ -390,6 +398,8 @@ class SQLAlchemyMetaRepository(MetadataRepository):
     @bind_to_self
     def create_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
         self._validate_instance(instance)
+        if self._get_sql_object_by_id(self.images, instance.image_id):
+            raise NonExistingImageError(instance.image_id)
         return self._create_object(self.instances, instance, ExistingInstanceError)
 
     def update_instance(self, instance: RuntimeInstance) -> RuntimeInstance:
