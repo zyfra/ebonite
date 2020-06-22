@@ -239,6 +239,12 @@ def test_create_task_without_project(meta: MetadataRepository, task: Task):
         meta.create_task(task)
 
 
+def test_create_task_with_unexisting_project(meta: MetadataRepository):
+    task_with_wrong_project = Task(name='failed_task', project_id=2)
+    with pytest.raises(NonExistingProjectError):
+        meta.create_task(task_with_wrong_project)
+
+
 def test_create_task_source_is_not_changed(meta: MetadataRepository, project: Project, task: Task):
     task.project = meta.create_project(project)
     new_task = meta.create_task(task)
@@ -573,6 +579,12 @@ def test_create_existing_model(meta: MetadataRepository, project: Project, task:
         meta.create_model(model2)
 
 
+def test_create_model_with_unexisting_task(meta: MetadataRepository, model: Model):
+    model.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_model(model)
+
+
 def test_get_models(meta: MetadataRepository, project: Project, task: Task, model: Model):
     task.project = meta.create_project(project)
     created_task = meta.create_task(task)
@@ -799,6 +811,12 @@ def test_create_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
 def test_create_pipeline_without_task(meta: MetadataRepository, pipeline: Pipeline):
     with pytest.raises(PipelineNotInTaskError):
+        meta.create_pipeline(pipeline)
+
+
+def test_create_pipeline_with_unexisting_task(meta: MetadataRepository, pipeline: Pipeline):
+    pipeline.task_id = 3
+    with pytest.raises(NonExistingTaskError):
         meta.create_pipeline(pipeline)
 
 
@@ -1091,6 +1109,12 @@ def test_create_image__no_task(meta: MetadataRepository, image):
 def test_create_image__saved_image(meta: MetadataRepository, created_image):
     with pytest.raises(ExistingImageError):
         meta.create_image(created_image)
+
+
+def test_create_image_with_unexisting_task(meta: MetadataRepository, image):
+    image.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_image(image)
 
 
 def test_update_image__ok(meta: MetadataRepository, created_image):

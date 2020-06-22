@@ -130,6 +130,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 s.delete(p)
                 s.commit()
             except IntegrityError:
+                s.rollback()
                 if p.to_obj().has_children():
                     raise ie_error_type(obj)
                 else:

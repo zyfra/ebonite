@@ -266,7 +266,6 @@ class Project(EboniteObject):
     def save(self):
         self._meta.save_project(self)
 
-    @_with_meta
     def has_children(self):
         return len(self.tasks) > 0
 
@@ -489,7 +488,6 @@ class Task(EboniteObject):
     def save(self):
         self._meta.save_task(self)
 
-    @_with_meta
     def has_children(self):
         return len(self.models) > 0 or len(self.pipelines) > 0 or len(self.images) > 0
 
@@ -820,7 +818,6 @@ class Model(EboniteObject):
     def save(self):
         self._meta.save_model(self)
 
-    @_with_meta
     def has_children(self):
         return False
 
@@ -944,7 +941,6 @@ class Pipeline(EboniteObject):
     def save(self):
         self._meta.save_pipeline(self)
 
-    @_with_meta
     def has_children(self):
         return False
 
@@ -1019,7 +1015,6 @@ class RuntimeEnvironment(EboniteObject):
     def save(self):
         self._meta.save_environment(self)
 
-    @_with_meta
     def has_children(self):
         return False
 
@@ -1183,7 +1178,6 @@ class Image(_WithBuilder):
     def save(self):
         self._meta.save_image(self)
 
-    @_with_meta
     def has_children(self):
         return False
 
@@ -1331,6 +1325,5 @@ class RuntimeInstance(_WithRunner):
     def save(self):
         self._meta.save_instance(self)
 
-    @_with_meta
     def has_children(self):
         return False
