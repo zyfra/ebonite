@@ -131,7 +131,7 @@ class SQLAlchemyMetaRepository(MetadataRepository):
                 s.commit()
             except IntegrityError:
                 s.rollback()
-                if p.to_obj().has_children():
+                if p.to_obj().bind_meta_repo(self).has_children():
                     raise ie_error_type(obj)
                 else:
                     raise UnknownMetadataError
