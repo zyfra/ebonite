@@ -205,4 +205,4 @@ class EnvironmentWithInstancesError(MetadataError):
 
 class UnknownMetadataError(MetadataError):
     def __init__(self):
-        super(UnknownMetadataError).__init__('Unknown error during query execution')
+        super(UnknownMetadataError, self).__init__('Unknown error during query execution')
