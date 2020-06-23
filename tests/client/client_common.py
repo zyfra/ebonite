@@ -46,6 +46,8 @@ def test_get_or_create_task(ebnt: Ebonite):
     assert task.name == "Task"
     assert task.project.name == "Project"
     assert task.id in project.tasks
+    assert task.has_meta_repo
+    assert task.has_artifact_repo
 
 
 def test_get_or_create_task_exists(ebnt: Ebonite):
@@ -109,7 +111,10 @@ def test_get_model(ebnt: Ebonite, regression_and_data):
     reg, data = regression_and_data
     model = task.create_and_push_model(reg, data, 'mymodel')
 
-    assert ebnt.get_model(project='Project', task='Task', model_name='mymodel') == model
+    get_model = ebnt.get_model(project='Project', task='Task', model_name='mymodel')
+    assert get_model == model
+    assert get_model.has_meta_repo
+    assert get_model.has_artifact_repo
 
 
 def test_push_model(ebnt: Ebonite, model: Model):
