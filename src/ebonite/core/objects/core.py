@@ -1017,10 +1017,7 @@ class RuntimeEnvironment(EboniteObject):
 
     @_with_meta
     def has_children(self):
-        if len(self._meta.get_instances(image=None, environment=self)):
-            return True
-        else:
-            return False
+        return len(self._meta.get_instances(image=None, environment=self)) > 0
 
 
 class _WithEnvironment(EboniteObject):
