@@ -264,7 +264,6 @@ def test_delete_image__not_only_meta_ok(ebnt: Ebonite, image_to_delete: Image, m
 def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_name, mock_env):
     reg, data = regression_and_data
     mock_env = ebnt.meta_repo.create_environment(mock_env)
-    mock_env = mock_env.bind_as(mock_env)
     check_ebonite_port_free()
 
     model = ebnt.create_model(reg, data, 'test_model')
