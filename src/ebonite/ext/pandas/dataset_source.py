@@ -126,27 +126,32 @@ class PandasFormatHdf(PandasFormat):
         # to_hdf can write only to file or HDFStore, so there's that
         kwargs = self.add_write_args()
         kwargs.update(self.write_args)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, self.key)
-            store = pd.HDFStore(path)
-            if has_index(dataframe):
-                dataframe = reset_index(dataframe)
-            type(self).write_func(dataframe, store, **kwargs)
+        if has_index(dataframe):
+            dataframe = reset_index(dataframe)
+        path = tempfile.mktemp(suffix='.hd5', dir='.')  # tempfile.TemporaryDirectory breaks on windows for some reason
+        try:
+            type(self).write_func(dataframe, path, **kwargs)
             with open(path, 'rb') as f:
                 return self.buffer_type(f.read())
+        finally:
+            os.unlink(path)
 
     def add_read_args(self) -> Dict[str, Any]:
         return {'key': self.key}
 
     def read(self, file_or_path):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            if not isinstance(file_or_path, str):
-                path = os.path.join(tmpdir, self.key)
+        if not isinstance(file_or_path, str):
+            path = tempfile.mktemp('.hd5', dir='.')
+            try:
                 with open(path, 'wb') as f:
                     f.write(file_or_path.read())
-            else:
-                path = file_or_path
-            return super().read(path).reset_index(drop=True)
+                df = super().read(path)
+            finally:
+                os.unlink(path)
+        else:
+            df = super().read(file_or_path)
+
+        return df.reset_index(drop=True)
 
 
 class PandasFormatFeather(PandasFormat):
