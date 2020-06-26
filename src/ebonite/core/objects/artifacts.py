@@ -144,7 +144,11 @@ class InMemoryBlob(Blob, Unserializable):
 
 
 class LazyBlob(Blob, Unserializable):
-    # TODO docs
+    """Represents a lazy blob, which is computed only when needed
+
+    :param source: function with no arguments, that must return str, bytes or file-like object
+    :param encoding: encoding for payload if source returns str of io.StringIO
+    """
     def __init__(self, source: typing.Callable[[], typing.Union[str, bytes, typing.IO]], encoding: str = 'utf8'):
         self.encoding = encoding
         self.source = source
@@ -172,7 +176,9 @@ class LazyBlob(Blob, Unserializable):
 
         :yields: file-like object
         """
-        yield self.source()
+        source = self.source()
+        source.seek(0)
+        yield source
 
 
 @type_field('type')

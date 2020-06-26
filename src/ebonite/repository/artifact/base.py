@@ -11,7 +11,6 @@ class ArtifactError(Exception):
     """
     Base class for exceptions in :class:`ArtifactRepository`
     """
-    pass
 
 
 class NoSuchArtifactError(ArtifactError):
