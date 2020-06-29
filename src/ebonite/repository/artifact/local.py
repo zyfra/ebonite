@@ -21,19 +21,21 @@ class LocalArtifactRepository(ArtifactRepository):
     def __init__(self, path: str = None):
         self.path = os.path.abspath(path or get_lib_path('local_storage'))
 
-    def _get_artifact(self, model_id: str) -> ArtifactCollection:
-        path = os.path.join(self.path, model_id)
+    def get_artifact(self, artifact_type, artifact_id: str) -> ArtifactCollection:
+        artifact_id = f'{artifact_type}/{artifact_id}'
+        path = os.path.join(self.path, artifact_id)
         if not os.path.exists(path):
-            raise NoSuchArtifactError(model_id, self)
+            raise NoSuchArtifactError(artifact_id, self)
         return Blobs({
             os.path.relpath(file, path): LocalFileBlob(os.path.join(self.path, file)) for file in
             glob.glob(os.path.join(path, '**'), recursive=True) if os.path.isfile(file)
         })
 
-    def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
-        path = os.path.join(self.path, model_id)
+    def push_artifact(self, artifact_type, artifact_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
+        artifact_id = f'{artifact_type}/{artifact_id}'
+        path = os.path.join(self.path, artifact_id)
         if os.path.exists(path):
-            raise ArtifactExistsError(model_id, self)
+            raise ArtifactExistsError(artifact_id, self)
 
         os.makedirs(path, exist_ok=True)
         result = {}
@@ -45,9 +47,10 @@ class LocalArtifactRepository(ArtifactRepository):
             result[filepath] = LocalFileBlob(join)
         return Blobs(result)
 
-    def _delete_artifact(self, model_id: str):
-        path = os.path.join(self.path, model_id)
+    def delete_artifact(self, artifact_type, artifact_id: str):
+        artifact_id = f'{artifact_type}/{artifact_id}'
+        path = os.path.join(self.path, artifact_id)
         if not os.path.exists(path):
-            raise NoSuchArtifactError(model_id, self)
+            raise NoSuchArtifactError(artifact_id, self)
         logger.debug('Removing artifact %s', path)
         shutil.rmtree(path)

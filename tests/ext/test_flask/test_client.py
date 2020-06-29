@@ -13,7 +13,7 @@ interface_json = '''
 {
   "methods":[
     {
-      "args":{"vector":{"columns":["a","b"],"dtypes":["int64","int64"],"type":"ebonite.ext.pandas.dataset.DataFrameType"}},
+      "args":{"vector":{"columns":["a","b"],"dtypes":["int64","int64"],"index_cols":[],"type":"ebonite.ext.pandas.dataset.DataFrameType"}},
       "name":"predict",
       "out_type":{"dtype":"float64","shape":[2],"type":"ebonite.ext.numpy.dataset.NumpyNdarrayDatasetType"}}],
   "version":"%s"

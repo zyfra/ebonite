@@ -1,92 +1,227 @@
 import io
-from abc import abstractmethod
-from typing import Any, Dict
+import os
+import tempfile
+import typing
+from typing import Any, Dict, Tuple
 
 import pandas as pd
+from pyjackson.decorators import type_field
 
-from ebonite.core.objects import DatasetType
-from ebonite.core.objects.artifacts import Blob, LazyBlob
-from ebonite.core.objects.dataset_source import Dataset, DatasetSource, DatasetWriter
+from ebonite.core.objects.artifacts import ArtifactCollection, LazyBlob
+from ebonite.core.objects.dataset_source import Dataset
+from ebonite.ext.pandas import DataFrameType
+from ebonite.ext.pandas.dataset import has_index, reset_index
+from ebonite.repository.dataset.artifact import DatasetReader, DatasetWriter
+
+PANDAS_DATA_FILE = 'data.pd'
 
 
-class _PandasDatasetSource(DatasetSource):
-    def __init__(self, dataset_type: DatasetType, kwargs: Dict[str, Any] = None,
-                 target_type: DatasetType = None,
-                 target_col: str = None):  # TODO better target
-        super().__init__(dataset_type, target_type)
-        self.target_col = target_col
-        self.kwargs = kwargs or {}
-        self._data = None
+@type_field('type')
+class PandasFormat:
+    """ABC for reading and writing different formats supported in pandas
 
-    def get(self):
-        return self.data
+    :param read_args: additional arguments for reading
+    :param write_args: additional arguments for writing
+    """
+    type: str = None
+    read_func: typing.Callable = None
+    write_func: typing.Callable = None
+    buffer_type: typing.Type[typing.IO] = None
 
-    @property
-    def data(self) -> pd.DataFrame:
-        if self._data is None:
-            self._data = self._read()
-        return self._data
+    def __init__(self, read_args: Dict[str, Any] = None, write_args: Dict[str, Any] = None):
+        self.write_args = write_args or {}
+        self.read_args = read_args or {}
 
-    @abstractmethod
-    def _read(self) -> pd.DataFrame:
-        pass
+    def read(self, file_or_path):
+        """Read DataFrame
 
-    def read(self) -> Dataset:
-        data = self._read()
-        if self.target_col is not None:
-            target = data[self.target_col]
-            data = data.drop(self.target_col, axis=0)
+        :param file_or_path: source for read function"""
+        kwargs = self.add_read_args()
+        kwargs.update(self.read_args)
+        return type(self).read_func(file_or_path, **kwargs)
+
+    def write(self, dataframe) -> typing.IO:
+        """Write DataFrame to buffer
+
+        :param dataframe: DataFrame to write
+        """
+        buf = self.buffer_type()
+        kwargs = self.add_write_args()
+        kwargs.update(self.write_args)
+        if has_index(dataframe):
+            dataframe = reset_index(dataframe)
+        type(self).write_func(dataframe, buf, **kwargs)
+        return buf
+
+    def add_read_args(self) -> Dict[str, Any]:
+        """Fuction with additional read argumnets for child classes to override"""
+        return {}
+
+    def add_write_args(self) -> Dict[str, Any]:
+        """Fuction with additional write argumnets for child classes to override"""
+        return {}
+
+
+class PandasFormatCsv(PandasFormat):
+    type = 'csv'
+    read_func = pd.read_csv
+    write_func = pd.DataFrame.to_csv
+    buffer_type = io.StringIO
+
+    def add_write_args(self) -> Dict[str, Any]:
+        return {'index': False}
+
+
+class PandasFormatJson(PandasFormat):
+    type = 'json'
+    read_func = pd.read_json
+    write_func = pd.DataFrame.to_json
+    buffer_type = io.StringIO
+
+    def add_write_args(self) -> Dict[str, Any]:
+        return {'date_format': 'iso', 'date_unit': 'ns'}
+
+    def read(self, file_or_path):
+        # read_json creates index for some reason
+        return super(PandasFormatJson, self).read(file_or_path).reset_index(drop=True)
+
+
+class PandasFormatHtml(PandasFormat):
+    type = 'html'
+    read_func = pd.read_html
+    write_func = pd.DataFrame.to_html
+    buffer_type = io.StringIO
+
+    def add_write_args(self) -> Dict[str, Any]:
+        return {'index': False}
+
+    def read(self, file_or_path):
+        # read_html returns list of dataframes
+        df = super(PandasFormatHtml, self).read(file_or_path)
+        return df[0]
+
+
+class PandasFormatExcel(PandasFormat):
+    type = 'excel'
+    read_func = pd.read_excel
+    write_func = pd.DataFrame.to_excel
+    buffer_type = io.BytesIO
+
+    def add_write_args(self) -> Dict[str, Any]:
+        return {'index': False}
+
+
+class PandasFormatHdf(PandasFormat):
+    type = 'hdf'
+    read_func = pd.read_hdf
+    write_func = pd.DataFrame.to_hdf
+    buffer_type = io.BytesIO
+
+    key = 'data'
+
+    def add_write_args(self) -> Dict[str, Any]:
+        return {'key': self.key}
+
+    def write(self, dataframe) -> typing.IO:
+        # to_hdf can write only to file or HDFStore, so there's that
+        kwargs = self.add_write_args()
+        kwargs.update(self.write_args)
+        if has_index(dataframe):
+            dataframe = reset_index(dataframe)
+        path = tempfile.mktemp(suffix='.hd5', dir='.')  # tempfile.TemporaryDirectory breaks on windows for some reason
+        try:
+            type(self).write_func(dataframe, path, **kwargs)
+            with open(path, 'rb') as f:
+                return self.buffer_type(f.read())
+        finally:
+            os.unlink(path)
+
+    def add_read_args(self) -> Dict[str, Any]:
+        return {'key': self.key}
+
+    def read(self, file_or_path):
+        if not isinstance(file_or_path, str):
+            path = tempfile.mktemp('.hd5', dir='.')
+            try:
+                with open(path, 'wb') as f:
+                    f.write(file_or_path.read())
+                df = super().read(path)
+            finally:
+                os.unlink(path)
         else:
-            target = None
-        # TODO type validation
-        return Dataset(data, self.dataset_type, target, self.target_type)
+            df = super().read(file_or_path)
+
+        return df.reset_index(drop=True)
 
 
-class PandasBlobDatasetSource(_PandasDatasetSource):
-    FORMATS = {
-        'csv': pd.read_csv,
-        'json': pd.read_json,
-        'html': pd.read_html,
-        'excel': pd.read_excel,
-        'hdf': pd.read_hdf,
-        'feather': pd.read_feather,
-        'parquet': pd.read_parquet,
-        'stata': pd.read_stata,
-        'sas': pd.read_sas,
-        'pickle': pd.read_pickle,
-    }
+class PandasFormatFeather(PandasFormat):
+    type = 'feather'
+    read_func = pd.read_feather
+    write_func = pd.DataFrame.to_feather
+    buffer_type = io.BytesIO
 
-    def __init__(self, format: str, blob: Blob, dataset_type: DatasetType, kwargs: Dict[str, Any] = None,
-                 target_type: DatasetType = None,
-                 target_col: str = None):  # TODO better target
-        super().__init__(dataset_type, kwargs, target_type, target_col)
-        self.blob = blob
+
+class PandasFormatParquet(PandasFormat):
+    type = 'parquet'
+    read_func = pd.read_parquet
+    write_func = pd.DataFrame.to_parquet
+    buffer_type = io.BytesIO
+
+
+# class PandasFormatStata(PandasFormat): # TODO int32 converts to int64 for some reason
+#     type = 'stata'
+#     read_func = pd.read_stata
+#     write_func = pd.DataFrame.to_stata
+#     buffer_type = io.BytesIO
+#
+#     def add_write_args(self) -> Dict[str, Any]:
+#         return {'write_index': False}
+#
+# class PandasFormatPickle(PandasFormat): # TODO buffer closed error for some reason
+#     type = 'pickle'
+#     read_func = pd.read_pickle
+#     write_func = pd.DataFrame.to_pickle
+#     buffer_type = io.BytesIO
+
+
+PANDAS_FORMATS = {f.type: f() for f in PandasFormat._subtypes.values() if f is not PandasFormat}
+
+
+class PandasReader(DatasetReader):
+    """DatasetReader for pandas dataframes
+
+    :param format: PandasFormat instance to use
+    :param data_type: DataFrameType to use for aliging read data
+    """
+
+    def __init__(self, format: PandasFormat, data_type: DataFrameType):
+        self.data_type = data_type
         self.format = format
 
-    def _read(self) -> pd.DataFrame:
-        if self.format not in self.FORMATS:
-            raise ValueError('Unknown format {}'.format(self.format))
-        with self.blob.bytestream() as b:
-            return self.FORMATS[self.format](b, **self.kwargs)
+    def read(self, artifacts: ArtifactCollection) -> Dataset:
+        with artifacts.blob_dict() as blobs, blobs[PANDAS_DATA_FILE].bytestream() as b:
+            return Dataset.from_object(self.data_type.align(self.format.read(b)))
 
 
-class PandasJdbcDatasetSource(_PandasDatasetSource):
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType, table: str, connection: str,
-                 kwargs: Dict[str, Any] = None, target_col: str = None):
-        super().__init__(dataset_type, kwargs, target_type, target_col)
-        self.connection = connection
-        self.table = table
+class PandasWriter(DatasetWriter):
+    """DatasetWriter for pandas dataframes
 
-    def _read(self):
-        return pd.read_sql_table(self.table, self.connection, **self.kwargs)
+    :param format: PandasFormat instance to use
+    """
 
+    def __init__(self, format: PandasFormat):
+        self.format = format
 
-class CsvBlobPandasWriter(DatasetWriter):
-    def write(self, dataset: Dataset) -> DatasetSource:
-        def source():
-            buf = io.BytesIO()
-            dataset.data.to_csv(buf, header=True, index=False)
-            return buf
+    def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
+        blob = LazyBlob(lambda: self.format.write(dataset.data))
+        return PandasReader(self.format, dataset.dataset_type), ArtifactCollection.from_blobs({PANDAS_DATA_FILE: blob})
 
-        blob = LazyBlob(source)
-        return PandasBlobDatasetSource('csv', blob, dataset.dataset_type, target_type=dataset.target_type)
+# class PandasJdbcDatasetSource(_PandasDatasetSource):
+#     def __init__(self, dataset_type: DatasetType, table: str, connection: str,
+#                  kwargs: Dict[str, Any] = None):
+#         super().__init__(dataset_type, kwargs)
+#         self.connection = connection
+#         self.table = table
+#
+#     def _read(self):
+#         return pd.read_sql_table(self.table, self.connection, **self.kwargs)

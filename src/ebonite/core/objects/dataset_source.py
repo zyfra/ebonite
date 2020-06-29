@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import Iterable
-from typing import Any
+from typing import Any, Optional
 
 from pyjackson.core import Unserializable
 from pyjackson.decorators import type_field
@@ -11,75 +11,104 @@ from ebonite.core.objects.dataset_type import DatasetType
 
 
 class AbstractDataset(Unserializable):
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType = None):
-        self.target_type = target_type
-        self.dataset_type = dataset_type
+    """ABC for Dataset objects
 
-    @property
-    def has_target(self):
-        return self.target_type is not None
+    :param dataset_type: DatasetType instance for the data in the Dataset"""
+
+    def __init__(self, dataset_type: DatasetType):
+        self.dataset_type = dataset_type
+        self.writer = None
+        self.reader = None
 
     @abstractmethod
     def iterate(self) -> Iterable:
-        pass
+        """Abstract method to iterate through data"""
 
     @abstractmethod
     def get(self):
-        pass
+        """Abstract method to get data object"""
 
     @abstractmethod
-    def get_target(self):
-        pass
+    def get_writer(self):
+        """Returns writer for this dataset. Defaults to dataset_type.get_writer()"""
+        return self.writer or self.dataset_type.get_writer()
+
+    @abstractmethod
+    def get_reader(self):
+        """Returns reader for this dataset. Defaults to dataset_type.get_reader()"""
+        return self.reader or self.dataset_type.get_reader()
 
 
 class Dataset(AbstractDataset):
-    def __init__(self, data: Any, dataset_type: DatasetType, target: Any = None, target_type: DatasetType = None):
-        super().__init__(dataset_type, target_type)
-        self.data = data
-        self.target = target
+    """Wrapper for dataset objects
 
-    @abstractmethod
+    :param data: raw dataset
+    :param dataset_type: DatasetType of the raw data"""
+
+    def __init__(self, data: Any, dataset_type: DatasetType):
+        super().__init__(dataset_type)
+        self.data = data
+
     def iterate(self) -> Iterable:
         return iter(self.data)
 
-    @abstractmethod
     def get(self):
         return self.data
 
-    @abstractmethod
-    def get_target(self):
-        return self.target
-
     @classmethod
-    def from_object(cls, data, target=None):
-        return cls(data, DatasetAnalyzer.analyze(data),
-                   target, DatasetAnalyzer.analyze(target) if target is not None else None)
+    def from_object(cls, data):
+        """Creates Dataset instance from raw data object"""
+        return cls(data, DatasetAnalyzer.analyze(data))
+
+    def to_inmemory_source(self) -> 'InMemoryDatasetSource':
+        """Returns :class:`.InMemoryDatasetSource` with this dataset"""
+        return InMemoryDatasetSource(self)
 
 
 @type_field('type')
 class DatasetSource(EboniteParams):
-    # TODO docs
-    def __init__(self, dataset_type: DatasetType, target_type: DatasetType = None):
-        self.target_type = target_type
+    """Class that represents a source that can produce a Dataset
+
+    :param dataset_type: DatasetType of contained dataset"""
+    is_dynamic = False
+
+    def __init__(self, dataset_type: DatasetType):
         self.dataset_type = dataset_type
 
     @abstractmethod
     def read(self) -> Dataset:
+        """Abstract method that must return produced Dataset instance"""
         raise NotImplementedError()
 
+    def cache(self):
+        """Returns :class:`.CachedDatasetSource` that will cache data on the first read"""
+        return CachedDatasetSource(self)
 
-@type_field('type')
-class DatasetWriter(EboniteParams):
-    @abstractmethod
-    def write(self, dataset: Dataset) -> DatasetSource:
-        pass
 
-# class BlobDatasetSource(DatasetSource):
-#     def __init__(self, blob: Blob, dataset_type: DatasetType, target_type: DatasetType = None):
-#         super(BlobDatasetSource, self).__init__(dataset_type, target_type)
-#         self.blob = blob
+class CachedDatasetSource(DatasetSource):
+    """Wrapper that will cache the result of underlying source on the first read
 
-# class ArtifactDatasetSource(DatasetSource):
-#     def __init__(self, artifacts: ArtifactCollection, dataset_type: DatasetType, target_type: DatasetType = None):
-#         super(ArtifactDatasetSource, self).__init__(dataset_type, target_type)
-#         self.artifacts = artifacts
+    :param source: underlying DatasetSource"""
+
+    def __init__(self, source: DatasetSource):
+        super().__init__(source.dataset_type)
+        self.source = source
+        self._cache: Optional[Dataset] = None
+
+    def read(self) -> Dataset:
+        if self._cache is None:
+            self._cache = self.source.read()
+        return self._cache
+
+    def cache(self):
+        return self
+
+
+class InMemoryDatasetSource(CachedDatasetSource, Unserializable):
+    """DatasetSource that holds existing dataset inmemory
+
+    :param dataset: Dataset instance to hold"""
+
+    def __init__(self, dataset: Dataset):
+        super().__init__(DatasetSource(dataset.dataset_type))
+        self._cache = dataset
