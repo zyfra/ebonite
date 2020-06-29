@@ -80,7 +80,7 @@ class ExposedObjectMethod(ExposedMethod):
 
 
 class WithMetadataRepository:
-    """Intermediat abstract class for objects that can be binded to meta repository"""
+    """Intermediate abstract class for objects that can be binded to meta repository"""
     _id = None
     _meta: 'ebonite.repository.MetadataRepository' = None
     _nested_fields_meta: List[str] = []
@@ -112,7 +112,7 @@ class WithMetadataRepository:
 
 
 class WithArtifactRepository:
-    """Intermediat abstract class for objects that can be binded to artifact repository"""
+    """Intermediate abstract class for objects that can be binded to artifact repository"""
     _art: 'ebonite.repository.ArtifactRepository' = None
     _nested_fields_art: List[str] = []
 
@@ -135,7 +135,7 @@ class WithArtifactRepository:
 
 
 class WithDatasetRepository:
-    """Intermediat abstract class for objects that can be binded to dataset repository"""
+    """Intermediate abstract class for objects that can be binded to dataset repository"""
     _dataset: 'ebonite.repository.DatasetRepository' = None
     _nested_fields_dataset: List[str] = []
 
