@@ -3,8 +3,9 @@ import os
 import shutil
 import typing
 
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, LocalFileBlob
-from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
+from ebonite.repository.artifact import ArtifactRepository
 from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
 

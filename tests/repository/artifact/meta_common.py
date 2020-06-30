@@ -3,9 +3,10 @@ from typing import Dict
 
 import pytest
 
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, InMemoryBlob
 from ebonite.core.objects.core import Model
-from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
+from ebonite.repository.artifact import ArtifactRepository
 
 # from tests.repository.artifact.test_local.conftest import local_artifact as repo_fixture
 # from tests.ext.s3.conftest import s3_artifact as repo_fixture

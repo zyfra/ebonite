@@ -15,14 +15,12 @@ class EboniteError(Exception):
     """
     General Ebonite error
     """
-    pass
 
 
 class MetadataError(EboniteError):
     """
     General Ebonite Metadata Error
     """
-    pass
 
 
 class ExistingProjectError(MetadataError):
@@ -179,3 +177,43 @@ class EnvironmentWithInstancesError(MetadataError):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
         super(EnvironmentWithInstancesError, self).__init__(f'Environment {environment} '
                                                             f'has foreign key and can not be deleted')
+
+
+class DatasetError(EboniteError):
+    """
+    Base class for exceptions in :class:`~ebonite.repository.dataset.DatasetRpository`
+    """
+
+
+class NoSuchDataset(DatasetError):
+    def __init__(self, dataset_id, repo, e=None):
+        super(NoSuchDataset, self).__init__(f'No dataset with id {dataset_id} found in {repo}', e)
+
+
+class DatasetExistsError(DatasetError):
+    def __init__(self, dataset_id, repo, e=None):
+        super(DatasetExistsError, self).__init__(f'Dataset with id {dataset_id} already in {repo}', e)
+
+
+class ArtifactError(EboniteError):
+    """
+    Base class for exceptions in :class:`ArtifactRepository`
+    """
+
+
+class NoSuchArtifactError(ArtifactError):
+    """
+    Exception which is thrown if artifact is not found in the repository
+    """
+
+    def __init__(self, artifact_id, repo):
+        super(NoSuchArtifactError, self).__init__(f'No artifact with id {artifact_id} found in {repo}')
+
+
+class ArtifactExistsError(ArtifactError):
+    """
+    Exception which is thrown if artifact already exists in the repository
+    """
+
+    def __init__(self, artifact_id, repo):
+        super(ArtifactExistsError, self).__init__(f'Artifact with id {artifact_id} already in {repo}')

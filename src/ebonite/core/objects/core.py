@@ -569,7 +569,8 @@ class Task(EboniteObject, WithDatasetRepository):
         """Resolves existing dataset or creates a new one
 
         :param dataset: dataset name, Dataset, DatasetSource or raw data object
-        :param name: name for dataset if it is new"""
+        :param name: name for dataset if it is new
+        """
         if isinstance(dataset, str):
             if dataset not in self.datasets:
                 raise ValueError(f'no dataset named {dataset} in task {self}')  # TODO maybe ohter error?
@@ -582,7 +583,8 @@ class Task(EboniteObject, WithDatasetRepository):
         """Resolves existing metric or creates a new one
 
         :param metric: metric name, Metric or raw metric object
-        :param name: name for metric if it is new"""
+        :param name: name for metric if it is new
+        """
         if isinstance(metric, str):
             if metric not in self.metrics:
                 raise ValueError(f'no metric named {metric} in task {self}')  # TODO maybe ohter error?
@@ -599,9 +601,10 @@ class Task(EboniteObject, WithDatasetRepository):
         :param name: name of the evaluation set
         :param data: input dataset for evaluation
         :param target: ground truth for input data
-        :param metrics: one or more metrics to measure"""
+        :param metrics: one or more metrics to measure
+        """
         if name in self.evaluation_sets:
-            raise ValueError(f'evalset {name} already in task {self}')
+            raise errors.EboniteError(f'evalset {name} already in task {self}')
         data = self._resolve_dataset(data, f'{name}_input')
         target = self._resolve_dataset(target, f'{name}_output')
         if not isinstance(metrics, list):
@@ -609,14 +612,30 @@ class Task(EboniteObject, WithDatasetRepository):
         metrics = [self._resolve_metric(m, f'{name}_{i}') for i, m in enumerate(metrics)]
         self.evaluation_sets[name] = EvaluationSet(data, target, metrics)
 
+    def delete_evaluation(self, name: str, save: bool = True):
+        """Deletes evaluation set from task
+
+        :param name: name of the evaluation to delete
+        :param save: also update task metadata in repo
+        """
+        if save:
+            self._check_meta()
+
+        if name not in self.evaluation_sets:
+            raise errors.EboniteError(f'cannot delete evalset from task {self}: no evalset with name {name}')
+        del self.evaluation_sets[name]
+        if save:
+            self.save()
+
     @_with_dataset
     def add_dataset(self, name, dataset: Union[DatasetSource, AbstractDataset, Any]):
         """Adds new dataset to this task
 
         :param name: name of the dataset
-        :param dataset: Dataset, DatasetSource or raw dataset object"""
+        :param dataset: Dataset, DatasetSource or raw dataset object
+        """
         if name in self.datasets:
-            raise ValueError(f'dataset {name} already in task {self}')
+            raise errors.EboniteError(f'dataset {name} already in task {self}')
         if not isinstance(dataset, DatasetSource):
             if not isinstance(dataset, AbstractDataset):
                 dataset = Dataset.from_object(dataset)
@@ -630,17 +649,70 @@ class Task(EboniteObject, WithDatasetRepository):
             if isinstance(dataset, InMemoryDatasetSource):
                 self.datasets[name] = self._dataset.save(f'{self.id}/{name}', dataset.read())
 
+    @_with_dataset
+    def delete_dataset(self, name: str, force: bool = False, save: bool = True):
+        """Deletes dataset from task with artifacts
+
+        :param name: name of the dataset to delete
+        :param force: wheter to check evalsets that use this dataset and remove them or raise error
+        :param save: also update task metadata in repo
+        """
+        if name not in self.datasets:
+            raise errors.EboniteError(f'cannot delete dataset from {self}: no dataset with name {name}')
+        if save:
+            self._check_meta()
+        evalsets = {n: es for n, es in self.evaluation_sets.items() if
+                    name in (es.input_dataset, es.output_dataset)}
+        if len(evalsets) > 0 and not force:
+            raise errors.EboniteError(
+                f'cannot delete dataset from {self}: it is used by evalsets {list(evalsets.keys())}'
+                f'remove them or set force=True')
+        try:
+            self._dataset.delete(f'{self.id}/{name}')
+        except errors.NoSuchDataset:
+            pass  # already deleted or was not saved
+        del self.datasets[name]
+        for es in evalsets.keys():
+            self.delete_evaluation(es, save)
+        if save:
+            self.save()
+
     def add_metric(self, name, metric: Union[Metric, Any]):
         """Adds metric to this task
 
         :param name: name of the metric
-        :param metric: Metric or raw metric object"""
+        :param metric: Metric or raw metric object
+        """
         if name in self.metrics:
-            raise ValueError(f'metric {name} already in task {self}')
+            raise errors.EboniteError(f'metric {name} already in task {self}')
         if not isinstance(metric, Metric):
             metric = MetricAnalyzer.analyze(metric)
         # TODO checks
         self.metrics[name] = metric
+
+    def delete_metric(self, name: str, force: bool = False, save: bool = True):
+        """Deletes metric from task
+
+        :param name: name of the metric to delete
+        :param force: wheter to check evalsets that use this metric and remove them or raise error
+        :param save: also update task metadata in repo
+        """
+        if name not in self.metrics:
+            raise errors.EboniteError(f'cannot delete metric from {self}: no metric with name {name}')
+        if save:
+            self._check_meta()
+        evalsets = {n: es for n, es in self.evaluation_sets.items() if
+                    name in es.metrics}
+
+        if len(evalsets) > 0 and not force:
+            raise errors.EboniteError(
+                f'cannot delete metric from {self}: it is used by evalsets {list(evalsets.keys())}'
+                f'remove them or set force=True')
+        del self.metrics[name]
+        for es in evalsets.keys():
+            self.delete_evaluation(es, save)
+        if save:
+            self.save()
 
     def evaluate_all(self) -> Dict[str, 'EvaluationResult']:
         """Evaluates all viable pairs of evalsets and models/pipelines"""
@@ -704,7 +776,8 @@ class _InTask(EboniteObject):
 class EvaluationResult(EboniteParams):
     """Represents result of evaluation of one evalset on multiple evaluatable objects
 
-    :param scores: mapping 'object name' -> ('metric' -> 'score')"""
+    :param scores: mapping 'object name' -> ('metric' -> 'score')
+    """
 
     def __init__(self, scores: Dict[str, Dict[str, float]] = None):
         self.scores = scores or {}

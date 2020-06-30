@@ -4,9 +4,12 @@ import pyjackson
 import pytest
 from pyjackson.generics import Serializer
 
+from ebonite.core.analyzer.metric import MetricAnalyzer
 from ebonite.core.objects.core import Buildable, Image, Model, Pipeline, Project, Task
-from ebonite.repository import MetadataRepository
+from ebonite.core.objects.dataset_source import Dataset
+from ebonite.repository import DatasetRepository, MetadataRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
+from ebonite.repository.dataset.artifact import ArtifactDatasetRepository
 from ebonite.repository.metadata.local import LocalMetadataRepository
 from tests.conftest import DummyModelWrapper
 
@@ -19,6 +22,11 @@ def meta():
 @pytest.fixture
 def artifact_repo():
     return InMemoryArtifactRepository()
+
+
+@pytest.fixture
+def dataset_repo(artifact_repo):
+    return ArtifactDatasetRepository(artifact_repo)
 
 
 @pytest.fixture
@@ -39,7 +47,7 @@ def project_factory(meta: MetadataRepository, artifact_repo: InMemoryArtifactRep
 
 
 @pytest.fixture
-def task_factory(project_factory):
+def task_factory(project_factory, dataset_repo: DatasetRepository):
     counter = 0
 
     def factory(saved=False):
@@ -49,6 +57,7 @@ def task_factory(project_factory):
         if saved:
             project = project_factory(True)
             project.add_task(task)
+            task.bind_dataset_repo(dataset_repo)
         return task
 
     return factory
@@ -141,6 +150,17 @@ def project(project_factory):
 @pytest.fixture
 def model(sklearn_model_obj, pandas_data):
     return Model.create(sklearn_model_obj, pandas_data)
+
+
+@pytest.fixture
+def metric():
+    from sklearn.metrics import roc_auc_score
+    return MetricAnalyzer.analyze(roc_auc_score)
+
+
+@pytest.fixture
+def dataset(pandas_data):
+    return Dataset.from_object(pandas_data)
 
 
 @pytest.fixture

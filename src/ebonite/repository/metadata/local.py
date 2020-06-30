@@ -90,6 +90,7 @@ class _LocalContainer:
 
     def add_project(self, project: Project):
         assert project.id is not None
+        # project._tasks =
         self.projects[project.id] = project
         self.project_name_index[project.name] = project.id
 
