@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Generator, Type
+from typing import Dict, Generator, Type
 
 import docker.errors
 
@@ -29,17 +29,15 @@ class DockerRunner(RunnerBase):
         with env.daemon.client() as client:
             try:
                 c = client.containers.get(instance.name)
-                c.delete(**kwargs)
+                c.remove(**kwargs)
             except docker.errors.NotFound:
                 pass
 
     def instance_type(self) -> Type[DockerContainer]:
         return DockerContainer
 
-    def create_instance(self, name: str, **kwargs) -> DockerContainer:
-        ports_mapping = None
-        ports_mapping = kwargs.pop('ports_mapping', ports_mapping)
-        return DockerContainer(name, ports_mapping, kwargs)
+    def create_instance(self, name: str, port_mapping: Dict[int, int] = None, **kwargs) -> DockerContainer:
+        return DockerContainer(name, port_mapping, kwargs)
 
     def run(self, instance: DockerContainer, image: DockerImage, env: DockerEnv, rm=True, detach=True, **kwargs):
         if not (isinstance(instance, DockerContainer) and isinstance(image, DockerImage) and
@@ -54,7 +52,7 @@ class DockerRunner(RunnerBase):
                 container = client.containers.run(image.uri,
                                                   name=instance.name,
                                                   auto_remove=rm,
-                                                  ports=instance.ports_mapping,
+                                                  ports=instance.port_mapping,
                                                   detach=True,
                                                   **instance.params,
                                                   **kwargs)
@@ -127,8 +125,11 @@ class DockerRunner(RunnerBase):
         self._validate(instance, env)
 
         with env.daemon.client() as client:
-            container = client.containers.get(instance.name)
-            container.stop()
+            try:
+                container = client.containers.get(instance.name)
+                container.stop()
+            except docker.errors.NotFound:
+                pass
 
     @classmethod
     def _validate(cls, instance: DockerContainer, env: DockerEnv):

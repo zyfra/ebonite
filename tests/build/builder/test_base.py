@@ -70,19 +70,19 @@ def python_build_context_mock() -> PythonBuildContext:
 
 @pytest.fixture
 def python_build_context_sync(created_model) -> PythonBuildContext:
-    buildable = ModelBuildable.from_model(created_model, server_type=FlaskServer.type)
+    buildable = ModelBuildable(created_model, server_type=FlaskServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
 def python_build_context_async(created_model) -> PythonBuildContext:
-    buildable = ModelBuildable.from_model(created_model, server_type=AIOHTTPServer.type)
+    buildable = ModelBuildable(created_model, server_type=AIOHTTPServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 
 @pytest.fixture
 def python_multi_build_context(created_model) -> PythonBuildContext:
-    buildable = MultiModelBuildable.from_models([created_model], server_type=FlaskServer.type)
+    buildable = MultiModelBuildable([created_model], server_type=FlaskServer.type)
     return PythonBuildContext(buildable.get_provider())
 
 
@@ -160,7 +160,7 @@ def test_python_multi_builder__distr_loadable(tmpdir, python_multi_build_context
         python_multi_build_context._write_distribution(tmpdir)
 
     iface = _load(MultiModelLoader(), tmpdir)
-    prediction2 = iface.execute(f'{created_model.name}-predict', {'vector': pandas_data})
+    prediction2 = iface.execute(f'{created_model.name}_predict', {'vector': pandas_data})
 
     np.testing.assert_almost_equal(prediction, prediction2)
 

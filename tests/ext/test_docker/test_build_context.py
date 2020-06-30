@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from ebonite.build.builder.base import use_local_installation
+from ebonite.build.builder.base import use_local_installation, use_wheel_installation
 from ebonite.core.objects.requirements import UnixPackageRequirement
 from ebonite.ext.docker.build_context import DockerBuildArgs, _DockerfileGenerator
 
@@ -63,6 +63,14 @@ CMD echo "cmd" && sh run.sh
             'run_cmd': 'echo "cmd" && sh run.sh'
         }
         assert _generate_dockerfile(**kwargs) == dockerfile
+
+
+def test_use_wheel_installation(tmpdir):
+    distr = tmpdir.mkdir('distr').join('somewhatwheel.txt')
+    distr.write('wheel goes brrr')
+    with use_wheel_installation(str(distr)):
+        dockerfile = _DockerfileGenerator(DockerBuildArgs()).generate({}, None)
+        assert 'RUN pip install somewhatwheel.txt' in dockerfile
 
 
 def _cut_empty_lines(string):

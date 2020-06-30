@@ -9,7 +9,7 @@ from pyjackson.core import Comparable
 from pyjackson.decorators import type_field
 
 from ebonite.core.objects import Image, RuntimeEnvironment, RuntimeInstance
-from ebonite.ext.docker.helpers import create_docker_client, image_exists_at_dockerhub
+from ebonite.ext.docker.utils import create_docker_client, image_exists_at_dockerhub
 from ebonite.utils.log import logger
 
 
@@ -49,13 +49,15 @@ class DockerRegistry(Comparable):
         except docker.errors.ImageNotFound:
             return False
 
-    def delete_image(self, client: docker.DockerClient, image: 'DockerImage'):
+    def delete_image(self, client: docker.DockerClient, image: 'DockerImage', force: bool = False, **kwargs):
         """Deleta image from this registry
 
         :param client: DockerClient to use
-        :param image: :class:`.DockerImage` to delete"""
+        :param image: :class:`.DockerImage` to delete
+        :param force: force delete
+        """
         try:
-            client.images.remove(image.name)
+            client.images.remove(image.uri, force=force, **kwargs)
         except docker.errors.ImageNotFound:
             pass
 
@@ -75,14 +77,15 @@ class DockerIORegistry(DockerRegistry):
     def image_exists(self, client, image: 'DockerImage'):
         return image_exists_at_dockerhub(image.uri)
 
-    def delete_image(self, client, image: 'DockerImage'):
-        logger.warn('Skipping deleting image %s from docker.io', image.name)
+    def delete_image(self, client, image: 'DockerImage', force=False, **kwargs):
+        logger.warn('Skipping deleting image %s from docker.io', image.name, force, **kwargs)
 
 
 class RemoteRegistry(DockerRegistry):
     """DockerRegistry implementation for official Docker Registry (as in https://docs.docker.com/registry/)
 
     :param host: adress of the registry"""
+
     def __init__(self, host: str = None):
         self.host = host  # TODO credentials?
 
@@ -141,7 +144,7 @@ class RemoteRegistry(DockerRegistry):
             return True
         r.raise_for_status()
 
-    def delete_image(self, client, image: 'DockerImage'):
+    def delete_image(self, client, image: 'DockerImage', force=False, **kwargs):
         name = image.fullname
         digest = self._get_digest(name, image.tag)
         if digest is None:
@@ -154,6 +157,7 @@ class DockerDaemon(Comparable):
     """Class that represents docker daemon
 
     :param host: adress of the docker daemon (empty string for local)"""
+
     def __init__(self, host: str):  # TODO credentials
         self.host = host
 
@@ -173,6 +177,7 @@ class DockerImage(Image.Params):
     :param repository: repository of the image
     :param registry: :class:`.DockerRegistry` instance with this image
     :param image_id: docker internal id of this image"""
+
     def __init__(self, name: str, tag: str = 'latest', repository: str = None, registry: DockerRegistry = None,
                  image_id: str = None):
         self.repository = repository
@@ -193,9 +198,9 @@ class DockerImage(Image.Params):
         """Checks if this image exists in it's registry"""
         return self.registry.image_exists(client, self)
 
-    def delete(self, client: docker.DockerClient):
+    def delete(self, client: docker.DockerClient, force=False, **kwargs):
         """Deletes image from registry"""
-        self.registry.delete_image(client, self)
+        self.registry.delete_image(client, self, force, **kwargs)
 
 
 class DockerContainer(RuntimeInstance.Params):
@@ -205,11 +210,12 @@ class DockerContainer(RuntimeInstance.Params):
     :param port_mapping: port mapping in this container
     :param params: other parameters for docker run cmd
     :param container_id: internal docker id for this container"""
+
     def __init__(self, name: str, port_mapping: Dict[int, int] = None, params: Dict[str, object] = None,
                  container_id: str = None):
         self.container_id = container_id
         self.name = name
-        self.ports_mapping = port_mapping or {}
+        self.port_mapping = port_mapping or {}
         self.params = params or {}
 
 
@@ -218,6 +224,7 @@ class DockerEnv(RuntimeEnvironment.Params):
 
     :param registry: default registry to push images to
     :param daemon: :class:`.DockerDaemon` instance"""
+
     def __init__(self, registry: DockerRegistry = None, daemon: DockerDaemon = None):
         self.registry = registry or DockerRegistry()
         self.daemon = daemon or DockerDaemon('')

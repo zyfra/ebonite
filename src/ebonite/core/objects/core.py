@@ -88,6 +88,13 @@ class WithMetadataRepository:
     def has_meta_repo(self):
         return self._meta is not None
 
+    def _check_meta(self, saved=True):
+        """Checks if object is binded to meta repo
+
+        :param saved: force object to be also saved (have id)"""
+        if (self._id is None and saved) or not self.has_meta_repo:
+            raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+
 
 class WithArtifactRepository:
     _art: 'ebonite.repository.ArtifactRepository' = None
@@ -143,6 +150,10 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     def save(self):
         """Saves object state to metadata repository"""
 
+    @abstractmethod
+    def has_children(self):
+        """Checks if object has existing relationship"""
+
 
 def _with_meta(saved=True):
     """
@@ -154,8 +165,7 @@ def _with_meta(saved=True):
     def dec(method):
         @wraps(method)
         def inner(self: EboniteObject, *args, **kwargs):
-            if (self.id is None and saved) or not self.has_meta_repo:
-                raise errors.UnboundObjectError('{} is not bound to meta repository'.format(self))
+            self._check_meta(saved)
             return method(self, *args, **kwargs)
 
         return inner
@@ -255,6 +265,9 @@ class Project(EboniteObject):
     @_with_meta
     def save(self):
         self._meta.save_project(self)
+
+    def has_children(self):
+        return len(self.tasks) > 0
 
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
@@ -475,6 +488,9 @@ class Task(EboniteObject):
     def save(self):
         self._meta.save_task(self)
 
+    def has_children(self):
+        return len(self.models) > 0 or len(self.pipelines) > 0 or len(self.images) > 0
+
 
 class _WrapperMethodAccessor:
     """Class to access ModelWrapper methods from model
@@ -484,7 +500,6 @@ class _WrapperMethodAccessor:
 
     def __init__(self, model: 'Model', method_name: str):
         if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
-            print(model, method_name)
             raise AttributeError(f'{model} does not have {method_name} method')
         self.model = model
         self.method_name = method_name
@@ -803,6 +818,18 @@ class Model(EboniteObject):
     def save(self):
         self._meta.save_model(self)
 
+    def has_children(self):
+        return False
+
+
+def _generate_name(prefix='', postfix=''):
+    """Generates name from current date
+
+    :param prefix: str to put before
+    :param postfix: str to put after"""
+    now = datetime.datetime.now()
+    return f'{prefix}{now.strftime("%Y%m%d_%H_%M_%S_%f")}{postfix}'
+
 
 def _generate_model_name(wrapper: ModelWrapper):
     """
@@ -811,8 +838,8 @@ def _generate_model_name(wrapper: ModelWrapper):
     :param wrapper: model wrapper
     :return: str
     """
-    now = datetime.datetime.now()
-    return '{}_model_{}'.format(wrapper.type, now.strftime('%Y%m%d_%H_%M_%S'))
+
+    return _generate_name('{}_model_'.format(wrapper.type))
 
 
 class PipelineStep(EboniteParams):
@@ -914,6 +941,9 @@ class Pipeline(EboniteObject):
     def save(self):
         self._meta.save_pipeline(self)
 
+    def has_children(self):
+        return False
+
 
 @type_field('type')
 class Buildable(EboniteParams, WithMetadataRepository):
@@ -924,6 +954,11 @@ class Buildable(EboniteParams, WithMetadataRepository):
     @abstractmethod
     def get_provider(self):
         """Abstract method to get a provider for this Buildable"""
+
+    @property
+    @abstractmethod
+    def task(self) -> Optional[Task]:
+        """property to get task (can be None, whick forces to provide task manually)"""
 
 
 class RuntimeEnvironment(EboniteObject):
@@ -980,6 +1015,10 @@ class RuntimeEnvironment(EboniteObject):
     def save(self):
         self._meta.save_environment(self)
 
+    @_with_meta
+    def has_children(self):
+        return len(self._meta.get_instances(image=None, environment=self)) > 0
+
 
 class _WithEnvironment(EboniteObject):
     """Utility class for objects with PK to :class:`.RuntimeEnvironment`"""
@@ -988,22 +1027,28 @@ class _WithEnvironment(EboniteObject):
                  environment_id: int = None):
         super().__init__(id, name, author, creation_date)
         self.environment_id = environment_id
+        self._environment: Optional[RuntimeEnvironment] = None
 
     @property
-    @_with_meta
     def environment(self) -> RuntimeEnvironment:  # TODO caching
+        if self._environment is not None:
+            return self._environment
         if self.environment_id is None:
             raise errors.UnboundObjectError(f"{self} is not saved, cant access environment")
+        self._check_meta()
         e = self._meta.get_environment_by_id(self.environment_id)
         if e is None:
             raise errors.NonExistingEnvironmentError(self.environment_id)
-        return e.bind_artifact_repo(self._art)
+        e = e.bind_as(self)
+        self._environment = e
+        return self._environment
 
     @environment.setter
     def environment(self, environment: RuntimeEnvironment):
         if not isinstance(environment, RuntimeEnvironment):
             raise ValueError(f'{environment} is not RuntimeEnvironment')
         self.environment_id = environment.id
+        self._environment = environment
         self.bind_as(environment)
 
 
@@ -1060,12 +1105,12 @@ class Image(_WithBuilder):
     class Params(EboniteParams):
         """Abstract class that represents different types of images"""
 
-    def __init__(self, name: str, source: Buildable, id: int = None,
+    def __init__(self, name: Optional[str], source: Buildable, id: int = None,
                  params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None,
                  task_id: int = None,
                  environment_id: int = None):
-        super().__init__(id, name, author, creation_date, environment_id)
+        super().__init__(id, name or _generate_name('ebnt_image_'), author, creation_date, environment_id)
         self.task_id = task_id
         self.source = source
         self.params = params
@@ -1096,7 +1141,7 @@ class Image(_WithBuilder):
         """
         if cascade:
             for instance in self._meta.get_instances(self):
-                self.delete_instance(instance, meta_only=meta_only)
+                instance.delete(meta_only=meta_only)
         elif len(self._meta.get_instances(self)) > 0:
             raise errors.ImageWithInstancesError(self)
 
@@ -1126,13 +1171,16 @@ class Image(_WithBuilder):
         return self
 
     @_with_auto_builder
-    def remove(self):
+    def remove(self, **kwargs):
         """remove this image (from environment, not from ebonite metadata)"""
-        self.builder.delete_image(self.params, self.environment.params)
+        self.builder.delete_image(self.params, self.environment.params, **kwargs)
 
     @_with_meta
     def save(self):
         self._meta.save_image(self)
+
+    def has_children(self):
+        return False
 
 
 class _WithRunner(_WithEnvironment):
@@ -1185,10 +1233,10 @@ class RuntimeInstance(_WithRunner):
     class Params(EboniteParams):
         """Abstract class that represents different types of images"""
 
-    def __init__(self, name: str, id: int = None,
+    def __init__(self, name: Optional[str], id: int = None,
                  image_id: int = None, environment_id: int = None, params: Params = None,
                  author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(id, name, author, creation_date, environment_id)
+        super().__init__(id, name or _generate_name('ebnt_instance_'), author, creation_date, environment_id)
         self.image_id = image_id
         self.params = params
 
@@ -1250,8 +1298,6 @@ class RuntimeInstance(_WithRunner):
         :param kwargs: params for runner `is_running` method
         :return: "is running" flag
         """
-        if not self.has_meta_repo:
-            return False  # TODO separate repo logic from runner logic and remove this check
         return self.runner.is_running(self.params, self.environment.params, **kwargs)
 
     @_with_auto_runner
@@ -1279,3 +1325,6 @@ class RuntimeInstance(_WithRunner):
     @_with_meta
     def save(self):
         self._meta.save_instance(self)
+
+    def has_children(self):
+        return False

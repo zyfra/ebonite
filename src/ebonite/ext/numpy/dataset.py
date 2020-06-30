@@ -1,4 +1,4 @@
-from typing import Tuple, Type
+from typing import Tuple, Type, Union
 
 import numpy as np
 from pyjackson.core import ArgList, Field
@@ -11,22 +11,24 @@ from ebonite.core.objects.dataset_type import DatasetType, LibDatasetTypeMixin
 from ebonite.core.objects.typing import ListTypeWithSpec, SizedTypedListType
 
 
-def _python_type_from_np_string_repr(string_repr: str) -> type:
-    np_type = _np_type_from_string(string_repr)
-    return _python_type_from_np_type(np_type)
+def python_type_from_np_string_repr(string_repr: str) -> type:
+    np_type = np_type_from_string(string_repr)
+    return python_type_from_np_type(np_type)
 
 
-def _python_type_from_np_type(np_type: Type):
-    value = np_type()
-    if np_type.__module__ == 'numpy':
+def python_type_from_np_type(np_type: Union[Type, np.dtype]):
+    if np_type.type == np.object_:
+        return object
+    value = np_type.type()
+    if np_type.type.__module__ == 'numpy':
         value = value.item()
     return type(value)
 
 
-def _np_type_from_string(string_repr):
+def np_type_from_string(string_repr):
     try:
-        return getattr(np, string_repr)
-    except AttributeError:
+        return np.dtype(string_repr)
+    except TypeError:
         raise ValueError('Unknown numpy type {}'.format(string_repr))
 
 
@@ -54,7 +56,7 @@ class NumpyNumberDatasetType(LibDatasetTypeMixin):
 
     @property
     def actual_type(self):
-        return _np_type_from_string(self.dtype)
+        return np_type_from_string(self.dtype)
 
 
 class NumpyNumberHook(CanIsAMustHookMixin, DatasetHook):
@@ -106,7 +108,7 @@ class NumpyNdarrayDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
 
     def __init__(self, shape: Tuple[int, ...], dtype: str):
         # TODO assert shape and dtypes len
-        self.shape = (None, ) + shape[1:]
+        self.shape = (None,) + shape[1:]
         self.dtype = dtype
 
     def list_size(self):
@@ -114,9 +116,9 @@ class NumpyNdarrayDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
 
     def _get_subtype(self, shape):
         if len(shape) == 0:
-            return _python_type_from_np_string_repr(self.dtype)
+            return python_type_from_np_string_repr(self.dtype)
         elif len(shape) == 1:
-            subtype = _python_type_from_np_string_repr(self.dtype)
+            subtype = python_type_from_np_string_repr(self.dtype)
         else:
             subtype = self._get_subtype(shape[1:])
         return SizedTypedListType(shape[0], subtype)
@@ -126,16 +128,16 @@ class NumpyNdarrayDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
 
     def deserialize(self, obj):
         try:
-            ret = np.array(obj, dtype=_np_type_from_string(self.dtype))
+            ret = np.array(obj, dtype=np_type_from_string(self.dtype))
         except (ValueError, TypeError):
             raise DeserializationError(f'given object: {obj} could not be converted to array '
-                                       f'of type: {_np_type_from_string(self.dtype)}')
+                                       f'of type: {np_type_from_string(self.dtype)}')
         self._check_shape(ret, DeserializationError)
         return ret
 
     def serialize(self, instance: np.ndarray):
         self._check_type(instance, np.ndarray, SerializationError)
-        exp_type = _np_type_from_string(self.dtype)
+        exp_type = np_type_from_string(self.dtype)
         if instance.dtype != exp_type:
             raise SerializationError(f'given array is of type: {instance.dtype}, expected: {exp_type}')
         self._check_shape(instance, SerializationError)

@@ -1,7 +1,7 @@
 import requests
 
 from ebonite.runtime.client.base import BaseClient
-from ebonite.runtime.interface.base import InterfaceDescriptor
+from ebonite.runtime.interface.base import ExecutionError, InterfaceDescriptor
 
 
 class HTTPClient(BaseClient):
@@ -14,6 +14,7 @@ class HTTPClient(BaseClient):
     :param host: host of server to connect to, if no host given connects to host `localhost`
     :param port: port of server to connect to, if no port given connects to port 9000
     """
+
     def __init__(self, host=None, port=None):
         self.base_url = f'http://{host or "localhost"}:{port or 9000}'
         super().__init__()
@@ -25,5 +26,9 @@ class HTTPClient(BaseClient):
 
     def _call_method(self, name, args):
         ret = requests.post(f'{self.base_url}/{name}', json=args)
-        ret.raise_for_status()
-        return ret.json()['data']
+        if ret.status_code == 200:
+            return ret.json()['data']
+        elif ret.status_code == 400:
+            raise ExecutionError(ret.json()['error'])  # TODO tests
+        else:
+            ret.raise_for_status()

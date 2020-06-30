@@ -9,13 +9,17 @@ from ebonite.utils.fs import get_lib_path
 from ebonite.utils.log import logger
 
 REQUIREMENTS = 'requirements.txt'
-EBONITE_FROM_PIP = True
+_EBONITE_SOURCE = True
+# _EBONITE_SOURCE defines in which way ebonite will be installed inside of the instance. Depending on it's value
+# True - means that it will install ebonite from PIP
+# False - That it will use local ebonite installation
+# str, representing a path - that it will search for .whl file with ebonite package
 
 
 def ebonite_from_pip():
     """
     :return boolen flag if ebonite inside image must be installed from pip (or copied local dist instread)"""
-    return EBONITE_FROM_PIP
+    return _EBONITE_SOURCE
 
 
 @contextmanager
@@ -23,13 +27,27 @@ def use_local_installation():
     """Context manager that changes docker builder behaviour to copy
     this installation of ebonite instead of installing it from pip.
     This is needed for testing and examples"""
-    global EBONITE_FROM_PIP
-    tmp = EBONITE_FROM_PIP
-    EBONITE_FROM_PIP = False
+    global _EBONITE_SOURCE
+    tmp = _EBONITE_SOURCE
+    _EBONITE_SOURCE = False
     try:
         yield
     finally:
-        EBONITE_FROM_PIP = tmp
+        _EBONITE_SOURCE = tmp
+
+
+@contextmanager
+def use_wheel_installation(path: str):
+    """Context manager that changes docker builder behaviour to
+    install ebonite from wheel.
+    This is needed in the case you using ebonite from wheel"""
+    global _EBONITE_SOURCE
+    tmp = _EBONITE_SOURCE
+    _EBONITE_SOURCE = path
+    try:
+        yield
+    finally:
+        _EBONITE_SOURCE = tmp
 
 
 class BuilderBase:
@@ -86,10 +104,14 @@ class PythonBuildContext:
             with open(path, 'w', encoding='utf8') as src:
                 src.write(content)
 
-        if not ebonite_from_pip():
+        pip_ebonite = ebonite_from_pip()
+        if pip_ebonite is False:
             logger.debug('Putting Ebonite sources to distribution as local installation is employed...')
             main_module_path = get_lib_path('.')
             shutil.copytree(main_module_path, os.path.join(target_dir, 'ebonite'))
+        elif isinstance(pip_ebonite, str):
+            logger.debug('Putting Ebonite wheel to distribution as wheel installation is employed...')
+            shutil.copy(pip_ebonite, target_dir)
 
     def _write_binaries(self, path):
         """
@@ -108,7 +130,7 @@ class PythonBuildContext:
         with open(os.path.join(target_dir, REQUIREMENTS), 'w', encoding='utf8') as req:
             requirements = self.provider.get_requirements()
             logger.debug('Auto-determined requirements for model: %s.', requirements.to_pip())
-            if not ebonite_from_pip():
+            if ebonite_from_pip() is False:
                 cwd = os.getcwd()
                 try:
                     from setup import setup_args  # FIXME only for development
