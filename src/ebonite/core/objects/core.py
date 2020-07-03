@@ -409,6 +409,9 @@ class Task(EboniteObject, WithDatasetRepository):
             for pipeline in self._meta.get_pipelines(self):
                 self.delete_pipeline(pipeline)
 
+        for dataset in self.datasets:
+            self.delete_dataset(dataset, force=True, save=False)
+
         self._meta.delete_task(self)
 
     @_with_meta
@@ -785,6 +788,12 @@ class EvaluationResult(EboniteParams):
     def __iadd__(self, other: 'EvaluationResult'):
         self.scores.update(other.scores)
         return self
+
+    def __add__(self, other: 'EvaluationResult'):
+        scores = {}
+        scores.update(self.scores)
+        scores.update(other.scores)
+        return EvaluationResult(scores)
 
 
 class _InTaskEvaluatable(_InTask):
