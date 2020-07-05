@@ -5,8 +5,9 @@ import pytest
 
 from ebonite.api.api_base import EboniteAPI
 from ebonite.build.builder.base import use_local_installation
-from tests.ext.sqlalchemy.test_postgres.conftest import postgres_server, postgres_meta
-from tests.ext.s3.conftest import s3_artifact, s3server
+from ebonite.core.objects.core import Project, Task
+from tests.ext.test_s3.conftest import s3_artifact, s3server
+from tests.ext.test_sqlalchemy.test_postgres.conftest import postgres_meta, postgres_server
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ def api(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):
         with open(cfg_path, 'w+') as fd:
             json.dump(config, fd)
 
-    api = EboniteAPI(name='test_api', config_path=cfg_path, debug=False, host='127.0.0.1', port='5000')
+    api = EboniteAPI(name=__name__, config_path=cfg_path, debug=False, host='127.0.0.1', port='5000')
     api.app.config['TESTING'] = True
     yield api
 
@@ -61,3 +62,25 @@ def create_task_1(client, create_project_1):
 def create_task_2(client, create_project_1):
     rv = client.post('/tasks', data=json.dumps({'name': 'task_2', 'project_id': 1}))
     assert rv.status_code == 201
+
+
+@pytest.fixture
+def project_in_db(postgres_meta, s3_artifact):
+    proj = Project(name='test_project')
+    proj.bind_artifact_repo(s3_artifact)
+    proj = postgres_meta.create_project(proj)
+    yield proj
+
+
+@pytest.fixture
+def task_in_db(postgres_meta, project_in_db, s3_artifact):
+    task = Task(name='test_task', project_id=project_in_db.id)
+    task.bind_artifact_repo(s3_artifact)
+    task = postgres_meta.create_task(task)
+    yield task
+
+
+@pytest.fixture
+def model_in_db(postgres_meta, s3_artifact, task_in_db):
+    mdl = task_in_db.create_and_push_model(lambda data: data, 'input', 'test_model')
+    yield mdl

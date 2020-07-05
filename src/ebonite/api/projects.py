@@ -1,10 +1,9 @@
-from json import loads
 from typing import Tuple
 
-import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.helpers import dumps_pj
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithTasksError
 from ebonite.core.objects.core import Project
@@ -28,12 +27,16 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
 
     @blueprint.route('', methods=['GET'])
     def get_projects() -> Tuple[Response, int]:
-        """
-        Gets all projects from metadata repository
-        :return: All projects in database
+        """Gets all projects from metadata repository
+        ---
+        responses:
+          200:
+            description: A list of projects stored in meta repository
+            examples:
+              None: [{'Project1': 'blabla'}, {'Project2': 'blabla2'}]
         """
         projects = ebonite.meta_repo.get_projects()
-        return jsonify([loads(pj.dumps(p)) for p in projects]), 200
+        return jsonify([dumps_pj(p) for p in projects]), 200
 
     @blueprint.route('', methods=['POST'])
     def create_project() -> Tuple[Response, int]:
@@ -44,7 +47,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         project = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
             project = ebonite.meta_repo.create_project(project)
-            return jsonify(loads(pj.dumps(project))), 201
+            return jsonify(dumps_pj(project)), 201
         except ExistingProjectError:
             return jsonify({'errormsg': f'Project with name {project.name} already exists'}), 400
 
@@ -57,7 +60,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         project = ebonite.meta_repo.get_project_by_id(id)
         if project is not None:
-            return jsonify(loads(pj.dumps(project))), 200
+            return jsonify(dumps_pj(project)), 200
         else:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 

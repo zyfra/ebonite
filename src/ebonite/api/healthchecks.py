@@ -2,7 +2,7 @@ from typing import Tuple
 
 from flask import Blueprint, Response, jsonify
 
-from ebonite.ext.docker.helpers import is_docker_running
+from ebonite.ext.docker.utils import is_docker_running
 from ebonite.repository.artifact.base import NoSuchArtifactError
 
 

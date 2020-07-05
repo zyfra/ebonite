@@ -1,3 +1,4 @@
+from flasgger import Swagger
 from flask import Flask
 
 from ebonite.api.environments import environments_blueprint
@@ -23,8 +24,8 @@ class EboniteAPI:
 
     """
     app: Flask = None
-    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint, models_blueprint,
-                  images_blueprint, environments_blueprint, instances_blueprint]
+    blueprints = [healthcheck_blueprint, project_blueprint, task_blueprint, errors_blueprint,
+                  models_blueprint, images_blueprint, environments_blueprint, instances_blueprint]
 
     def __init__(self, name: str, config_path: str, host: str = '127.0.0.1', port: str = '5000', debug: bool = True):
         self.app = Flask(name)
@@ -36,6 +37,7 @@ class EboniteAPI:
 
         self.init_ebonite()
         self.configure_app()
+        Swagger(self.app)
 
     def run(self):
         self.app.run(host=self.host, port=self.port, debug=self.debug)

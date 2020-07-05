@@ -1,4 +1,11 @@
+from json import loads
+
+import pyjackson as pj
 from pydantic import BaseModel
+
+
+def dumps_pj(pyjackson_obj):
+    return loads(pj.dumps(pyjackson_obj))
 
 
 class ProjectIdValidator(BaseModel):

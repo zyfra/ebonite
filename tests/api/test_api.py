@@ -148,7 +148,7 @@ def test_tasks__get_single_task_not_exist(client):
 
 
 def test_tasks__update_ok(client, create_task_1):
-    rv = client.patch('/tasks/1', json={'name':'new_task', 'project_id': 1})
+    rv = client.patch('/tasks/1', json={'name': 'new_task', 'project_id': 1})
     assert rv.status_code == 204
 
     rv = client.get('/tasks/1')
@@ -165,7 +165,7 @@ def test_tasks__update_non_existing_task_project(client, create_task_1):
 
 def test_tasks__delete_ok(client, create_task_1):
     rv = client.get('/tasks/1')
-    assert rv.json['name'] == 'new_task'
+    assert rv.json['name'] == 'task_1'
     rv = client.delete('/tasks/1?cascade=0')
     assert rv.status_code == 204
 
@@ -175,6 +175,56 @@ def test_tasks__delete_task_not_exist(client):
     assert rv.status_code == 404
 
 
-# def test_tasks__delete_
+# def test_tasks__delete_cascade__ok
+# todo: cascade task deletion
+
+# Models
+def test_models__get_artifact_ok(client, model_in_db):
+    rv = client.get('/models/1/artifacts/model.pkl')
+    assert rv.status_code == 200
 
 
+def test_models__get_artifact_fail(client, model_in_db):
+    rv = client.get('/models/100/artifacts/model.pkl')
+    assert rv.status_code == 404
+    rv = client.get('/models/1/artifacts/rofl.mao')
+    assert rv.status_code == 404
+
+
+def test_models__get_model_ok(client, model_in_db):
+    rv = client.get('/models/1')
+    assert rv.status_code == 200
+    print(rv.json)
+    assert rv.json['name'] == 'test_model'
+
+
+def test_models__get_model_not_exist(client):
+    rv = client.get('/models/1')
+    assert rv.status_code == 404
+
+
+def test_models__get_models_ok(client, model_in_db):
+    rv = client.get('/models?task_id=1')
+    assert rv.status_code == 200
+    assert rv.json[0]['name'] == 'test_model'
+
+
+def test_models__get_models_task_not_exist(client):
+    rv = client.get('/models?task_id=15')
+    assert rv.status_code == 404
+
+
+def test_models__update_model_ok(client, model_in_db):
+    rv = client.patch('/models/1', json={'name': 'new_model', 'task_id': 1})
+    assert rv.status_code == 204
+    rv = client.get('/models/1')
+    assert rv.json['name'] == 'new_model'
+
+
+def test_models__delete_model_ok(client, model_in_db):
+    rv = client.delete('/models/1')
+    assert rv.status_code == 204
+    rv = client.get('/models/1')
+    assert rv.status_code == 404
+
+# TODO: Val tests together?
