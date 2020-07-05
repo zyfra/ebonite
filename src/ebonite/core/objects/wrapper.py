@@ -219,6 +219,7 @@ class ModelWrapper(EboniteParams):
         obj.model = self.model
         obj.methods = self.methods
         obj.requirements = self.requirements
+        obj.curdir = self.curdir
         for field in get_class_fields(cls):
             setattr(obj, field.name, getattr(self, field.name))
         return obj
@@ -236,6 +237,13 @@ class ModelWrapper(EboniteParams):
         else:
             self._check_method(method_name)
         return method_name
+
+    def match_methods_by_type(self, input: DatasetType, output: DatasetType) -> typing.List[str]:
+        methods = []
+        for method_name, (_, method_input, method_output) in self.methods.items():
+            if method_input == input and method_output == output:
+                methods.append(method_name)
+        return methods
 
 
 class LibModelWrapperMixin(ModelWrapper):

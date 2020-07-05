@@ -3,6 +3,7 @@ import getpass
 import json
 import re
 import tempfile
+import time
 import warnings
 from abc import abstractmethod
 from copy import copy
@@ -717,37 +718,29 @@ class Task(EboniteObject, WithDatasetRepository):
         if save:
             self.save()
 
-    def evaluate_all(self) -> Dict[str, 'EvaluationResult']:
-        """Evaluates all viable pairs of evalsets and models/pipelines"""
-        result = {}
+    def evaluate_all(self, force=False, save_result=True) -> Dict[str, 'EvaluationResult']:
+        """Evaluates all viable pairs of evalsets and models/pipelines
 
+        :param force: force reevaluate already evaluated
+        :param save_result: save evaluation results to meta"""
+        result = {}
+        timestamp = time.time()
         for name, evalset in self.evaluation_sets.items():
-            res = EvaluationResult()
             input, output, metrics = evalset.get(self, cache=True)
             for model in self._models.values():
-                evaluate = model.evaluate(input, output, metrics)
-                res += evaluate
+                evaluate = model.evaluate(input, output, metrics, evaluation_name=name,
+                                          timestamp=timestamp, force=force, save=save_result)
+                if isinstance(evaluate, dict):
+                    for method, res in evaluate.items():
+                        result[f'{model.name}.{method}'] = res
+                elif isinstance(evaluate, EvaluationResult):
+                    result[model.name] = evaluate
             for pipeline in self._pipelines.values():
-                evaluate = pipeline.evaluate(input, output, metrics)
-                res += evaluate
-            result[name] = res
+                evaluate = pipeline.evaluate(input, output, metrics, evaluation_name=name,
+                                             timestamp=timestamp, force=force, save=save_result)
+                if evaluate is not None:
+                    result[pipeline.name] = evaluate
         return result
-
-
-class _WrapperMethodAccessor:
-    """Class to access ModelWrapper methods from model
-
-    :param model: model to access
-    :param method_name: name of the wrapper method"""
-
-    def __init__(self, model: 'Model', method_name: str):
-        if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
-            raise AttributeError(f'{model} does not have {method_name} method')
-        self.model = model
-        self.method_name = method_name
-
-    def __call__(self, data):
-        return self.model.wrapper.call_method(self.method_name, data)
 
 
 class _InTask(EboniteObject):
@@ -779,52 +772,57 @@ class _InTask(EboniteObject):
 class EvaluationResult(EboniteParams):
     """Represents result of evaluation of one evalset on multiple evaluatable objects
 
-    :param scores: mapping 'object name' -> ('metric' -> 'score')
+    :param scores: mapping 'metric' -> 'score'
+    :param timestamp: time of evaluation
     """
 
-    def __init__(self, scores: Dict[str, Dict[str, float]] = None):
+    def __init__(self, timestamp: float, scores: Dict[str, float] = None):
+        self.timestamp = timestamp
         self.scores = scores or {}
 
-    def __iadd__(self, other: 'EvaluationResult'):
-        self.scores.update(other.scores)
-        return self
 
-    def __add__(self, other: 'EvaluationResult'):
-        scores = {}
-        scores.update(self.scores)
-        scores.update(other.scores)
-        return EvaluationResult(scores)
+@make_string
+class EvaluationResultCollection(EboniteParams):
+    """Collection of evaluation results for single evalset
+
+    :param results: list of results"""
+
+    def __init__(self, results: List[EvaluationResult]):
+        self.results = results
+
+    def add(self, result: EvaluationResult):
+        if result != self.latest:
+            self.results.append(result)
+
+    @property
+    def latest(self) -> Optional[EvaluationResult]:
+        if len(self.results) == 0:
+            return
+        return max(self.results, key=lambda r: r.timestamp)
 
 
-class _InTaskEvaluatable(_InTask):
-    """Intermediate abstract class for object inside task that can be evaluated"""
+EvaluationResults = Dict[str, EvaluationResultCollection]  # Evaluation results for all evalsets
+MultipleResults = Dict[str, EvaluationResult]  # Evaluation results for multiple objects but one evalset
 
-    def run_evalset(self, evalset: Union[str, EvaluationSet]) -> EvaluationResult:
-        """r"""
-        task = self.task
-        if isinstance(evalset, str):
-            try:
-                evalset = task.evaluation_sets[evalset]
-            except KeyError:
-                raise ValueError(f'no evalset {evalset} in task {task}')
 
-        data = task.datasets[evalset.input_dataset].cache()
-        target = task.datasets[evalset.output_dataset].cache()
-        metrics = {m: task.metrics[m] for m in evalset.metrics}
-        return self.evaluate(data, target, metrics)
+class _WrapperMethodAccessor:
+    """Class to access ModelWrapper methods from model
 
-    @abstractmethod
-    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric]) -> EvaluationResult:
-        """Evaluates this object
+    :param model: model to access
+    :param method_name: name of the wrapper method"""
 
-        :param input: input data
-        :param output: target
-        :param metrics: dict of metrics to evaluate
-        """
+    def __init__(self, model: 'Model', method_name: str):
+        if model.wrapper.methods is None or method_name not in model.wrapper.exposed_methods:
+            raise AttributeError(f'{model} does not have {method_name} method')
+        self.model = model
+        self.method_name = method_name
+
+    def __call__(self, data):
+        return self.model.wrapper.call_method(self.method_name, data)
 
 
 @make_string('id', 'name')
-class Model(_InTaskEvaluatable):
+class Model(_InTask):
     """
     Model contains metadata for machine learning model
 
@@ -849,9 +847,11 @@ class Model(_InTaskEvaluatable):
                  description: str = None,
                  id: int = None,
                  task_id: int = None,
-                 author: str = None, creation_date: datetime.datetime = None):
+                 author: str = None, creation_date: datetime.datetime = None,
+                 evaluations: Dict[str, EvaluationResults] = None):
         super().__init__(id, name, author, creation_date, task_id)
 
+        self.evaluations = evaluations or {}
         self.description = description
         self.params = params or {}
         try:
@@ -1042,6 +1042,7 @@ class Model(_InTaskEvaluatable):
         requirements = RequirementAnalyzer.analyze(requirements)
         params = params or {}
         params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
+        # noinspection PyTypeChecker
         model = Model(name, wrapper, None, requirements, params, description)
         model._unpersisted_artifacts = artifact
         return model
@@ -1120,24 +1121,63 @@ class Model(_InTaskEvaluatable):
         self._art.push_model_artifacts(self)
         self._meta.save_model(self)
 
-    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric]) -> EvaluationResult:
+    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric],
+                 evaluation_name: str = None, method_name: str = None,
+                 timestamp=None, save=True, force=False,
+                 raise_on_error=False) -> Optional[Union[EvaluationResult, Dict[str, EvaluationResult]]]:
         """Evaluates this model
 
         :param input: input data
         :param output: target
         :param metrics: dict of metrics to evaluate
+        :param evaluation_name: name of this evaluation
+        :param method_name: name of wrapper method. If none, all methods with consistent datatypes will be evaluated
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
         """
-        result = {}
-        for name in self.wrapper.exposed_methods:
-            tin, tout = self.wrapper.method_signature(name)
-            if input.dataset_type == tin and output.dataset_type == tout:
-                call = self.wrapper.call_method(name, input.read().data)
-                method_result = {}
-                for mname, metric in metrics.items():
-                    method_result[mname] = metric.evaluate(output.read().data, call)
-                result[f'{self.name}_{name}'] = method_result
+        if method_name is None:
+            methods = self.wrapper.match_methods_by_type(input.dataset_type, output.dataset_type)
+            if len(methods) == 0:
+                if raise_on_error:
+                    raise ValueError('incompatible dataset types for evaluation')
+                return
+        else:
+            method_name = self.wrapper.resolve_method(method_name)
+            tin, tout = self.wrapper.method_signature(method_name)
+            if tin != input.dataset_type or tout != output.dataset_type:
+                if raise_on_error:
+                    raise ValueError('incompatible dataset types for evaluation')
+                return
+            methods = [method_name]
 
-        return EvaluationResult(result)
+        if save:
+            if evaluation_name is None:
+                raise ValueError('Provide evaluation_name to save evaluation or set save = False')
+            self._check_meta(True)
+        results: Dict[str, EvaluationResult] = {}  # method -> result
+        timestamp = timestamp or time.time()
+
+        for method_name in methods:
+            if evaluation_name in self.evaluations[method_name] and not force:
+                results[method_name] = self.evaluations[method_name][evaluation_name].latest
+                continue
+
+            call = self.wrapper.call_method(method_name, input.read().data)
+            scores = {}
+            for mname, metric in metrics.items():
+                scores[mname] = metric.evaluate(output.read().data, call)
+            results[method_name] = EvaluationResult(timestamp, scores)
+
+        if save:
+            for method_name, result in results.items():
+                self.evaluations[method_name][evaluation_name].add(result)
+            self.save()
+
+        if len(results) == 1:
+            return list(results.values())[0]
+        return results
 
 
 def _generate_name(prefix='', postfix=''):
@@ -1172,7 +1212,7 @@ class PipelineStep(EboniteParams):
 
 
 @make_string('id', 'name')
-class Pipeline(_InTaskEvaluatable):
+class Pipeline(_InTask):
     """Pipeline is a class to represent a sequence of different Model's methods.
     They can be used to reuse different models (for example, pre-processing functions) in different pipelines.
     Pipelines must have exact same in and out data types as tasks they are in
@@ -1192,8 +1232,10 @@ class Pipeline(_InTaskEvaluatable):
                  output_data: DatasetType,
                  id: int = None,
                  author: str = None, creation_date: datetime.datetime = None,
-                 task_id: int = None):
+                 task_id: int = None,
+                 evaluations: EvaluationResults = None):
         super().__init__(id, name, author, creation_date, task_id)
+        self.evaluations = evaluations or EvaluationResults()
         self.output_data = output_data
         self.input_data = input_data
         self.steps = steps
@@ -1244,22 +1286,65 @@ class Pipeline(_InTaskEvaluatable):
         """Saves this pipeline to metadata repository"""
         self._meta.save_pipeline(self)
 
-    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric]) -> EvaluationResult:
+    @_with_meta
+    def evaluate_set(self, evalset: Union[str, EvaluationSet],
+                     evaluation_name: str = None,
+                     timestamp=None, save=True, force=False,
+                     raise_on_error=False) -> Optional[EvaluationResult]:
+        """Evaluates this pipeline
+
+        :param evalset: evalset or it's name
+        :param evaluation_name: name of this evaluation
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        task = self.task
+        if isinstance(evalset, str):
+            try:
+                evaluation_name = evaluation_name or evalset
+                evalset = task.evaluation_sets[evalset]
+            except KeyError:
+                raise ValueError(f'No evalset {evalset} in {task}')
+        input, output, metrics = evalset.get(task, False)
+        return self.evaluate(input, output, metrics, evaluation_name, timestamp, save, force, raise_on_error)
+
+    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric],
+                 evaluation_name: str = None,
+                 timestamp=None, save=True, force=False,
+                 raise_on_error=False) -> Optional[EvaluationResult]:
         """Evaluates this pipeline
 
         :param input: input data
         :param output: target
         :param metrics: dict of metrics to evaluate
+        :param evaluation_name: name of this evaluation
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
         """
-        result = {}
-        if input.dataset_type == self.input_data and output.dataset_type == self.output_data:
-            call = self.run(input.read().data)
-            method_result = {}
-            for mname, metric in metrics.items():
-                method_result[mname] = metric.evaluate(output.read().data, call)
-            result[f'{self.name}'] = method_result
+        if evaluation_name in self.evaluations and not force:
+            return self.evaluations[evaluation_name].latest
+        if save:
+            if evaluation_name is None:
+                raise ValueError('Provide evaluation_name to save evaluation or set save = False')
+            self._check_meta(True)
+        timestamp = timestamp or time.time()
 
-        return EvaluationResult(result)
+        if input.dataset_type == self.input_data and output.dataset_type == self.output_data:
+            scores = {}
+            call = self.run(input.read().data)
+            for mname, metric in metrics.items():
+                scores[mname] = metric.evaluate(output.read().data, call)
+            result = EvaluationResult(timestamp, scores)
+            if save:
+                self.evaluations[evaluation_name].add(result)
+                self.save()
+            return result
+        elif raise_on_error:
+            raise ValueError('incompatible dataset types for evaluation')
 
 
 @type_field('type')
