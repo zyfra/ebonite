@@ -190,10 +190,10 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         task = ebonite.meta_repo.get_task_by_id(id)
         if task is None:
-            return jsonify({'erromsg': f'Task with id {id} does not exist'}), 404
+            return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
         else:
             try:
-                ebonite.delete_project(task, cascade)
+                ebonite.delete_task(task, cascade)
                 return jsonify({}), 204
             except TaskWithFKError as e:
                 return jsonify({'errormsg': str(e)}), 400

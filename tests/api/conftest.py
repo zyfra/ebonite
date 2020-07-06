@@ -5,7 +5,7 @@ import pytest
 
 from ebonite.api.api_base import EboniteAPI
 from ebonite.build.builder.base import use_local_installation
-from ebonite.core.objects.core import Project, Task, Image, RuntimeEnvironment, RuntimeInstance, Buildable
+from ebonite.core.objects.core import Buildable, Image, Project, RuntimeEnvironment, RuntimeInstance, Task
 from tests.ext.test_s3.conftest import s3_artifact, s3server  # noqa
 from tests.ext.test_sqlalchemy.test_postgres.conftest import postgres_meta, postgres_server  # noqa
 
@@ -87,7 +87,7 @@ def model_in_db(postgres_meta, s3_artifact, task_in_db): # noqa
 
 
 @pytest.fixture
-def env_in_db(postgres_meta):
+def env_in_db(postgres_meta): # noqa
     test_env = RuntimeEnvironment('test_env', params=TestParams(123))
     test_env = postgres_meta.create_environment(test_env)
     yield test_env
@@ -103,7 +103,7 @@ class TestBuildable(Buildable):
 
 
 @pytest.fixture
-def image_in_db(postgres_meta, task_in_db, env_in_db):
+def image_in_db(postgres_meta, task_in_db, env_in_db): # noqa
     test_image = Image('test_image', params=TestParams(123), source=TestBuildable())
     test_image.task = task_in_db
     test_image.environment = env_in_db

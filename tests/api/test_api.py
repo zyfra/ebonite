@@ -145,6 +145,7 @@ def test_tasks__get_single_task_not_exist(client):
     rv = client.get('/tasks/1')
     assert rv.status_code == 404
     assert rv.json['errormsg'] == 'Task with id 1 does not exist'
+    assert rv.json.get('errormsg') is not None
 
 
 def test_tasks__update_ok(client, create_task_1):
@@ -158,9 +159,11 @@ def test_tasks__update_ok(client, create_task_1):
 def test_tasks__update_non_existing_task_project(client, create_task_1):
     rv = client.patch('/tasks/1', json={'name': 'new_task', 'project_id': 2})
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
     rv = client.patch('/tasks/2', json={'name': 'new_task', 'project_id': 1})
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_tasks__delete_ok(client, create_task_1):
@@ -173,6 +176,7 @@ def test_tasks__delete_ok(client, create_task_1):
 def test_tasks__delete_task_not_exist(client):
     rv = client.delete('/tasks/1')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 # def test_tasks__delete_cascade__ok
@@ -187,8 +191,10 @@ def test_models__get_artifact_ok(client, model_in_db):
 def test_models__get_artifact_fail(client, model_in_db):
     rv = client.get('/models/100/artifacts/model.pkl')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
     rv = client.get('/models/1/artifacts/rofl.mao')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_models__get_model_ok(client, model_in_db):
@@ -201,6 +207,7 @@ def test_models__get_model_ok(client, model_in_db):
 def test_models__get_model_not_exist(client):
     rv = client.get('/models/1')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_models__get_models_ok(client, model_in_db):
@@ -212,6 +219,7 @@ def test_models__get_models_ok(client, model_in_db):
 def test_models__get_models_task_not_exist(client):
     rv = client.get('/models?task_id=15')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_models__update_model_ok(client, model_in_db):
@@ -226,8 +234,10 @@ def test_models__delete_model_ok(client, model_in_db):
     assert rv.status_code == 204
     rv = client.get('/models/1')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 # TODO: Val tests together?
+
 
 def test_environments__get_envs_ok(client, env_in_db):
     rv = client.get('/environments')
@@ -244,11 +254,12 @@ def test_environments__get_env_ok(client, env_in_db):
 def test_environments__get_env_not_exist(client):
     rv = client.get('/environments/15')
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_environments__create_env_ok(client):
     rv = client.post('/environments', json={'name': 'test_env_2', 'params': {'host': 'localhost:1234',
-                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                                            'type': 'ebonite.build.docker.DockerHost'}}
                      )
     assert rv.status_code == 201
     assert rv.json['name'] == 'test_env_2'
@@ -256,19 +267,22 @@ def test_environments__create_env_ok(client):
 
 def test_environments__create_val_error(client):
     rv = client.post('/environments', json={'not_name': 'test_env_2', 'params': {'host': 'localhost:1234',
-                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                                            'type': 'ebonite.build.docker.DockerHost'}}
                      )
     assert rv.status_code == 422
+    assert rv.json.get('errormsg') is not None
 
     rv = client.post('/environments', json={'name': 'test_env_2'})
     assert rv.status_code == 422
+    assert rv.json.get('errormsg') is not None
 
 
 def test_environments__create_env_already_exist(client, env_in_db):
     rv = client.post('/environments', json={'name': 'test_env', 'params': {'host': 'localhost:1234',
-                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                                            'type': 'ebonite.build.docker.DockerHost'}}
                      )
     assert rv.status_code == 400
+    assert rv.json.get('errormsg') is not None
 
 
 def test_environments__update_env_ok(client, env_in_db):
@@ -282,12 +296,13 @@ def test_environments__update_env_ok(client, env_in_db):
 def test_environments__update_env_not_exist(client):
     rv = client.patch('/environments/1', json={'name': 'new_env'})
     assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
 
 
 def test_environments__delete_env_ok(client, env_in_db):
     rv = client.delete('/environments/1')
     assert rv.status_code == 204
 
-    rv = client.get('/environaments/1')
+    rv = client.get('/environments/1')
     assert rv.status_code == 404
-
+    assert rv.json.get('errormsg') is not None
