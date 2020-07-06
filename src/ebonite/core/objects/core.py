@@ -344,7 +344,7 @@ class EvaluationSet(EboniteParams):
         output = task.datasets[self.output_dataset]
         if cache:
             input = input.cache()
-            output = input.cache()
+            output = output.cache()
         return input, output, {m: task.metrics[m] for m in self.metrics}
 
 
@@ -787,8 +787,8 @@ class EvaluationResultCollection(EboniteParams):
 
     :param results: list of results"""
 
-    def __init__(self, results: List[EvaluationResult]):
-        self.results = results
+    def __init__(self, results: List[EvaluationResult] = None):
+        self.results = results or []
 
     def add(self, result: EvaluationResult):
         if result != self.latest:
@@ -1118,8 +1118,35 @@ class Model(_InTask):
     @_with_artifact
     def save(self):
         """Saves model to metadata repo and pushes unpersisted artifacts"""
-        self._art.push_model_artifacts(self)
+        if self._unpersisted_artifacts is not None:
+            self._art.push_model_artifacts(self)
         self._meta.save_model(self)
+
+    @_with_meta
+    def evaluate_set(self, evalset: Union[str, EvaluationSet],
+                     evaluation_name: str = None, method_name: str = None,
+                     timestamp=None, save=True, force=False,
+                     raise_on_error=False) -> Optional[EvaluationResult]:
+        """Evaluates this model
+
+        :param evalset: evalset or it's name
+        :param evaluation_name: name of this evaluation
+        :param method_name: name of wrapper method. If none, all methods with consistent datatypes will be evaluated
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        task = self.task
+        if isinstance(evalset, str):
+            try:
+                evaluation_name = evaluation_name or evalset
+                evalset = task.evaluation_sets[evalset]
+            except KeyError:
+                raise ValueError(f'No evalset {evalset} in {task}')
+        input, output, metrics = evalset.get(task, False)
+        return self.evaluate(input, output, metrics, evaluation_name, method_name, timestamp, save, force,
+                             raise_on_error)
 
     def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric],
                  evaluation_name: str = None, method_name: str = None,
@@ -1160,6 +1187,7 @@ class Model(_InTask):
         timestamp = timestamp or time.time()
 
         for method_name in methods:
+            self.evaluations.setdefault(method_name, {})
             if evaluation_name in self.evaluations[method_name] and not force:
                 results[method_name] = self.evaluations[method_name][evaluation_name].latest
                 continue
@@ -1172,6 +1200,7 @@ class Model(_InTask):
 
         if save:
             for method_name, result in results.items():
+                self.evaluations[method_name].setdefault(evaluation_name, EvaluationResultCollection())
                 self.evaluations[method_name][evaluation_name].add(result)
             self.save()
 
@@ -1235,7 +1264,7 @@ class Pipeline(_InTask):
                  task_id: int = None,
                  evaluations: EvaluationResults = None):
         super().__init__(id, name, author, creation_date, task_id)
-        self.evaluations = evaluations or EvaluationResults()
+        self.evaluations = evaluations or {}
         self.output_data = output_data
         self.input_data = input_data
         self.steps = steps
@@ -1340,6 +1369,7 @@ class Pipeline(_InTask):
                 scores[mname] = metric.evaluate(output.read().data, call)
             result = EvaluationResult(timestamp, scores)
             if save:
+                self.evaluations.setdefault(evaluation_name, EvaluationResultCollection())
                 self.evaluations[evaluation_name].add(result)
                 self.save()
             return result
