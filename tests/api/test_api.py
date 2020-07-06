@@ -228,3 +228,66 @@ def test_models__delete_model_ok(client, model_in_db):
     assert rv.status_code == 404
 
 # TODO: Val tests together?
+
+def test_environments__get_envs_ok(client, env_in_db):
+    rv = client.get('/environments')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+
+
+def test_environments__get_env_ok(client, env_in_db):
+    rv = client.get('/environments/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'test_env'
+
+
+def test_environments__get_env_not_exist(client):
+    rv = client.get('/environments/15')
+    assert rv.status_code == 404
+
+
+def test_environments__create_env_ok(client):
+    rv = client.post('/environments', json={'name': 'test_env_2', 'params': {'host': 'localhost:1234',
+                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                     )
+    assert rv.status_code == 201
+    assert rv.json['name'] == 'test_env_2'
+
+
+def test_environments__create_val_error(client):
+    rv = client.post('/environments', json={'not_name': 'test_env_2', 'params': {'host': 'localhost:1234',
+                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                     )
+    assert rv.status_code == 422
+
+    rv = client.post('/environments', json={'name': 'test_env_2'})
+    assert rv.status_code == 422
+
+
+def test_environments__create_env_already_exist(client, env_in_db):
+    rv = client.post('/environments', json={'name': 'test_env', 'params': {'host': 'localhost:1234',
+                                                                             'type': 'ebonite.build.docker.DockerHost'}}
+                     )
+    assert rv.status_code == 400
+
+
+def test_environments__update_env_ok(client, env_in_db):
+    rv = client.patch('/environments/1', json={'name': 'new_env'})
+    assert rv.status_code == 204
+
+    rv = client.get('/environments/1')
+    assert rv.json['name'] == 'new_env'
+
+
+def test_environments__update_env_not_exist(client):
+    rv = client.patch('/environments/1', json={'name': 'new_env'})
+    assert rv.status_code == 404
+
+
+def test_environments__delete_env_ok(client, env_in_db):
+    rv = client.delete('/environments/1')
+    assert rv.status_code == 204
+
+    rv = client.get('/environaments/1')
+    assert rv.status_code == 404
+
