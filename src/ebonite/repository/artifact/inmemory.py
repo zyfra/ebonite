@@ -1,8 +1,8 @@
 import typing
 
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, InMemoryBlob
 from ebonite.repository.artifact import ArtifactRepository
-from ebonite.repository.artifact.base import ArtifactExistsError, NoSuchArtifactError
 
 
 class InMemoryArtifactRepository(ArtifactRepository):

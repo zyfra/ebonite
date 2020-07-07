@@ -1,14 +1,19 @@
 import numpy as np
 import pytest
 from pyjackson import deserialize, serialize
+from pyjackson.core import Unserializable
 
-from ebonite.core.errors import MetadataError, NonExistingModelError, NonExistingTaskError, UnboundObjectError
+from ebonite.core.errors import (EboniteError, MetadataError, NonExistingModelError, NonExistingTaskError,
+                                 UnboundObjectError)
 from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model, Pipeline, Project, Task, _WrapperMethodAccessor
+from ebonite.core.objects.dataset_source import DatasetSource
+from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
 from ebonite.ext.sklearn import SklearnModelWrapper
 from ebonite.repository import MetadataRepository
+from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from tests.core.objects.conftest import serde_and_compare
 
 
@@ -201,6 +206,131 @@ def test_task__push_model(task_saved_art, created_model):
 
     assert task_saved_art._meta.get_model_by_name(created_model.name, task_saved_art) is not None
     assert created_model.id in task_saved_art.models
+
+
+def test_task__add_metric(task_saved):
+    from sklearn.metrics import roc_auc_score
+    task_saved.add_metric('auc', roc_auc_score)
+    task_saved.save()
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'auc' in task.metrics
+    assert isinstance(task.metrics['auc'], Metric)
+
+
+def test_task__add_metric_exists(task_saved, metric):
+    task_saved.add_metric('auc', metric)
+    with pytest.raises(EboniteError):
+        task_saved.add_metric('auc', metric)
+
+
+def test_task__delete_metric(task_saved, metric):
+    task_saved.add_metric('auc', metric)
+    task_saved.save()
+    task_saved.delete_metric('auc')
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'auc' not in task.metrics
+
+
+def test_task__delete_metric_non_existing(task_saved):
+    with pytest.raises(EboniteError):
+        task_saved.delete_metric('auc')
+
+
+def test_task__add_dataset(task_saved, dataset):
+    task_saved.add_dataset('data', dataset)
+    assert 'data' in task_saved.datasets
+    assert isinstance(task_saved.datasets['data'], DatasetSource)
+    assert isinstance(task_saved.datasets['data'], Unserializable)
+    task_saved.save()
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'data' in task.datasets
+    assert isinstance(task.datasets['data'], DatasetSource)
+    assert not isinstance(task.datasets['data'], Unserializable)
+
+
+def test_task__add_dataset_exists(task_saved, dataset):
+    task_saved.add_dataset('data', dataset)
+    with pytest.raises(EboniteError):
+        task_saved.add_dataset('data', dataset)
+
+
+def test_task__delete_dataset(task_saved, dataset):
+    task_saved.add_dataset('data', dataset)
+    task_saved.save()
+    art_repo: InMemoryArtifactRepository = task_saved._art
+    assert len(art_repo._cache) > 0
+
+    task_saved.delete_dataset('data')
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'data' not in task.datasets
+    assert len(art_repo._cache) == 0
+
+
+def test_task__delete_dataset_non_existing(task_saved):
+    with pytest.raises(EboniteError):
+        task_saved.delete_dataset('data')
+
+
+def test_task__add_evalset(task_saved, dataset, metric):
+    task_saved.add_evaluation('eval', dataset, dataset, metric)
+    assert 'eval' in task_saved.evaluation_sets
+    assert all(isinstance(d, DatasetSource) for d in task_saved.datasets.values())
+    assert all(isinstance(m, Metric) for m in task_saved.metrics.values())
+    task_saved.save()
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'eval' in task.evaluation_sets
+
+
+def test_task__add_evalset_exists(task_saved, dataset, metric):
+    task_saved.add_evaluation('data', dataset, dataset, metric)
+    with pytest.raises(EboniteError):
+        task_saved.add_evaluation('data', dataset, dataset, metric)
+
+
+def test_task__delete_evalset(task_saved, dataset, metric):
+    task_saved.add_evaluation('data', dataset, dataset, metric)
+    task_saved.save()
+
+    task_saved.delete_evaluation('data')
+
+    task = task_saved._meta.get_task_by_name(task_saved.project, task_saved.name)
+    assert 'data' not in task.evaluation_sets
+
+
+def test_task__delete_evalset_non_existing(task_saved):
+    with pytest.raises(EboniteError):
+        task_saved.delete_evaluation('data')
+
+
+def test_task__delete_metric_with_evalset(task_saved, dataset, metric):
+    task_saved.add_metric('metric', metric)
+    task_saved.add_dataset('data', dataset)
+    task_saved.add_evaluation('eval', 'data', 'data', 'metric')
+
+    with pytest.raises(EboniteError):
+        task_saved.delete_metric('metric')
+
+    task_saved.delete_metric('metric', force=True)
+    assert 'metric' not in task_saved.metrics
+    assert 'eval' not in task_saved.evaluation_sets
+
+
+def test_task__delete_dataset_with_evalset(task_saved, dataset, metric):
+    task_saved.add_metric('metric', metric)
+    task_saved.add_dataset('data', dataset)
+    task_saved.add_evaluation('eval', 'data', 'data', 'metric')
+
+    with pytest.raises(EboniteError):
+        task_saved.delete_dataset('data')
+
+    task_saved.delete_dataset('data', force=True)
+    assert 'data' not in task_saved.datasets
+    assert 'eval' not in task_saved.evaluation_sets
 
 
 # ###############MODEL##################

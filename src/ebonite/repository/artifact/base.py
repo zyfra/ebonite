@@ -7,30 +7,6 @@ from ebonite.core.objects import core
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob
 
 
-class ArtifactError(Exception):
-    """
-    Base class for exceptions in :class:`ArtifactRepository`
-    """
-
-
-class NoSuchArtifactError(ArtifactError):
-    """
-    Exception which is thrown if artifact is not found in the repository
-    """
-
-    def __init__(self, artifact_id, repo: 'ArtifactRepository'):
-        super(NoSuchArtifactError, self).__init__('No artifact with id {} found in {}'.format(artifact_id, repo))
-
-
-class ArtifactExistsError(ArtifactError):
-    """
-    Exception which is thrown if artifact already exists in the repository
-    """
-
-    def __init__(self, artifact_id, repo: 'ArtifactRepository'):
-        super(ArtifactExistsError, self).__init__('Artifact with id {} already in {}'.format(artifact_id, repo))
-
-
 @type_field('type')
 class ArtifactRepository:
     """

@@ -3,6 +3,7 @@ from typing import Tuple
 
 from pyjackson.decorators import type_field
 
+from ebonite.core.errors import ArtifactExistsError, DatasetExistsError, NoSuchArtifactError, NoSuchDataset
 from ebonite.core.objects import ArtifactCollection, DatasetType
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_source import Dataset, DatasetSource
@@ -38,6 +39,7 @@ class ArtifactDatasetRepository(DatasetRepository):
     """DatasetRpository implementation that saves datasets as artifacts to ArtifactRepository
 
     :param repo: underlying ArtifactRepository"""
+
     ARTIFACT_TYPE = 'datasets'
 
     def __init__(self, repo: ArtifactRepository):
@@ -46,12 +48,21 @@ class ArtifactDatasetRepository(DatasetRepository):
     def save(self, dataset_id: str, dataset: Dataset) -> DatasetSource:
         writer = dataset.get_writer()
         if writer is None:
-            raise ValueError(f'{dataset.dataset_type} does not support artifacat persistance')
+            raise ValueError(f'{dataset.dataset_type} does not support artifact persistance')
 
         reader, artifacts = writer.write(dataset)
         with artifacts.blob_dict() as blobs:
-            pushed = self.repo.push_artifact(self.ARTIFACT_TYPE, dataset_id, blobs)
+            try:
+                pushed = self.repo.push_artifact(self.ARTIFACT_TYPE, dataset_id, blobs)
+            except ArtifactExistsError as e:
+                raise DatasetExistsError(dataset_id, self, e)
         return ArtifactDatasetSource(reader, pushed, dataset.dataset_type)
+
+    def delete(self, dataset_id: str):
+        try:
+            self.repo.delete_artifact(self.ARTIFACT_TYPE, dataset_id)
+        except NoSuchArtifactError as e:
+            raise NoSuchDataset(dataset_id, self, e)
 
 
 class ArtifactDatasetSource(DatasetSource):

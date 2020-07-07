@@ -8,8 +8,9 @@ from botocore.exceptions import ClientError
 from pyjackson.decorators import cached_property
 
 from ebonite.config import Config, Core, Param
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, StreamContextManager
-from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
+from ebonite.repository.artifact import ArtifactRepository
 from ebonite.utils.log import logger
 
 

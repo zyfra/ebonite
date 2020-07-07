@@ -13,3 +13,10 @@ class DatasetRepository:
         :param dataset_id: string identifier
         :param dataset: dataset to save
         :returns: DatasetSource that produces same Dataset"""
+
+    @abstractmethod
+    def delete(self, dataset_id: str):
+        """Method to delete dataset from this repository
+
+        :param dataset_id: dataset identifier
+        """
