@@ -306,3 +306,44 @@ def test_environments__delete_env_ok(client, env_in_db):
     rv = client.get('/environments/1')
     assert rv.status_code == 404
     assert rv.json.get('errormsg') is not None
+
+
+# Images
+def test_images__get_image_ok(client, image_in_db):
+    rv = client.get('/images/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'test_image'
+
+
+def test_images__get_image_not_exist(client):
+    rv = client.get('/images/1')
+    assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
+
+
+def test_images__get_images_ok(client, image_in_db):
+    rv = client.get('/images?task_id=1')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+
+
+def test_images__get_images_not_exist(client):
+    rv = client.get('/images?task_id=1')
+    assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
+
+
+def test_images__delete_image_not_exist(client):
+    rv = client.delete('/images/1?meta_only=1&cascade=0')
+    assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
+
+
+def test_images__create_and_delete_image_ok(client, model_in_db):
+    rv = client.post('/images', json={'name': 'test_image',
+                                      'buildable': {'obj_type': 'model', 'obj_id': 1},
+                                      'builder_args': {'force_overwrite': 1}})
+    assert rv.status_code == 201
+
+    rv = client.delete('/images/1')
+    assert rv.status_code == 204
