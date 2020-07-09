@@ -359,7 +359,8 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
                                 excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
                                                  'project_id'])
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -628,7 +629,8 @@ def test_update_model(meta: MetadataRepository, project: Project, task: Task, mo
     id = model.id
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
     model = meta.update_model(model)
 
     assert id == model.id
@@ -648,7 +650,8 @@ def test_update_model_source_is_changed(meta: MetadataRepository, project: Proje
     id = saved_model.id
 
     saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                               'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                               'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                               'evaluations'])
     saved_model = meta.update_model(saved_model)
 
     assert id == saved_model.id
@@ -726,7 +729,8 @@ def test_save_updated_existing_model(meta: MetadataRepository, project: Project,
     model = meta.create_model(model)
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
 
     saved_model = meta.save_model(model)
     assert saved_model == model
@@ -900,7 +904,8 @@ def test_update_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
     id = pipeline.id
 
-    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    pipeline = update_object_fields(pipeline,
+                                    excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
     pipeline = meta.update_pipeline(pipeline)
 
     assert id == pipeline.id
@@ -919,7 +924,8 @@ def test_update_pipeline_source_is_changed(meta: MetadataRepository, project: Pr
 
     id = saved_pipeline.id
 
-    saved_pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    saved_pipeline = update_object_fields(pipeline,
+                                          excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
     saved_pipeline = meta.update_pipeline(saved_pipeline)
 
     assert id == saved_pipeline.id
@@ -996,7 +1002,8 @@ def test_save_updated_existing_pipeline(meta: MetadataRepository, project: Proje
     pipeline.task_id = task.id
     pipeline = meta.create_pipeline(pipeline)
 
-    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    pipeline = update_object_fields(pipeline,
+                                    excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
 
     saved_pipeline = meta.save_pipeline(pipeline)
     assert saved_pipeline == pipeline
