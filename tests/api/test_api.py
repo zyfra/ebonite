@@ -339,6 +339,11 @@ def test_images__delete_image_not_exist(client):
     assert rv.json.get('errormsg') is not None
 
 
+def test_images__delete_image_ok(client, image_in_db):
+    rv = client.delete('/images/1?meta_only=1&cascade=0')
+    assert rv.status_code == 204
+
+
 def test_images__create_and_delete_image_ok(client, model_in_db):
     rv = client.post('/images', json={'name': 'test_image',
                                       'buildable': {'obj_type': 'model', 'obj_id': 1},
@@ -347,3 +352,57 @@ def test_images__create_and_delete_image_ok(client, model_in_db):
 
     rv = client.delete('/images/1')
     assert rv.status_code == 204
+
+
+# Instances
+def test_instances__get_instance_ok(client, instance_in_db):
+    rv = client.get('/instances/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'test_instance'
+
+
+def test_instances__get_instance_not_exist(client):
+    rv = client.get('/instances/1')
+    assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
+
+
+def test_instances__get_instances_ok(client, instance_in_db):
+    rv = client.get('/instances?image_id=1&environment_id=1')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+
+    rv = client.get('/instances?image_id=1')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+
+
+def test_instances__get_instances_wrong_params(client):
+    rv = client.get('/instances')
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Image and environment were not provided to the function'
+
+    rv = client.get('/instances?image_id=1&&environment_id=0')
+    assert rv.status_code == 404
+
+
+def test_instances__delete_instance_ok(client, instance_in_db):
+    rv = client.delete('/instances/1?meta_only=1')
+    assert rv.status_code == 204
+
+
+def test_instances__delete_not_exist(client):
+    rv = client.delete('/instances/1')
+    assert rv.status_code == 404
+    assert rv.json.get('errormsg') is not None
+
+
+def test_instances__create_instance_ok(client, model_in_db):
+    # Not running anything to avoid long tests
+    rv = client.post('/images', json={'name': 'test_image',
+                                      'buildable': {'obj_type': 'model', 'obj_id': 1},
+                                      'builder_args': {'force_overwrite': 1}})
+    assert rv.status_code == 201
+
+    rv = client.post('/instances?run=0', json={'instance': {'name': 'new_instance', 'image_id': 1}})
+    assert rv.status_code == 201

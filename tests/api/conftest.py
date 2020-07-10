@@ -109,3 +109,12 @@ def image_in_db(postgres_meta, task_in_db, env_in_db): # noqa
     test_image.environment = env_in_db
     test_image = postgres_meta.create_image(test_image)
     yield test_image
+
+
+@pytest.fixture
+def instance_in_db(postgres_meta, image_in_db, env_in_db): # noqa
+    instance = RuntimeInstance('test_instance', params=TestParams(123))
+    instance.image = image_in_db
+    instance.environment = env_in_db
+    instance = postgres_meta.create_instance(instance)
+    yield instance

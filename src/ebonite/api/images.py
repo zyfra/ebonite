@@ -139,7 +139,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_image(id: int):
         """
-        Deletes either only task or cascadely deletes everything linked to it from metadata repository
+        Deletes either only image or cascadely deletes instances linked to it from metadata repository
         ---
         parameters:
           - name: id
@@ -165,7 +165,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
             description: Image has foreign key and could not be deleted not cascadely
         """
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
-        meta_only = False if not request.args.get('meta_only') else bool(int(request.args.get('cascade')))
+        meta_only = False if not request.args.get('meta_only') else bool(int(request.args.get('meta_only')))
         image = ebonite.meta_repo.get_image_by_id(id)
         if image is None:
             return jsonify({'errormsg': f'Image with id {id} does not exist'}), 404
