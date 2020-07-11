@@ -1,9 +1,9 @@
 from typing import Tuple
 
+import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import dumps_pj
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import EnvironmentWithInstancesError, ExistingEnvironmentError, NonExistingEnvironmentError
 from ebonite.core.objects import RuntimeEnvironment
@@ -35,7 +35,7 @@ def environments_blueprint(ebonite: Ebonite):
           200:
             description: A list of tasks belonging to the project
         """
-        return jsonify([dumps_pj(x) for x in ebonite.meta_repo.get_environments()]), 200
+        return jsonify([pj.serialize(x) for x in ebonite.meta_repo.get_environments()]), 200
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_environment(id: int) -> Tuple[Response, int]:
@@ -55,7 +55,7 @@ def environments_blueprint(ebonite: Ebonite):
         """
         env = ebonite.meta_repo.get_environment_by_id(id)
         if env is not None:
-            return jsonify(dumps_pj(env)), 200
+            return jsonify(pj.serialize(env)), 200
         else:
             return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
 
@@ -105,7 +105,7 @@ def environments_blueprint(ebonite: Ebonite):
         env = CreateEnvironmentBody.from_data(request.get_json(force=True))
         try:
             env = ebonite.meta_repo.create_environment(env)
-            return jsonify(dumps_pj(env)), 201
+            return jsonify(pj.serialize(env)), 201
         except ExistingEnvironmentError:
             return jsonify({'errormsg': f'Environment with name {env.name} already exist'}), 400
 

@@ -1,9 +1,10 @@
 from typing import Tuple
 
+import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import TaskIdValidator, dumps_pj
+from ebonite.api.helpers import TaskIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import NonExistingModelError
 from ebonite.core.objects.core import Model
@@ -39,7 +40,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
         if task is not None:
-            return jsonify([dumps_pj(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200
+            return jsonify([pj.serialize(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200
         else:
             return jsonify({'errormsg': f'Task with id {task_id} does not exist'}), 404
 
@@ -61,7 +62,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         model = ebonite.meta_repo.get_model_by_id(id)
         if model is not None:
-            return jsonify(dumps_pj(model)), 200
+            return jsonify(pj.serialize(model)), 200
         else:
             return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
 
@@ -96,7 +97,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         with artifacts.blob_dict() as blobs:
             artifact = blobs.get(name)
         if artifact is not None:
-            return jsonify(dumps_pj(artifact)), 200
+            return jsonify(pj.serialize(artifact)), 200
         else:
             return jsonify({'errormsg': f'Artifact with name {name} does not exist'}), 404
 

@@ -1,9 +1,10 @@
 from typing import Tuple
 
+import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import BuildableValidator, TaskIdValidator, dumps_pj
+from ebonite.api.helpers import BuildableValidator, TaskIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingImageError, ImageWithInstancesError
 from ebonite.core.objects import Image
@@ -38,7 +39,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
         if task is not None:
-            return jsonify([dumps_pj(x) for x in ebonite.get_images(task)]), 200
+            return jsonify([pj.serialize(x) for x in ebonite.get_images(task)]), 200
         else:
             return jsonify({'errormsg': f'Task with id {task_id} does not exist'}), 404
 
@@ -60,7 +61,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         image = ebonite.meta_repo.get_image_by_id(id)
         if image is not None:
-            return jsonify(dumps_pj(image)), 200
+            return jsonify(pj.serialize(image)), 200
         else:
             return jsonify({'errormsg': f'Image with id {id} does not exist'}), 404
 
@@ -118,7 +119,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'{buildable.obj_type} with id {buildable.obj_id} does not exist'}), 404
         try:
             image = ebonite.create_image(buildable_obj, name=body['name'], builder_args=builder_args, skip_build=skip_build)
-            return jsonify(dumps_pj(image)), 201
+            return jsonify(pj.serialize(image)), 201
         except ExistingImageError:
             return jsonify({'errormsg': f'Image with name {body["name"]} already exists'}), 400
         except (ValueError, TypeError) as e:

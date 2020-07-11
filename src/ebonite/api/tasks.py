@@ -1,9 +1,10 @@
 from typing import Tuple
 
+import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import ProjectIdValidator, dumps_pj
+from ebonite.api.helpers import ProjectIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingTaskError, NonExistingTaskError, TaskWithFKError
 from ebonite.core.objects.core import Task
@@ -53,7 +54,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         ProjectIdValidator(project_id=project_id)
         project = ebonite.meta_repo.get_project_by_id(project_id)
         if project is not None:
-            return jsonify([dumps_pj(ebonite.meta_repo.get_task_by_id(t)) for t in project.tasks]), 200
+            return jsonify([pj.serialize(ebonite.meta_repo.get_task_by_id(t)) for t in project.tasks]), 200
         else:
             return jsonify({'errormsg': f'Project with id {project_id} does not exist'}), 404
 
@@ -89,7 +90,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'Project with id {task.project_id} does not exist'}), 404
         try:
             task = ebonite.meta_repo.create_task(task)
-            return jsonify(dumps_pj(task)), 201
+            return jsonify(pj.serialize(task)), 201
         except ExistingTaskError:
             return jsonify({'errormsg': f'Task with name {task.name} already exists'}), 404
 
@@ -119,7 +120,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         task = ebonite.meta_repo.get_task_by_id(id)
         if task is not None:
-            return jsonify(dumps_pj(task)), 200
+            return jsonify(pj.serialize(task)), 200
         else:
             return jsonify({'errormsg': f'Task with id {id} does not exist'}), 404
 

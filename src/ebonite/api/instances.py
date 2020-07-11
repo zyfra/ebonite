@@ -1,9 +1,10 @@
 from typing import Tuple
 
+import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
-from ebonite.api.helpers import EnvironmentIdValidator, ImageIdValidator, dumps_pj
+from ebonite.api.helpers import EnvironmentIdValidator, ImageIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingInstanceError
 from ebonite.core.objects import RuntimeInstance
@@ -57,7 +58,7 @@ def instances_blueprint(ebonite: Ebonite):
             image = ebonite.meta_repo.get_image_by_id(image_id)
         try:
             instances = ebonite.get_instances(image=image, environment=env)
-            return jsonify([dumps_pj(x) for x in instances]), 200
+            return jsonify([pj.serialize(x) for x in instances]), 200
         except ValueError as e:
             return jsonify({'errormsg': str(e)}), 404
 
@@ -79,7 +80,7 @@ def instances_blueprint(ebonite: Ebonite):
         """
         instance = ebonite.meta_repo.get_instance_by_id(id)
         if instance is not None:
-            return jsonify(dumps_pj(instance)), 200
+            return jsonify(pj.serialize(instance)), 200
         else:
             return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
 
@@ -147,7 +148,7 @@ def instances_blueprint(ebonite: Ebonite):
         try:
             instance = ebonite.create_instance(name=instance.name, image=image,
                                                environment=env, run=run, runner_kwargs=runner_kwargs, **instance_kwargs)
-            return jsonify(dumps_pj(instance)), 201
+            return jsonify(pj.serialize(instance)), 201
         except ExistingInstanceError:
             return jsonify({'errormsg': f'Instance with name {instance.name} '
                                         f'and image {image.name} already exists'}), 400
