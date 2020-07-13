@@ -13,13 +13,20 @@ from ebonite.repository.dataset.base import DatasetRepository
 
 @type_field('type')
 class DatasetReader(EboniteParams):
-    """ABC for reading Dataset from files (artifacts) to use with ArtifactDatasetSource"""
+    """ABC for reading Dataset from files (artifacts) to use with ArtifactDatasetSource
+
+    :param dataset_type: type of the resulting dataset
+    """
+
+    def __init__(self, dataset_type: DatasetType):
+        self.dataset_type = dataset_type
 
     @abstractmethod
     def read(self, artifacts: ArtifactCollection) -> Dataset:
         """Method to read Dataset from artifacts
 
-        :param artifacts: artifacts to read"""
+        :param artifacts: artifacts to read
+        """
 
 
 @type_field('type')
@@ -56,7 +63,7 @@ class ArtifactDatasetRepository(DatasetRepository):
                 pushed = self.repo.push_artifact(self.ARTIFACT_TYPE, dataset_id, blobs)
             except ArtifactExistsError as e:
                 raise DatasetExistsError(dataset_id, self, e)
-        return ArtifactDatasetSource(reader, pushed, dataset.dataset_type)
+        return ArtifactDatasetSource(reader, pushed)
 
     def delete(self, dataset_id: str):
         try:
@@ -70,10 +77,10 @@ class ArtifactDatasetSource(DatasetSource):
 
     :param reader: DatasetReader for this dataset
     :param artifacts: ArtifactCollection with actual files
-    :param dataset_type: DatasetType of contained dataset"""
+    """
 
-    def __init__(self, reader: DatasetReader, artifacts: ArtifactCollection, dataset_type: DatasetType):
-        super(ArtifactDatasetSource, self).__init__(dataset_type)
+    def __init__(self, reader: DatasetReader, artifacts: ArtifactCollection):
+        super(ArtifactDatasetSource, self).__init__(reader.dataset_type)
         self.reader = reader
         self.artifacts = artifacts
 
