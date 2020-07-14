@@ -262,6 +262,9 @@ def get_module_version(mod: ModuleType):
     try:
         return mod.__version__
     except AttributeError:
+        for key, value in mod.__dict__.items():
+            if isinstance(value, str) and 'version' in key.lower():
+                return value
         for name in os.listdir(os.path.dirname(mod.__file__)):
             m = re.match(re.escape(mod.__name__) + '-(.+)\\.dist-info', name)
             if m:
