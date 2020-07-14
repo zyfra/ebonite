@@ -22,7 +22,7 @@ class NumpyNdarrayWriter(DatasetWriter):
     """DatasetWriter implementation for numpy ndarray"""
 
     def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
-        return NumpyNdarrayReader(), ArtifactCollection.from_blobs(
+        return NumpyNdarrayReader(dataset.dataset_type), ArtifactCollection.from_blobs(
             {DATA_FILE: LazyBlob(lambda: save_npz(dataset.data))})
 
 
