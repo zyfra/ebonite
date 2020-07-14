@@ -4,11 +4,7 @@ import shutil
 
 import pandas as pd
 import pytest
-from dvc.cli import parse_args
-from dvc.command.add import CmdAdd
-from dvc.command.data_sync import CmdDataPush
-from dvc.command.init import CmdInit
-from dvc.command.remote import CmdRemoteAdd, CmdRemoteModify
+from dvc.repo import Repo
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.dvc.dataset_source import create_dvc_source
@@ -22,28 +18,24 @@ from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY  # noqa
 
 @pytest.fixture
 def dvc_repo_factory(tmpdir_factory):
-    def dvc_repo(remote, remote_cmd=None):
+    def dvc_repo(remote, remote_kwargs=None):
         repo_path = str(tmpdir_factory.mktemp('repo'))
 
-        curdir = os.path.abspath('.')
-        try:
-            os.chdir(repo_path)
+        repo = Repo.init(repo_path, no_scm=True)
 
-            CmdInit(parse_args(['init', '--no-scm'])).run()
+        with repo.config.edit() as conf:
+            remote_config = {'url': remote}
+            if remote_kwargs is not None:
+                remote_config.update(remote_kwargs)
+            conf['remote']['storage'] = remote_config
+            conf['core']['remote'] = 'storage'
 
-            CmdRemoteAdd(parse_args(['remote', 'add', '-d', 'storage', remote])).run()
-            if remote_cmd is not None:
-                remote_cmd, args = remote_cmd
-                remote_cmd(parse_args(args)).run()
+        shutil.copy(fs.current_module_path('data1.csv'), repo_path)
 
-            shutil.copy(fs.current_module_path('data1.csv'), repo_path)
-
-            CmdAdd(parse_args(['add', 'data1.csv'])).run()
-            CmdDataPush(parse_args(['push'])).run()
-
-            shutil.rmtree(os.path.join(repo_path, '.dvc', 'cache'), ignore_errors=True)
-        finally:
-            os.chdir(curdir)
+        repo.add([os.path.join(repo_path, 'data1.csv')])
+        repo.push()
+        os.remove(os.path.join(repo_path, 'data1.csv'))
+        shutil.rmtree(os.path.join(repo_path, '.dvc', 'cache'), ignore_errors=True)
 
         return repo_path
 
@@ -77,7 +69,7 @@ def s3_dvc_repo(s3server, dvc_repo_factory):
                       S3_ACCESS_KEY=ACCESS_KEY, S3_SECRET_KEY=SECRET_KEY):
         S3ArtifactRepository('dvc-bucket', url)._ensure_bucket()  # noqa
         return dvc_repo_factory('s3://dvc-bucket',
-                                (CmdRemoteModify, ['remote', 'modify', 'storage', 'endpointurl', url]))
+                                {'endpointurl': url})
 
 
 def test_create_dvc_source__local(local_dvc_repo):
