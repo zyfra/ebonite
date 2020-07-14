@@ -17,9 +17,9 @@ from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY  # noqa
 
 
 @pytest.fixture
-def dvc_repo_factory(tmpdir_factory):
+def dvc_repo_factory(tmpdir):
     def dvc_repo(remote, remote_kwargs=None):
-        repo_path = str(tmpdir_factory.mktemp('repo'))
+        repo_path = tmpdir
 
         repo = Repo.init(repo_path, no_scm=True)
 
