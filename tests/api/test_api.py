@@ -31,7 +31,7 @@ def test_projects__create_validation_error(client):
 
 def test_projects__create_existing_project_error(client, create_project_1):
     rv = client.post('/projects', json={'name': 'project_1'})
-    assert rv.status_code == 400
+    assert rv.status_code == 404
     assert rv.json['errormsg'] == 'Project with name project_1 already exists'
 
 
@@ -68,7 +68,7 @@ def test_projects__update_ok(client, create_project_1):
 
 def test_projects__update_not_exist(client):
     rv = client.patch('/projects/1', json={'name': 'project_new'})
-    assert rv.status_code == 400
+    assert rv.status_code == 404
     assert rv.json['errormsg'] == 'Project with id 1 does not exist'
 
 
@@ -281,7 +281,7 @@ def test_environments__create_env_already_exist(client, env_in_db):
     rv = client.post('/environments', json={'name': 'test_env', 'params': {'host': 'localhost:1234',
                                             'type': 'ebonite.build.docker.DockerHost'}}
                      )
-    assert rv.status_code == 400
+    assert rv.status_code == 404
     assert rv.json.get('errormsg') is not None
 
 

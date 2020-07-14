@@ -4,6 +4,18 @@ from flask import Blueprint, Response, jsonify
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 
+from ebonite.core.errors import EboniteError
+
+
+class ObjectWithIdDoesNotExist(EboniteError):
+    def __init__(self, obj_type: str, id: int):
+        super(ObjectWithIdDoesNotExist, self).__init__(f'{obj_type} with id {id} does not exist')
+
+
+class ObjectWithNameAlreadyExist(EboniteError):
+    def __init__(self, obj_type: str, name: str):
+        super(ObjectWithNameAlreadyExist, self).__init__(f'{obj_type} with name {name} already exists')
+
 
 def errors_blueprint(ebonite) -> Blueprint:
     blueprint = Blueprint('errors', __name__)
@@ -34,5 +46,13 @@ def errors_blueprint(ebonite) -> Blueprint:
     @blueprint.app_errorhandler(BadRequest)
     def bad_request_exception_handler(exception: BadRequest):
         return jsonify({'errormsg': 'Bad Request'}), 400
+
+    @blueprint.app_errorhandler(ObjectWithIdDoesNotExist)
+    def object_with_id_does_not_exist_handler(exception: ObjectWithIdDoesNotExist):
+        return jsonify({'errormsg': str(exception)}), 404
+
+    @blueprint.app_errorhandler(ObjectWithNameAlreadyExist)
+    def object_with_name_already_exist(exception: ObjectWithNameAlreadyExist):
+        return jsonify({'errormsg': str(exception)}), 404
 
     return blueprint

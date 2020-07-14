@@ -4,6 +4,7 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist, ObjectWithNameAlreadyExist
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithTasksError
 from ebonite.core.objects.core import Project
@@ -49,7 +50,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             project = ebonite.meta_repo.create_project(project)
             return jsonify(pj.serialize(project)), 201
         except ExistingProjectError:
-            return jsonify({'errormsg': f'Project with name {project.name} already exists'}), 400
+            raise ObjectWithNameAlreadyExist('Project', project.name)
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_project(id: int) -> Tuple[Response, int]:
@@ -62,7 +63,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         if project is not None:
             return jsonify(pj.serialize(project)), 200
         else:
-            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
     def update_project(id: int) -> Tuple[Response, int]:
@@ -76,9 +77,9 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         body = ProjectUpdateBody.from_data(body)
         try:
             ebonite.meta_repo.update_project(Project(name=body.name, id=id))
-            return jsonify({}), 204
+            return jsonify(''), 204
         except NonExistingProjectError:
-            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 400
+            raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_project(id: int) -> Tuple[Response, int]:
@@ -93,7 +94,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         try:
             ebonite.delete_project(project, cascade)
-            return jsonify({}), 204
+            return jsonify(''), 204
         except ProjectWithTasksError as e:
             return jsonify({'errormsg': str(e)}), 400
 

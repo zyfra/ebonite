@@ -4,6 +4,7 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist
 from ebonite.api.helpers import TaskIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import NonExistingModelError
@@ -42,7 +43,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         if task is not None:
             return jsonify([pj.serialize(ebonite.meta_repo.get_model_by_id(x)) for x in task.models]), 200
         else:
-            return jsonify({'errormsg': f'Task with id {task_id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Task', task_id)
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_model(id: int) -> Tuple[Response, int]:
@@ -64,7 +65,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         if model is not None:
             return jsonify(pj.serialize(model)), 200
         else:
-            return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Model', id)
 
     @blueprint.route('/<int:id>/artifacts/<string:name>', methods=['GET'])
     def get_model_artifacts(id: int, name: str):
@@ -89,7 +90,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         model = ebonite.meta_repo.get_model_by_id(id)
         if model is None:
-            return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Model', id)
         try:
             artifacts = ebonite.artifact_repo.get_artifact(model)
         except NoSuchArtifactError:
@@ -139,9 +140,9 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
             model = ebonite.meta_repo.get_model_by_id(model.id)
             model.name = body['name']
             ebonite.meta_repo.update_model(model)
-            return jsonify({}), 204
+            return jsonify(''), 204
         except NonExistingModelError:
-            return jsonify({'errormsg': f'Model with id {id} and task_id {model.task_id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Model', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_model(id: int):
@@ -162,8 +163,8 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         model = ebonite.meta_repo.get_model_by_id(id)
         model = ebonite.get_model(model.name, model.task)
         if model is None:
-            return jsonify({'errormsg': f'Model with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Model', id)
         ebonite.delete_model(model)
-        return jsonify({}), 204
+        return jsonify(''), 204
 
     return blueprint

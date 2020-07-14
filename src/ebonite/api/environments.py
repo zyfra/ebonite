@@ -4,6 +4,7 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist, ObjectWithNameAlreadyExist
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import EnvironmentWithInstancesError, ExistingEnvironmentError, NonExistingEnvironmentError
 from ebonite.core.objects import RuntimeEnvironment
@@ -57,7 +58,7 @@ def environments_blueprint(ebonite: Ebonite):
         if env is not None:
             return jsonify(pj.serialize(env)), 200
         else:
-            return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Environment', id)
 
     @blueprint.route('', methods=['POST'])
     def create_environment() -> Tuple[Response, int]:
@@ -99,7 +100,7 @@ def environments_blueprint(ebonite: Ebonite):
                   "type": "ebonite.build.docker.DockerHost"
                 }
               }
-          400:
+          404:
             description: Environment with given name already exist
         """
         env = CreateEnvironmentBody.from_data(request.get_json(force=True))
@@ -107,7 +108,7 @@ def environments_blueprint(ebonite: Ebonite):
             env = ebonite.meta_repo.create_environment(env)
             return jsonify(pj.serialize(env)), 201
         except ExistingEnvironmentError:
-            return jsonify({'errormsg': f'Environment with name {env.name} already exist'}), 400
+            raise ObjectWithNameAlreadyExist('Environment', env.name)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
     def update_environment(id: int) -> Tuple[Response, int]:
@@ -139,9 +140,9 @@ def environments_blueprint(ebonite: Ebonite):
         env = UpdateEnvironmentBody.from_data(body)
         try:
             ebonite.meta_repo.update_environment(env)
-            return jsonify({}), 204
+            return jsonify(''), 204
         except NonExistingEnvironmentError:
-            return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Environment', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_environment(id: int) -> Tuple[Response, int]:
@@ -169,10 +170,10 @@ def environments_blueprint(ebonite: Ebonite):
         cascade = False if not request.args.get('cascade') else bool(int(request.args.get('cascade')))
         env = ebonite.meta_repo.get_environment_by_id(id)
         if env is None:
-            return jsonify({'errormsg': f'Environment with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Environment', id)
         try:
             ebonite.delete_environment(env, cascade=cascade)
-            return jsonify({}), 204
+            return jsonify(''), 204
         except EnvironmentWithInstancesError as e:
             return jsonify({'errormsg': str(e)}), 400
 

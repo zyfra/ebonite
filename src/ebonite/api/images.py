@@ -4,6 +4,7 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist
 from ebonite.api.helpers import BuildableValidator, TaskIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingImageError, ImageWithInstancesError
@@ -41,7 +42,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         if task is not None:
             return jsonify([pj.serialize(x) for x in ebonite.get_images(task)]), 200
         else:
-            return jsonify({'errormsg': f'Task with id {task_id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Task', task_id)
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_image(id: int) -> Tuple[Response, int]:
@@ -63,7 +64,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         if image is not None:
             return jsonify(pj.serialize(image)), 200
         else:
-            return jsonify({'errormsg': f'Image with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Image', id)
 
     @blueprint.route('', methods=['POST'])
     def build_image():
@@ -169,10 +170,10 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         meta_only = False if not request.args.get('meta_only') else bool(int(request.args.get('meta_only')))
         image = ebonite.meta_repo.get_image_by_id(id)
         if image is None:
-            return jsonify({'errormsg': f'Image with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Image', id)
         try:
             ebonite.delete_image(image, meta_only=meta_only, cascade=cascade)
-            return jsonify({}), 204
+            return jsonify(''), 204
         except ImageWithInstancesError as e:
             return jsonify({'errormsg': str(e)}), 400
 

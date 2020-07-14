@@ -4,6 +4,7 @@ import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist
 from ebonite.api.helpers import EnvironmentIdValidator, ImageIdValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingInstanceError
@@ -82,7 +83,7 @@ def instances_blueprint(ebonite: Ebonite):
         if instance is not None:
             return jsonify(pj.serialize(instance)), 200
         else:
-            return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Instance', id)
 
     @blueprint.route('', methods=['POST'])
     def run_instance() -> Tuple[Response, int]:
@@ -143,8 +144,7 @@ def instances_blueprint(ebonite: Ebonite):
         env = ebonite.meta_repo.get_environment_by_id(instance.environment_id) if instance.environment_id is not None\
             else None
         if image is None:
-            return jsonify({'errormsg': f'Could not run instance. '
-                                        f'Image with id {instance.image_id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Image', instance.image_id)
         try:
             instance = ebonite.create_instance(name=instance.name, image=image,
                                                environment=env, run=run, runner_kwargs=runner_kwargs, **instance_kwargs)
@@ -193,6 +193,6 @@ def instances_blueprint(ebonite: Ebonite):
         if instance is None:
             return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
         ebonite.delete_instance(instance, meta_only=meta_only)
-        return jsonify({}), 204
+        return jsonify(''), 204
 
     return blueprint
