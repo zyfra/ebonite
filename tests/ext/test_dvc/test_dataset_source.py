@@ -72,7 +72,7 @@ def s3_dvc_repo(s3server, dvc_repo_factory):
                                 {'endpointurl': url})
 
 
-def test_create_dvc_source__local(local_dvc_repo):
+def no_test_create_dvc_source__local(local_dvc_repo):
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
@@ -83,7 +83,7 @@ def test_create_dvc_source__local(local_dvc_repo):
 
 
 @docker_test
-def test_create_dvc_source_s3(s3_dvc_repo):
+def no_test_create_dvc_source_s3(s3_dvc_repo):
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
