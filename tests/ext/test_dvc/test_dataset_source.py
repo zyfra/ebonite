@@ -41,7 +41,7 @@ def dvc_repo_factory(tmpdir_factory):
             CmdAdd(parse_args(['add', 'data1.csv'])).run()
             CmdDataPush(parse_args(['push'])).run()
 
-            shutil.rmtree(os.path.join(repo_path, '.dvc', 'cache'))
+            shutil.rmtree(os.path.join(repo_path, '.dvc', 'cache'), ignore_errors=True)
         finally:
             os.chdir(curdir)
 
