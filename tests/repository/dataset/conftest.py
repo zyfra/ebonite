@@ -11,7 +11,7 @@ from tests.conftest import interface_hook_creator
 
 class TestDatasetWriter(DatasetWriter):
     def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
-        return TestDatasetReader(), Blobs({'data': InMemoryBlob(dataset.data.encode('utf8'))})
+        return TestDatasetReader(dataset.dataset_type), Blobs({'data': InMemoryBlob(dataset.data.encode('utf8'))})
 
 
 class TestDatasetReader(DatasetReader):
