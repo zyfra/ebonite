@@ -28,4 +28,4 @@ torch==1.4.0+cpu ; sys_platform != "darwin"
 
 torch==1.4.0 ; sys_platform == "darwin"
 
-dvc==1.1.7
+#dvc==1.1.7

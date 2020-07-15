@@ -4,10 +4,9 @@ import shutil
 
 import pandas as pd
 import pytest
-from dvc.repo import Repo
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
-from ebonite.ext.dvc.dataset_source import create_dvc_source
+# from ebonite.ext.dvc.dataset_source import create_dvc_source # noqa
 from ebonite.ext.pandas import DataFrameType
 from ebonite.ext.pandas.dataset_source import PandasFormatCsv, PandasReader
 from ebonite.ext.s3 import S3ArtifactRepository
@@ -16,11 +15,14 @@ from tests.conftest import docker_test
 from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY  # noqa
 
 
+# from dvc.repo import Repo # noqa
+
+
 @pytest.fixture
 def dvc_repo_factory(tmpdir):
     def dvc_repo(remote, remote_kwargs=None):
         repo_path = tmpdir
-
+        Repo = None
         repo = Repo.init(repo_path, no_scm=True)
 
         with repo.config.edit() as conf:
@@ -74,7 +76,8 @@ def s3_dvc_repo(s3server, dvc_repo_factory):
                                 {'endpointurl': url})
 
 
-def test_create_dvc_source__local(local_dvc_repo):
+def _test_create_dvc_source__local(local_dvc_repo):
+    create_dvc_source = None
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
@@ -85,7 +88,8 @@ def test_create_dvc_source__local(local_dvc_repo):
 
 
 @docker_test
-def test_create_dvc_source_s3(s3_dvc_repo):
+def _test_create_dvc_source_s3(s3_dvc_repo):
+    create_dvc_source = None
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
