@@ -25,7 +25,7 @@ def delete_bucket(repo: S3ArtifactRepository):
 
 
 # fake fixture that ensures that S3 server is up between tests
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def s3server(pytestconfig):
     if not has_docker() or 'not docker' in pytestconfig.getoption('markexpr'):
         pytest.skip('skipping docker tests')

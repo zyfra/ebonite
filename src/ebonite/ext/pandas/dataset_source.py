@@ -191,16 +191,17 @@ class PandasReader(DatasetReader):
     """DatasetReader for pandas dataframes
 
     :param format: PandasFormat instance to use
-    :param data_type: DataFrameType to use for aliging read data
+    :param dataset_type: DataFrameType to use for aliging read data
     """
 
-    def __init__(self, format: PandasFormat, data_type: DataFrameType):
-        self.data_type = data_type
+    def __init__(self, format: PandasFormat, dataset_type: DataFrameType, path: str = None):
+        super(PandasReader, self).__init__(dataset_type)
+        self.path = path or PANDAS_DATA_FILE
         self.format = format
 
     def read(self, artifacts: ArtifactCollection) -> Dataset:
-        with artifacts.blob_dict() as blobs, blobs[PANDAS_DATA_FILE].bytestream() as b:
-            return Dataset.from_object(self.data_type.align(self.format.read(b)))
+        with artifacts.blob_dict() as blobs, blobs[self.path].bytestream() as b:
+            return Dataset.from_object(self.dataset_type.align(self.format.read(b)))
 
 
 class PandasWriter(DatasetWriter):
@@ -209,12 +210,14 @@ class PandasWriter(DatasetWriter):
     :param format: PandasFormat instance to use
     """
 
-    def __init__(self, format: PandasFormat):
+    def __init__(self, format: PandasFormat, path: str = None):
+        self.path = path or PANDAS_DATA_FILE
         self.format = format
 
     def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
         blob = LazyBlob(lambda: self.format.write(dataset.data))
-        return PandasReader(self.format, dataset.dataset_type), ArtifactCollection.from_blobs({PANDAS_DATA_FILE: blob})
+        return (PandasReader(self.format, dataset.dataset_type, self.path),
+                ArtifactCollection.from_blobs({self.path: blob}))
 
 # class PandasJdbcDatasetSource(_PandasDatasetSource):
 #     def __init__(self, dataset_type: DatasetType, table: str, connection: str,

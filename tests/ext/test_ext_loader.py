@@ -92,7 +92,6 @@ def test_extension_loader__lazy(ext_loader, two_temp_modules):
     assert module_imported(module2)
 
 
-@pytest.mark.kek
 def test_extension_loader__lazy_defered(ext_loader, two_temp_modules, temp_module_factory):
     module1, module2 = two_temp_modules
 
