@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -68,7 +68,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Model', id)
 
     @blueprint.route('/<int:id>/artifacts/<string:name>', methods=['GET'])
-    def get_model_artifacts(id: int, name: str):
+    def get_model_artifacts(id: int, name: str) -> Tuple[Response, int]:
         """
         Gets artifact for selected model
         ---
@@ -103,7 +103,7 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'Artifact with name {name} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_model(id: int):
+    def update_model(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Updates model in metadata repository
         ---
@@ -140,12 +140,12 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
             model = ebonite.meta_repo.get_model_by_id(model.id)
             model.name = body['name']
             ebonite.meta_repo.update_model(model)
-            return jsonify(''), 204
+            return '', 204
         except NonExistingModelError:
             raise ObjectWithIdDoesNotExist('Model', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_model(id: int):
+    def delete_model(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes model with given id
         ---
@@ -165,6 +165,6 @@ def models_blueprint(ebonite: Ebonite) -> Blueprint:
         if model is None:
             raise ObjectWithIdDoesNotExist('Model', id)
         ebonite.delete_model(model)
-        return jsonify(''), 204
+        return '', 204
 
     return blueprint

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -66,7 +66,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_project(id: int) -> Tuple[Response, int]:
+    def update_project(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Changes name of project in metadata repository
         :param id: id of project
@@ -77,12 +77,12 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         body = ProjectUpdateBody.from_data(body)
         try:
             ebonite.meta_repo.update_project(Project(name=body.name, id=id))
-            return jsonify(''), 204
+            return '', 204
         except NonExistingProjectError:
             raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_project(id: int) -> Tuple[Response, int]:
+    def delete_project(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only project or cascadely deletes everything linked to it from metadata repository
         :param id: id of project
@@ -94,7 +94,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         try:
             ebonite.delete_project(project, cascade)
-            return jsonify(''), 204
+            return '', 204
         except ProjectWithTasksError as e:
             return jsonify({'errormsg': str(e)}), 400
 

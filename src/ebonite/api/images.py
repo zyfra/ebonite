@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -67,7 +67,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Image', id)
 
     @blueprint.route('', methods=['POST'])
-    def build_image():
+    def build_image() -> Tuple[Response, int]:
         """
         Creates image in repository and optionally builds
         ---
@@ -139,7 +139,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         #     return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_image(id: int):
+    def delete_image(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only image or cascadely deletes instances linked to it from metadata repository
         ---
@@ -173,7 +173,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Image', id)
         try:
             ebonite.delete_image(image, meta_only=meta_only, cascade=cascade)
-            return jsonify(''), 204
+            return '', 204
         except ImageWithInstancesError as e:
             return jsonify({'errormsg': str(e)}), 400
 

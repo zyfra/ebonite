@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -111,7 +111,7 @@ def environments_blueprint(ebonite: Ebonite):
             raise ObjectWithNameAlreadyExist('Environment', env.name)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_environment(id: int) -> Tuple[Response, int]:
+    def update_environment(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Updates environment name
         ---
@@ -140,12 +140,12 @@ def environments_blueprint(ebonite: Ebonite):
         env = UpdateEnvironmentBody.from_data(body)
         try:
             ebonite.meta_repo.update_environment(env)
-            return jsonify(''), 204
+            return '', 204
         except NonExistingEnvironmentError:
             raise ObjectWithIdDoesNotExist('Environment', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_environment(id: int) -> Tuple[Response, int]:
+    def delete_environment(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only environment or cascadely deletes everything linked to it from metadata repository
         ---
@@ -173,7 +173,7 @@ def environments_blueprint(ebonite: Ebonite):
             raise ObjectWithIdDoesNotExist('Environment', id)
         try:
             ebonite.delete_environment(env, cascade=cascade)
-            return jsonify(''), 204
+            return '', 204
         except EnvironmentWithInstancesError as e:
             return jsonify({'errormsg': str(e)}), 400
 
