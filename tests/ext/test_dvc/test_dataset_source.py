@@ -4,6 +4,7 @@ import shutil
 
 import pandas as pd
 import pytest
+from dvc.repo import Repo
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
 from ebonite.ext.pandas import DataFrameType
@@ -18,7 +19,6 @@ from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY  # noqa
 def dvc_repo_factory(tmpdir):
     def dvc_repo(remote, remote_kwargs=None):
         repo_path = tmpdir
-        Repo = None
         repo = Repo.init(repo_path, no_scm=True)
 
         with repo.config.edit() as conf:
