@@ -6,16 +6,12 @@ import pandas as pd
 import pytest
 
 from ebonite.core.analyzer.dataset import DatasetAnalyzer
-# from ebonite.ext.dvc.dataset_source import create_dvc_source # noqa
 from ebonite.ext.pandas import DataFrameType
 from ebonite.ext.pandas.dataset_source import PandasFormatCsv, PandasReader
 from ebonite.ext.s3 import S3ArtifactRepository
 from ebonite.utils import fs
 from tests.conftest import docker_test
 from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY  # noqa
-
-
-# from dvc.repo import Repo # noqa
 
 
 @pytest.fixture
