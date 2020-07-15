@@ -31,10 +31,12 @@ def dvc_repo_factory(tmpdir):
             conf['core']['remote'] = 'storage'
 
         shutil.copy(fs.current_module_path('data1.csv'), repo_path)
-
-        repo.add([os.path.join(repo_path, 'data1.csv')])
+        data1_path = os.path.join(repo_path, 'data1.csv')
+        assert os.path.exists(data1_path)
+        repo.add([data1_path])
+        assert os.path.exists(data1_path + '.dvc')
         repo.push()
-        os.remove(os.path.join(repo_path, 'data1.csv'))
+        os.remove(data1_path)
         shutil.rmtree(os.path.join(repo_path, '.dvc', 'cache'), ignore_errors=True)
 
         return repo_path
@@ -72,7 +74,7 @@ def s3_dvc_repo(s3server, dvc_repo_factory):
                                 {'endpointurl': url})
 
 
-def no_test_create_dvc_source__local(local_dvc_repo):
+def test_create_dvc_source__local(local_dvc_repo):
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
@@ -83,7 +85,7 @@ def no_test_create_dvc_source__local(local_dvc_repo):
 
 
 @docker_test
-def no_test_create_dvc_source_s3(s3_dvc_repo):
+def test_create_dvc_source_s3(s3_dvc_repo):
     dt = DataFrameType(['col1', 'col2'], ['int64', 'string'], [])
     ds = create_dvc_source(path='data1.csv',
                            reader=PandasReader(PandasFormatCsv(), dt, 'data1.csv'),
