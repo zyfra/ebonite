@@ -118,3 +118,10 @@ def instance_in_db(postgres_meta, image_in_db, env_in_db):  # noqa: F811
     instance.environment = env_in_db
     instance = postgres_meta.create_instance(instance)
     return instance
+
+
+@pytest.fixture
+def pipeline_in_db(postgres_meta, model_in_db):  # noqa: F811
+    pipeline = model_in_db.as_pipeline()
+    pipeline = postgres_meta.create_pipeline(pipeline)
+    return pipeline

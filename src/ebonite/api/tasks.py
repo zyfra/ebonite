@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Union
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -126,7 +126,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Task', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_task(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def update_task(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Changes name of task in metadata repository
         ---
@@ -167,7 +167,7 @@ def task_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Task', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_task(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def delete_task(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only task or cascadely deletes everything linked to it from metadata repository
         ---

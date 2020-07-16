@@ -406,3 +406,65 @@ def test_instances__create_instance_ok(client, model_in_db):
 
     rv = client.post('/instances?run=0', json={'instance': {'name': 'new_instance', 'image_id': 1}})
     assert rv.status_code == 201
+
+
+#  Pipelines
+def test_pipelines__get_pipeline_ok(client, pipeline_in_db):
+    rv = client.get('/pipelines/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'test_model.predict'
+    assert rv.json['task_id'] == 1
+
+
+def test_pipelines__get_pipeline_not_exist(client):
+    rv = client.get('/pipelines/1')
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Pipeline with id 1 does not exist'
+
+
+def test_pipelines__get_pipelines_ok(client, pipeline_in_db):
+    rv = client.get('/pipelines?task_id=1')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+
+
+def test_pipelines__get_pipelines_task_not_exist(client):
+    rv = client.get('/pipelines?task_id=1')
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Task with id 1 does not exist'
+
+
+def test_pipelines__get_pipelines_empty_task(client, task_in_db):
+    rv = client.get('/pipelines?task_id=1')
+    assert rv.status_code == 200
+    assert len(rv.json) == 0
+
+
+def test_pipelines__delete_pipeline_ok(client, pipeline_in_db):
+    rv = client.delete('/pipelines/1')
+    assert rv.status_code == 204
+
+
+def test_pipelines__delete_pipeline_not_exist(client):
+    rv = client.delete('/pipelines/1')
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Pipeline with id 1 does not exist'
+
+
+def test_pipelines__update_pipeline_ok(client, pipeline_in_db):
+    rv = client.patch('/pipelines/1', json={'name': 'new_name', 'author': 'ebaklya', 'task_id': 1})
+    assert rv.status_code == 204
+
+    rv = client.get('/pipelines/1')
+    assert rv.json['name'] == 'new_name'
+
+
+def test_pipelines__update_pipeline_validation_error(client, pipeline_in_db):
+    rv = client.patch('/pipelines/1', json={'name': 'new_name', 'author': 'ebaklya'})
+    assert rv.status_code == 422
+
+
+def test_pipelines__update_pipeline_not_exist(client):
+    rv = client.patch('/pipelines/1', json={'name': 'new_name', 'author': 'ebaklya', 'task_id': 1})
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Pipeline with id 1 does not exist'

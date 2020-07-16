@@ -39,20 +39,20 @@ def errors_blueprint(ebonite) -> Blueprint:
         return jsonify({'errormsg': exception.errors()}), 422
 
     @blueprint.app_errorhandler(NotFound)
-    def not_found_exception_handler(exception: NotFound):
+    def not_found_exception_handler(exception: NotFound) -> Tuple[Response, int]:
         return jsonify({'errormsg': 'The requested URL was not found on the server. '
                                     'If you entered the URL manually please check your spelling and try again'}), 404
 
     @blueprint.app_errorhandler(BadRequest)
-    def bad_request_exception_handler(exception: BadRequest):
+    def bad_request_exception_handler(exception: BadRequest) -> Tuple[Response, int]:
         return jsonify({'errormsg': 'Bad Request'}), 400
 
     @blueprint.app_errorhandler(ObjectWithIdDoesNotExist)
-    def object_with_id_does_not_exist_handler(exception: ObjectWithIdDoesNotExist):
+    def object_with_id_does_not_exist_handler(exception: ObjectWithIdDoesNotExist) -> Tuple[Response, int]:
         return jsonify({'errormsg': str(exception)}), 404
 
     @blueprint.app_errorhandler(ObjectWithNameAlreadyExist)
-    def object_with_name_already_exist(exception: ObjectWithNameAlreadyExist):
+    def object_with_name_already_exist(exception: ObjectWithNameAlreadyExist) -> Tuple[Response, int]:
         return jsonify({'errormsg': str(exception)}), 404
 
     return blueprint

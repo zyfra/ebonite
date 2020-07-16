@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Union
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -139,7 +139,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         #     return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_image(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def delete_image(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only image or cascadely deletes instances linked to it from metadata repository
         ---

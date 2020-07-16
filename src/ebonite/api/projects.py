@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Union
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -66,7 +66,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_project(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def update_project(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Changes name of project in metadata repository
         :param id: id of project
@@ -82,7 +82,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_project(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def delete_project(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only project or cascadely deletes everything linked to it from metadata repository
         :param id: id of project

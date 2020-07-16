@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Union
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
@@ -168,7 +168,7 @@ def instances_blueprint(ebonite: Ebonite):
     #         return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_instance(id: int) -> Optional[Tuple[Response, int], Tuple[str, int]]:
+    def delete_instance(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes and, optionally, stops instance
         ---
