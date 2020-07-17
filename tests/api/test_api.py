@@ -457,6 +457,7 @@ def test_pipelines__update_pipeline_ok(client, pipeline_in_db):
 
     rv = client.get('/pipelines/1')
     assert rv.json['name'] == 'new_name'
+    assert rv.json['author'] == 'ebaklya'
 
 
 def test_pipelines__update_pipeline_validation_error(client, pipeline_in_db):
