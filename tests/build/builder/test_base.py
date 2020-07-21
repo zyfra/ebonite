@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import psutil
 import pytest
+import platform
 
 from ebonite.build.builder.base import PythonBuildContext, use_local_installation
 from ebonite.build.provider import LOADER_ENV, PythonProvider, SERVER_ENV
@@ -147,6 +148,8 @@ def test_python_build_context__distr_loadable(tmpdir, python_build_context, crea
     with use_local_installation():
         python_build_context._write_distribution(tmpdir)
 
+    assert python_build_context.provider.get_python_version() == platform.python_version()
+
     iface = _load(ModelLoader(), tmpdir)
     prediction2 = iface.execute('predict', {'vector': pandas_data})
 
@@ -158,6 +161,8 @@ def test_python_multi_builder__distr_loadable(tmpdir, python_multi_build_context
 
     with use_local_installation():
         python_multi_build_context._write_distribution(tmpdir)
+
+    assert python_multi_build_context.provider.get_python_version() == platform.python_version()
 
     iface = _load(MultiModelLoader(), tmpdir)
     prediction2 = iface.execute(f'{created_model.name}_predict', {'vector': pandas_data})
