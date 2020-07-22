@@ -402,6 +402,33 @@ def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, 
     assert task.has_meta_repo
 
 
+def test_update_task_with_images(meta: MetadataRepository, project: Project, task: Task, image):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+
+    image.task = task
+    image = meta.create_image(image)
+    task.add_image(image)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    pipeline = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.images) == 1
+
+    assert image.id in task.images
+    assert image == meta.get_image_by_id(image.id)
+    assert meta.get_image_by_id(image.id).name == 'Meta Test Image2'
+    assert task.has_meta_repo
+
+
+
 def test_update_task_source_is_changed(meta: MetadataRepository, project: Project, task: Task, model: Model):
     task.project = meta.create_project(project)
 
