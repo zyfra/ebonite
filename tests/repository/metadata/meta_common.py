@@ -375,6 +375,33 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     assert task.has_meta_repo
 
 
+def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, task: Task, pipeline: Pipeline):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+
+    pipeline.task = task
+    pipeline = meta.create_pipeline(pipeline)
+    task.add_pipeline(pipeline)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'steps', 'input_data', 'output_data',
+                                                         'models', 'task_id'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.pipelines) == 1
+
+    assert pipeline.id in task.pipelines
+    assert pipeline == meta.get_pipeline_by_id(pipeline.id)
+    assert meta.get_pipeline_by_id(pipeline.id).name == 'Test Pipeline2'
+    assert task.has_meta_repo
+
+
 def test_update_task_source_is_changed(meta: MetadataRepository, project: Project, task: Task, model: Model):
     task.project = meta.create_project(project)
 
