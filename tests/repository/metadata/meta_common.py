@@ -388,7 +388,7 @@ def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, 
 
     task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
     pipeline = update_object_fields(pipeline, excepted_fields=['id', 'steps', 'input_data', 'output_data',
-                                                         'models', 'task_id'])
+                                                               'models', 'task_id'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -414,7 +414,7 @@ def test_update_task_with_images(meta: MetadataRepository, project: Project, tas
     task.add_image(image)
 
     task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
-    pipeline = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
+    image = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -426,7 +426,6 @@ def test_update_task_with_images(meta: MetadataRepository, project: Project, tas
     assert image == meta.get_image_by_id(image.id)
     assert meta.get_image_by_id(image.id).name == 'Meta Test Image2'
     assert task.has_meta_repo
-
 
 
 def test_update_task_source_is_changed(meta: MetadataRepository, project: Project, task: Task, model: Model):
