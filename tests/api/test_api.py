@@ -1,3 +1,6 @@
+from ebonite.ext.flask.server import FlaskServer
+
+
 # HEALTHCHECKS
 def test_healthchecks__docker_ok(client):
     rv = client.get('/healthchecks/docker')
@@ -346,12 +349,30 @@ def test_images__delete_image_ok(client, image_in_db):
 
 def test_images__create_and_delete_image_ok(client, model_in_db):
     rv = client.post('/images', json={'name': 'test_image',
-                                      'buildable': {'obj_type': 'model', 'obj_id': 1},
+                                      'buildable': {'type': 'ebonite.build.provider.ml_model.ModelBuildable',
+                                                    'server_type': FlaskServer.type, 'model_id': 1},
                                       'builder_args': {'force_overwrite': 1}})
     assert rv.status_code == 201
 
     rv = client.delete('/images/1')
     assert rv.status_code == 204
+
+
+def test_images__create_image_non_existing_buildable(client):
+    rv = client.post('/images', json={'name': 'test_image',
+                                      'buildable': {'type': 'ebonite.build.provider.ml_model.ModelBuildable',
+                                                    'server_type': FlaskServer.type, 'model_id': 2},
+                                      'builder_args': {'force_overwrite': 1}})
+    assert rv.status_code == 404
+    assert rv.json['errormsg'] == 'Model with id "2" does not exist'
+
+
+def test_images__create_image_val_error(client):
+    rv = client.post('/images', json={'name': 'test_image',
+                                      'buildable': {'type': 'ebonite.build.provider.ml_model.ModelBuildable',
+                                                    'server_type': FlaskServer.type},
+                                      'builder_args': {'force_overwrite': 1}})
+    assert rv.status_code == 422
 
 
 # Instances
@@ -400,7 +421,8 @@ def test_instances__delete_not_exist(client):
 def test_instances__create_instance_ok(client, model_in_db):
     # Not running anything to avoid long tests
     rv = client.post('/images', json={'name': 'test_image',
-                                      'buildable': {'obj_type': 'model', 'obj_id': 1},
+                                      'buildable': {'type': 'ebonite.build.provider.ml_model.ModelBuildable',
+                                                    'server_type': FlaskServer.type, 'model_id': 1},
                                       'builder_args': {'force_overwrite': 1}})
     assert rv.status_code == 201
 

@@ -7,8 +7,10 @@ from pyjackson.pydantic_ext import PyjacksonModel
 from ebonite.api.errors import ObjectWithIdDoesNotExist
 from ebonite.api.helpers import BuildableValidator, TaskIdValidator
 from ebonite.client.base import Ebonite
-from ebonite.core.errors import ExistingImageError, ImageWithInstancesError
+from ebonite.core.errors import (ExistingImageError, ImageWithInstancesError, NonExistingModelError,
+                                 NonExistingPipelineError)
 from ebonite.core.objects import Image
+from ebonite.core.objects.core import Buildable
 
 
 class UpdateImageBody(PyjacksonModel):
@@ -109,21 +111,18 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         skip_build = False if not request.args.get('skip_build') else bool(int(request.args.get('skip_build')))
         body = request.get_json(force=True)
-        buildable = BuildableValidator(**body.pop('buildable'))
+        # buildable = BuildableValidator(**body.pop('buildable'))
+        BuildableValidator(**body['buildable'])
+        buildable = pj.deserialize(body.pop('buildable'), Buildable)
         builder_args = None
         builder_args = body.pop('builder_args', builder_args)
-        if buildable.obj_type == 'model':
-            buildable_obj = ebonite.meta_repo.get_model_by_id(buildable.obj_id)
-        else:
-            buildable_obj = ebonite.meta_repo.get_pipeline_by_id(buildable.obj_id)
-        if buildable_obj is None:
-            return jsonify({'errormsg': f'{buildable.obj_type} with id {buildable.obj_id} does not exist'}), 404
+
         try:
-            image = ebonite.create_image(buildable_obj, name=body['name'], builder_args=builder_args, skip_build=skip_build)
+            image = ebonite.create_image(buildable, name=body['name'], builder_args=builder_args, skip_build=skip_build)
             return jsonify(pj.serialize(image)), 201
         except ExistingImageError:
             return jsonify({'errormsg': f'Image with name {body["name"]} already exists'}), 400
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError, NonExistingPipelineError, NonExistingModelError) as e:
             return jsonify({'errormsg': str(e)}), 404
 
     # @blueprint.route('/<int:id>', methods=['PATCH'])

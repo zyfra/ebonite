@@ -7,7 +7,7 @@ from pyjackson.utils import resolve_subtype
 
 from ebonite.core.errors import ExistingImageError, ExistingInstanceError
 from ebonite.core.objects import Image, Model, Pipeline, RuntimeEnvironment, RuntimeInstance, Task
-from ebonite.core.objects.core import EboniteObject, Project
+from ebonite.core.objects.core import Buildable, EboniteObject, Project
 from ebonite.repository.artifact import ArtifactRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
 from ebonite.repository.artifact.local import LocalArtifactRepository
@@ -126,7 +126,12 @@ class Ebonite:
         if environment is None:
             environment = self.get_default_environment()
 
-        buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug).bind_meta_repo(self.meta_repo)
+        if isinstance(obj, Buildable):
+            buildable = obj
+            buildable.bind_meta_repo(self.meta_repo)
+            buildable.validate()
+        else:
+            buildable = BuildableAnalyzer.analyze(obj, server=server, debug=debug).bind_meta_repo(self.meta_repo)
         task = task or buildable.task
         if task is None:
             raise ValueError(f'cannot infer task for buildable {buildable}, please provide it manually')
