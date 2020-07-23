@@ -68,6 +68,26 @@ def pipelines_blueprint(ebonite: Ebonite):
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
     def update_pipeline(id: int):
+        """
+        Updates pipeline
+        ---
+        parameters:
+          - name: id
+            in: path
+            type: integer
+            required: true
+          - name: body
+            in: body
+            required: true
+            schema:
+              required:
+                - task_id
+              properties:
+                name:
+                  type: string
+                  required: false
+                  description:
+        """
         body = request.get_json(force=True)
         body['id'] = id
         old_pipeline = ebonite.meta_repo.get_pipeline_by_id(id)
@@ -83,7 +103,6 @@ def pipelines_blueprint(ebonite: Ebonite):
             body['input_data'] = old_pipeline.input_data.__dict__
         if body.get('output_data') is None:
             body['output_data'] = old_pipeline.output_data.__dict__
-        print(body)
         pipeline = UpdatePipelineModel.from_data(body)
         ebonite.meta_repo.update_pipeline(pipeline)
         return '', 204

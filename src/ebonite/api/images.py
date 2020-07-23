@@ -111,12 +111,10 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         skip_build = False if not request.args.get('skip_build') else bool(int(request.args.get('skip_build')))
         body = request.get_json(force=True)
-        # buildable = BuildableValidator(**body.pop('buildable'))
         BuildableValidator(**body['buildable'])
         buildable = pj.deserialize(body.pop('buildable'), Buildable)
         builder_args = None
         builder_args = body.pop('builder_args', builder_args)
-
         try:
             image = ebonite.create_image(buildable, name=body['name'], builder_args=builder_args, skip_build=skip_build)
             return jsonify(pj.serialize(image)), 201
