@@ -86,14 +86,39 @@ def pipelines_blueprint(ebonite: Ebonite):
                 name:
                   type: string
                   required: false
-                  description:
+                  description: New name of the pipeline
+                author:
+                  type: string
+                  required: false
+                  description: New author of the pipeline
+                steps:
+                  type: object
+                  required: false
+                input_data:
+                  type: object
+                  required: false
+                output_data:
+                  type: object
+                  required: false
+                task_id:
+                  type: integer
+                  required: true
+                  description: task_id of the task pipeline belongs to
+        responses:
+          204:
+            description: Pipeline updated successfully
+          404:
+            description: Pipeline with given id does not exist
+          422:
+            description: Incorrect data sent in body
         """
         body = request.get_json(force=True)
         body['id'] = id
         old_pipeline = ebonite.meta_repo.get_pipeline_by_id(id)
         if old_pipeline is None:
             raise ObjectWithIdDoesNotExist('Pipeline', id)
-        # TODO: Should I leave options for this fields to be set through API?
+        # TODO: Should I leave options for this fields to be set through API
+        #  or just take it from existing pipeline to fit condition to init Pipeline object?
         #  Need to think about representing complicated objects in dict.
         #  Adding methods to get dict representation for everything related to core and backwards?
         #  Including inner stuff?
@@ -121,7 +146,7 @@ def pipelines_blueprint(ebonite: Ebonite):
           204:
             description: Pipeline delted successfully
           404:
-            description:
+            description: Pipeline does not exist
         """
         pipeline = ebonite.meta_repo.get_pipeline_by_id(id)
         if pipeline is not None:
