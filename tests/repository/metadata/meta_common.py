@@ -402,14 +402,16 @@ def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, 
     assert task.has_meta_repo
 
 
-def test_update_task_with_images(meta: MetadataRepository, project: Project, task: Task, image):
+def test_update_task_with_images(meta: MetadataRepository, project: Project, task: Task, image, environment):
     task.project = meta.create_project(project)
     task = meta.create_task(task)
     assert task is not None
 
     id = task.id
+    env = meta.create_environment(environment)
 
     image.task = task
+    image.environment = env
     image = meta.create_image(image)
     task.add_image(image)
 
