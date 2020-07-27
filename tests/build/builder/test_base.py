@@ -140,6 +140,15 @@ def _check_contents(base_dir, name, contents):
             assert file_contents == contents
 
 
+def test_multimodel_buildable(created_model):
+    with pytest.raises(ValueError):
+        MultiModelBuildable([], server_type=FlaskServer.type)
+    # created_model = created_model.bind_meta_repo(meta)
+    # assert created_model.has_meta_repo
+    # mm_buildable = MultiModelBuildable([created_model], server_type=FlaskServer.type)
+    # assert mm_buildable.task.name == 'Test Task'
+
+
 @pytest.mark.parametrize("python_build_context", ["python_build_context_sync", "python_build_context_async"])
 def test_python_build_context__distr_loadable(tmpdir, python_build_context, created_model, pandas_data, request):
     python_build_context: PythonBuildContext = request.getfixturevalue(python_build_context)
