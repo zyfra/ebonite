@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import sys
+import json
 
 import numpy as np
 import psutil
@@ -20,6 +21,8 @@ from ebonite.ext.flask import FlaskServer
 from ebonite.ext.flask.client import HTTPClient
 from ebonite.runtime.interface.ml_model import ModelLoader, MultiModelLoader
 from tests.build.conftest import check_ebonite_port_free
+from ebonite.core.objects.core import Model, Task, Project
+from ebonite.build.provider.pipeline import PipelineProvider, PipelineBuildable
 
 # in Python < 3.7 type of patterns is private, from Python 3.7 it becomes `re.Pattern`
 Pattern = type(re.compile(''))
@@ -62,6 +65,19 @@ class ProviderMock(PythonProvider):
 class BuildableMock(Buildable):
     def get_provider(self):
         return ProviderMock()
+
+
+def test_pipeline_provider(pipeline):
+    provider = PipelineProvider(pipeline, FlaskServer)
+    assert provider.get_python_version() == platform.python_version()
+    assert provider.get_env() == {'EBONITE_LOADER': 'ebonite.runtime.interface.pipeline.PipelineLoader',
+                                  'EBONITE_SERVER': 'ebonite.ext.flask.server.FlaskServer',
+                                  'EBONITE_RUNTIME': 'true'}
+    assert provider.get_requirements().requirements == []
+    reqs_json = json.loads(provider.get_sources()['pipeline.json'])['pipeline']
+    assert reqs_json['name'] == 'Test Pipeline'
+    assert reqs_json['steps'] == [{"model_name": "a", "method_name": "b"}, {"model_name": "c", "method_name": "d"}]
+    assert 'docker' in provider.get_options()
 
 
 @pytest.fixture
@@ -140,13 +156,40 @@ def _check_contents(base_dir, name, contents):
             assert file_contents == contents
 
 
-def test_multimodel_buildable(created_model):
+def test_multimodel_buildable(metadata_repo):
+    # Dunno why, but it only worked w/o fixtures
+    proj = Project('proj')
+    task = Task('Test Task')
+    mdl = Model.create(lambda data: data, 'input', 'test_model')
+
+    proj = metadata_repo.create_project(proj)
+    task.project = proj
+    task = metadata_repo.create_task(task)
+    mdl.task = task
+    mdl = metadata_repo.create_model(mdl)
+
     with pytest.raises(ValueError):
         MultiModelBuildable([], server_type=FlaskServer.type)
-    # created_model = created_model.bind_meta_repo(meta)
-    # assert created_model.has_meta_repo
-    # mm_buildable = MultiModelBuildable([created_model], server_type=FlaskServer.type)
-    # assert mm_buildable.task.name == 'Test Task'
+    assert mdl.has_meta_repo
+    mm_buildable = MultiModelBuildable([mdl], server_type=FlaskServer.type)
+    assert mm_buildable.task.name == 'Test Task'
+    assert mm_buildable.get_provider().get_python_version() == platform.python_version()
+    assert len(mm_buildable.models) == 1
+
+
+def test_pipeline_buildable(metadata_repo, pipeline):
+    proj = Project('proj')
+    task = Task('Test Task')
+    proj = metadata_repo.create_project(proj)
+    task.project = proj
+    task = metadata_repo.create_task(task)
+
+    pipeline.task = task
+    pipeline = metadata_repo.create_pipeline(pipeline)
+    buildable = PipelineBuildable(pipeline, server_type=FlaskServer.type)
+    assert buildable.get_provider().get_python_version() == platform.python_version()
+    assert buildable.task.name == 'Test Task'
+    assert buildable.pipeline == pipeline
 
 
 @pytest.mark.parametrize("python_build_context", ["python_build_context_sync", "python_build_context_async"])
