@@ -94,4 +94,4 @@ def test_docker_registry_io():
     assert registry.get_host() == 'https://index.docker.io/v1/'
     registry.push(client, 'hello-world:latest')
     image = DockerImage('hello-world')
-    assert registry.image_exists(client, image) is True
+    assert registry.image_exists(client, image)
