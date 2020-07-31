@@ -1,8 +1,11 @@
 import os
 import tempfile
 
+import docker
+
 from ebonite.build.builder.base import use_local_installation, use_wheel_installation
 from ebonite.core.objects.requirements import UnixPackageRequirement
+from ebonite.ext.docker.base import DockerImage, DockerIORegistry
 from ebonite.ext.docker.build_context import DockerBuildArgs, _DockerfileGenerator
 
 CLEAN = True
@@ -80,3 +83,15 @@ def _cut_empty_lines(string):
 def _generate_dockerfile(unix_packages=None, **kwargs):
     with use_local_installation():
         return _cut_empty_lines(_DockerfileGenerator(DockerBuildArgs(**kwargs)).generate({}, unix_packages))
+
+
+def test_docker_registry_io():
+    registry = DockerIORegistry()
+    client = docker.DockerClient()
+
+    client.images.pull('hello-world:latest')
+
+    assert registry.get_host() == 'https://index.docker.io/v1/'
+    registry.push(client, 'hello-world:latest')
+    image = DockerImage('hello-world')
+    assert registry.image_exists(client, image) is True
