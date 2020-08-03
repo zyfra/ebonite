@@ -62,7 +62,7 @@ def pipeline():
 
 
 def test_pipeline_interface(pipeline):
-    # Dunno if this really helps?
     iface = pipeline_interface(pipeline)
     assert 'run' in iface.exposed_methods()
-    assert str(iface.exposed_method_args('run')[0]) == 'data: NumpyNdarrayDatasetType'
+    assert iface.exposed_method_args('run')[0] == Field('data', NumpyNdarrayDatasetType, False)
+    assert iface.exposed_method_returns('run') == Field(None, NumpyNdarrayDatasetType, False)
