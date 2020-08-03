@@ -1,10 +1,10 @@
-from json import loads
-from typing import Tuple
+from typing import Tuple, Union
 
 import pyjackson as pj
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
+from ebonite.api.errors import ObjectWithIdDoesNotExist, ObjectWithNameAlreadyExist
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingProjectError, NonExistingProjectError, ProjectWithTasksError
 from ebonite.core.objects.core import Project
@@ -28,12 +28,16 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
 
     @blueprint.route('', methods=['GET'])
     def get_projects() -> Tuple[Response, int]:
-        """
-        Gets all projects from metadata repository
-        :return: All projects in database
+        """Gets all projects from metadata repository
+        ---
+        responses:
+          200:
+            description: A list of projects stored in meta repository
+            examples:
+              None: [{'Project1': 'blabla'}, {'Project2': 'blabla2'}]
         """
         projects = ebonite.meta_repo.get_projects()
-        return jsonify([loads(pj.dumps(p)) for p in projects]), 200
+        return jsonify([pj.serialize(p) for p in projects]), 200
 
     @blueprint.route('', methods=['POST'])
     def create_project() -> Tuple[Response, int]:
@@ -44,9 +48,9 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         project = ProjectCreateBody.from_data(request.get_json(force=True))
         try:
             project = ebonite.meta_repo.create_project(project)
-            return jsonify(loads(pj.dumps(project))), 201
+            return jsonify(pj.serialize(project)), 201
         except ExistingProjectError:
-            return jsonify({'errormsg': f'Project with name {project.name} already exists'}), 400
+            raise ObjectWithNameAlreadyExist('Project', project.name)
 
     @blueprint.route('/<int:id>', methods=['GET'])
     def get_project(id: int) -> Tuple[Response, int]:
@@ -57,12 +61,12 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         project = ebonite.meta_repo.get_project_by_id(id)
         if project is not None:
-            return jsonify(loads(pj.dumps(project))), 200
+            return jsonify(pj.serialize(project)), 200
         else:
-            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
+            raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_project(id: int) -> Tuple[Response, int]:
+    def update_project(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Changes name of project in metadata repository
         :param id: id of project
@@ -73,12 +77,12 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
         body = ProjectUpdateBody.from_data(body)
         try:
             ebonite.meta_repo.update_project(Project(name=body.name, id=id))
-            return jsonify({}), 204
+            return '', 204
         except NonExistingProjectError:
-            return jsonify({'errormsg': f'Project with id {id} does not exist'}), 400
+            raise ObjectWithIdDoesNotExist('Project', id)
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
-    def delete_project(id: int) -> Tuple[Response, int]:
+    def delete_project(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Deletes either only project or cascadely deletes everything linked to it from metadata repository
         :param id: id of project
@@ -90,7 +94,7 @@ def project_blueprint(ebonite: Ebonite) -> Blueprint:
             return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
         try:
             ebonite.delete_project(project, cascade)
-            return jsonify({}), 204
+            return '', 204
         except ProjectWithTasksError as e:
             return jsonify({'errormsg': str(e)}), 400
 

@@ -5,14 +5,15 @@ import pytest
 
 from ebonite.api.api_base import EboniteAPI
 from ebonite.build.builder.base import use_local_installation
-from tests.ext.sqlalchemy.test_postgres.conftest import postgres_server, postgres_meta
-from tests.ext.s3.conftest import s3_artifact, s3server
+from ebonite.core.objects.core import Buildable, Image, Project, RuntimeEnvironment, RuntimeInstance, Task
+from tests.ext.test_s3.conftest import ACCESS_KEY, SECRET_KEY, s3_artifact, s3server  # noqa: F401
+from tests.ext.test_sqlalchemy.test_postgres.conftest import postgres_meta, postgres_server  # noqa: F401
 
 
 @pytest.fixture
-def api(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):
-    os.environ['S3_ACCESS_KEY'] = 'eboniteAccessKey'
-    os.environ['S3_SECRET_KEY'] = 'eboniteSecretKey'
+def api(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):  # noqa: F811
+    os.environ['S3_ACCESS_KEY'] = ACCESS_KEY
+    os.environ['S3_SECRET_KEY'] = SECRET_KEY
 
     with use_local_installation():
         config = dict(
@@ -30,9 +31,10 @@ def api(tmpdir_factory, postgres_server, postgres_meta, s3server, s3_artifact):
         with open(cfg_path, 'w+') as fd:
             json.dump(config, fd)
 
-    api = EboniteAPI(name='test_api', config_path=cfg_path, debug=False, host='127.0.0.1', port='5000')
+    api = EboniteAPI(name=__name__, config_path=cfg_path, debug=False, host='127.0.0.1', port='5000')
     api.app.config['TESTING'] = True
     yield api
+
 
 @pytest.fixture
 def client(api):
@@ -61,3 +63,65 @@ def create_task_1(client, create_project_1):
 def create_task_2(client, create_project_1):
     rv = client.post('/tasks', data=json.dumps({'name': 'task_2', 'project_id': 1}))
     assert rv.status_code == 201
+
+
+@pytest.fixture
+def project_in_db(postgres_meta, s3_artifact):  # noqa: F811
+    proj = Project(name='test_project')
+    proj = postgres_meta.create_project(proj)
+    return proj
+
+
+@pytest.fixture
+def task_in_db(postgres_meta, project_in_db, s3_artifact):  # noqa: F811
+    task = Task(name='test_task', project_id=project_in_db.id)
+    task.bind_artifact_repo(s3_artifact)
+    task = postgres_meta.create_task(task)
+    return task
+
+
+@pytest.fixture
+def model_in_db(postgres_meta, s3_artifact, task_in_db):  # noqa: F811
+    mdl = task_in_db.create_and_push_model(lambda data: data, 'input', 'test_model')
+    return mdl
+
+
+@pytest.fixture
+def env_in_db(postgres_meta):  # noqa: F811
+    test_env = RuntimeEnvironment('test_env', params=TestParams(123))
+    test_env = postgres_meta.create_environment(test_env)
+    return test_env
+
+
+class TestParams(Image.Params, RuntimeEnvironment.Params, RuntimeInstance.Params):
+    def __init__(self, key: int):
+        self.key = key
+
+
+class TestBuildable(Buildable):
+    pass
+
+
+@pytest.fixture
+def image_in_db(postgres_meta, task_in_db, env_in_db):  # noqa: F811
+    test_image = Image('test_image', params=TestParams(123), source=TestBuildable())
+    test_image.task = task_in_db
+    test_image.environment = env_in_db
+    test_image = postgres_meta.create_image(test_image)
+    return test_image
+
+
+@pytest.fixture
+def instance_in_db(postgres_meta, image_in_db, env_in_db):  # noqa: F811
+    instance = RuntimeInstance('test_instance', params=TestParams(123))
+    instance.image = image_in_db
+    instance.environment = env_in_db
+    instance = postgres_meta.create_instance(instance)
+    return instance
+
+
+@pytest.fixture
+def pipeline_in_db(postgres_meta, model_in_db):  # noqa: F811
+    pipeline = model_in_db.as_pipeline()
+    pipeline = postgres_meta.create_pipeline(pipeline)
+    return pipeline

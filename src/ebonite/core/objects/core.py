@@ -960,6 +960,10 @@ class Buildable(EboniteParams, WithMetadataRepository):
     def task(self) -> Optional[Task]:
         """property to get task (can be None, whick forces to provide task manually)"""
 
+    @abstractmethod
+    def validate(self):
+        """Validates that all objects in Buildable exist"""
+
 
 class RuntimeEnvironment(EboniteObject):
     """Represents and environment where you can build and deploy your services

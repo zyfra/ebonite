@@ -9,6 +9,7 @@ from ebonite.core.objects.artifacts import _RelativePathWrapper, CompositeArtifa
 from ebonite.core.objects import ArtifactCollection, Model, Requirements, Task
 from pyjackson import dumps
 from pyjackson.decorators import cached_property
+from ebonite.core.errors import NonExistingModelError
 
 from ebonite.core.objects.core import WithMetadataRepository
 from ebonite.runtime.interface.ml_model import MODEL_BIN_PATH, MODEL_META_PATH
@@ -112,6 +113,10 @@ class ModelBuildable(BuildableWithServer, WithMetadataRepository):
 
     def get_provider(self) -> MLModelProvider:
         return MLModelProvider(self.model, self.server, self.debug)
+
+    def validate(self):
+        if self.model is None:
+            raise NonExistingModelError(self.model_id)
 
 
 class BuildableModelHook(BuildableHook, TypeHookMixin):

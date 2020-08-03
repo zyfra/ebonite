@@ -2,6 +2,7 @@ docker==4.2.0
 requests==2.23.0
 dill==0.3.1.1
 isort==4.3.21
-pyjackson==0.0.25
+pyjackson==0.0.26
 everett==1.0.2
 Jinja2==2.11.1
+pydantic==1.4

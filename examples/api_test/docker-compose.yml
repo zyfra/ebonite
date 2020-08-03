@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ebonite
+    command: ["postgres", "-c", "log_statement=all"]
 
   artifact_store:
     image: minio/minio:latest

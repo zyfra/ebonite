@@ -16,6 +16,7 @@ from ebonite.core.objects.core import _with_meta
 from ebonite.runtime.interface.pipeline import MODEL_BIN_PATH, PIPELINE_META_PATH, PipelineLoader, PipelineMeta
 from ebonite.runtime.server import Server
 from ebonite.utils.module import get_object_requirements
+from ebonite.core.errors import NonExistingPipelineError
 
 LOADER_PATH = 'loader'
 SERVER_PATH = 'server'
@@ -128,6 +129,10 @@ class PipelineBuildable(BuildableWithServer):
 
     def get_provider(self) -> PipelineProvider:
         return PipelineProvider(self.pipeline, self.server, self.debug)
+
+    def validate(self):
+        if self.pipeline is None:
+            raise NonExistingPipelineError(self.pipeline_id)
 
 
 class BuildableModelHook(BuildableHook, TypeHookMixin):
