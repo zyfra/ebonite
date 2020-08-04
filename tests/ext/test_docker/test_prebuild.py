@@ -3,6 +3,7 @@ import os
 import pytest
 
 from ebonite.ext.docker.prebuild import _generate_dockerfile, prebuild_image
+from tests.conftest import has_docker
 
 
 @pytest.fixture
@@ -40,6 +41,7 @@ def test_prebuild__generate_image(prebuild_contextdir):
         assert fd.readlines()[0] == 'FROM python:3.2.2-slim\n'
 
 
+@pytest.mark.skipif(not has_docker(), reason='no docker installed')
 def test_prebuild__prebuild_image(prebuild_contextdir, caplog):
     prebuild_image(prebuild_contextdir, 'zyfraai/ebaklya:{}', '3.7.1', push=False)
     assert caplog.records[0].getMessage().startswith('Building image zyfraai/ebaklya:3.7.1 on')
