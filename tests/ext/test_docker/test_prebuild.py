@@ -3,7 +3,7 @@ import os
 import pytest
 
 from ebonite.ext.docker.prebuild import _generate_dockerfile, prebuild_image
-from tests.conftest import has_docker
+from tests.conftest import docker_test
 
 
 @pytest.fixture
@@ -34,6 +34,7 @@ RUN pip install flask==1.1.2 flasgger==0.9.3
     yield contextdir
 
 
+@docker_test
 def test_prebuild__generate_image(prebuild_contextdir):
     _generate_dockerfile(prebuild_contextdir, '3.2.2')
     assert 'Dockerfile' in os.listdir(prebuild_contextdir)
@@ -41,7 +42,7 @@ def test_prebuild__generate_image(prebuild_contextdir):
         assert fd.readlines()[0] == 'FROM python:3.2.2-slim\n'
 
 
-@pytest.mark.skipif(not has_docker(), reason='no docker installed')
+@docker_test
 def test_prebuild__prebuild_image(prebuild_contextdir, caplog):
     prebuild_image(prebuild_contextdir, 'zyfraai/ebaklya:{}', '3.7.1', push=False)
     assert caplog.records[0].getMessage().startswith('Building image zyfraai/ebaklya:3.7.1 on')
@@ -51,3 +52,7 @@ def test_prebuild__prebuild_image(prebuild_contextdir, caplog):
     prebuild_image(prebuild_contextdir, 'nonexistent/ebaklya:{}', '3.2.2', push=False)
     assert caplog.records[0].getMessage().startswith('Building image nonexistent/ebaklya:3.2.2 on')
     assert caplog.records[1].getMessage().startswith('Failed to build image nonexistent/ebaklya:3.2.2')
+
+    caplog.clear()
+    prebuild_image(prebuild_contextdir, 'zyfraai/flask:{}', '3.7.7', push=False)
+    assert caplog.records[0].getMessage().startswith('Skipped building image')
