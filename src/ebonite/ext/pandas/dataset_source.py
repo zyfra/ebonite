@@ -215,13 +215,3 @@ class PandasWriter(DatasetWriter):
     def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
         blob = LazyBlob(lambda: self.format.write(dataset.data))
         return PandasReader(self.format, dataset.dataset_type), ArtifactCollection.from_blobs({PANDAS_DATA_FILE: blob})
-
-# class PandasJdbcDatasetSource(_PandasDatasetSource):
-#     def __init__(self, dataset_type: DatasetType, table: str, connection: str,
-#                  kwargs: Dict[str, Any] = None):
-#         super().__init__(dataset_type, kwargs)
-#         self.connection = connection
-#         self.table = table
-#
-#     def _read(self):
-#         return pd.read_sql_table(self.table, self.connection, **self.kwargs)

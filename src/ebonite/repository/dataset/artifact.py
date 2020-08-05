@@ -1,3 +1,4 @@
+import pickle
 from abc import abstractmethod
 from typing import Tuple
 
@@ -5,6 +6,7 @@ from pyjackson.decorators import type_field
 
 from ebonite.core.errors import ArtifactExistsError, DatasetExistsError, NoSuchArtifactError, NoSuchDataset
 from ebonite.core.objects import ArtifactCollection, DatasetType
+from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.base import EboniteParams
 from ebonite.core.objects.dataset_source import Dataset, DatasetSource
 from ebonite.repository import ArtifactRepository
@@ -33,6 +35,50 @@ class DatasetWriter(EboniteParams):
         :param dataset: dataset to write
         :returns: tuple of DatasetReader and ArtifactCollection.
         DatasetReader must produce the same dataset if used with same artifacts"""
+
+
+class OneFileDatasetReader(DatasetReader):
+    def __init__(self, dataset_type: DatasetType):
+        self.dataset_type = dataset_type
+
+    def read(self, artifacts: ArtifactCollection) -> Dataset:
+        payload = artifacts.bytes_dict()[OneFileDatasetWriter.FILENAME]
+        return Dataset(self.convert(payload), self.dataset_type)
+
+    @abstractmethod
+    def convert(self, payload: bytes):
+        """"""  # TODO
+
+
+class OneFileDatasetWriter(DatasetWriter):
+    FILENAME = 'data'
+
+    def convert(self, instance) -> bytes:
+        """"""
+
+    def write(self, dataset: Dataset) -> Tuple[DatasetReader, ArtifactCollection]:
+        return OneFileDatasetReader(dataset.dataset_type), \
+               Blobs.from_blobs({self.FILENAME: InMemoryBlob(self.convert(dataset.data))})
+
+
+class PrimitiveDatasetReader(OneFileDatasetReader):
+    def convert(self, payload: bytes):
+        return self.dataset_type.to_type(payload)
+
+
+class PrimitiveDatasetWriter(OneFileDatasetWriter):
+    def convert(self, instance) -> bytes:
+        return str(instance).encode('utf8')
+
+
+class PickleReader(OneFileDatasetReader):
+    def convert(self, payload: bytes):
+        return pickle.loads(payload)
+
+
+class PickleWriter(OneFileDatasetWriter):
+    def convert(self, instance) -> bytes:
+        return pickle.dumps(instance)
 
 
 class ArtifactDatasetRepository(DatasetRepository):

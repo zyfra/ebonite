@@ -166,8 +166,6 @@ def artifact():
 
 
 class DatasetTypeDummy(DatasetType):
-    type = 'mock_dataset_type'
-
     def __init__(self, name: str):
         self.name = name
 

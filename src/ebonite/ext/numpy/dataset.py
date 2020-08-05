@@ -58,6 +58,10 @@ class NumpyNumberDatasetType(LibDatasetTypeMixin):
     def actual_type(self):
         return np_type_from_string(self.dtype)
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
+
 
 class NumpyNumberHook(CanIsAMustHookMixin, DatasetHook):
     """
