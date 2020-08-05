@@ -1,8 +1,8 @@
 from abc import abstractmethod
 
-from ebonite.core.analyzer import Hook, TypeHookMixin, analyzer_class
+from ebonite.core.analyzer import Hook, analyzer_class
 from ebonite.core.analyzer.base import LibHookMixin
-from ebonite.core.objects.metric import LibFunctionMetric, Metric
+from ebonite.core.objects.metric import CallableMetric, CallableMetricWrapper, LibFunctionMetric, Metric
 
 
 class MetricHook(Hook):
@@ -37,5 +37,12 @@ class LibFunctionMixin(MetricHook, LibHookMixin):
         return LibFunctionMetric(f'{obj.__module__}.{obj.__name__}', self.get_args(obj), invert_input=self.invert)
 
 
-class CallableMetricHook(MetricHook, TypeHookMixin):
-    valid_types = []  # TODO
+class CallableMetricHook(MetricHook):
+    def process(self, obj, **kwargs) -> Metric:
+        return CallableMetric(CallableMetricWrapper.from_callable(obj))
+
+    def can_process(self, obj) -> bool:
+        return callable(obj)
+
+    def must_process(self, obj) -> bool:
+        return False
