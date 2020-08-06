@@ -3,9 +3,12 @@ from pyjackson.core import Field, Signature
 
 import ebonite
 from ebonite.core.objects import DatasetType
+from ebonite.core.objects.core import Pipeline, PipelineStep
+from ebonite.ext.numpy.dataset import NumpyNdarrayDatasetType
 from ebonite.runtime import Interface
 from ebonite.runtime.interface import expose
 from ebonite.runtime.interface.base import InterfaceDescriptor, InterfaceMethodDescriptor
+from ebonite.runtime.interface.pipeline import pipeline_interface
 
 
 class Container(DatasetType):
@@ -50,3 +53,16 @@ def test_interface_descriptor__to_dict(interface: Interface):
             },
             'out_type': {'field': 5, 'type': 'test_container'}
         }]}
+
+
+@pytest.fixture
+def pipeline():
+    return Pipeline('Test Pipeline', [PipelineStep('a', 'b'), PipelineStep('c', 'd')], NumpyNdarrayDatasetType,
+                    NumpyNdarrayDatasetType)
+
+
+def test_pipeline_interface(pipeline):
+    iface = pipeline_interface(pipeline)
+    assert 'run' in iface.exposed_methods()
+    assert iface.exposed_method_args('run')[0] == Field('data', NumpyNdarrayDatasetType, False)
+    assert iface.exposed_method_returns('run') == Field(None, NumpyNdarrayDatasetType, False)

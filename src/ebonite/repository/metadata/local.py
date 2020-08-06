@@ -352,6 +352,10 @@ class LocalMetadataRepository(MetadataRepository):
         self.data.add_task(task_copy)
         for model in task_copy.models.values():
             self.save_model(model)
+        for pipeline in task_copy.pipelines.values():
+            self.save_pipeline(pipeline)
+        for image in task_copy.images.values():
+            self.save_image(image)
         self.save()
         return task
 
