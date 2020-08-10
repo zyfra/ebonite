@@ -250,3 +250,13 @@ def test_bytes_type():
     assert bdt.serialize(b) == b
     assert bdt.deserialize(b) == b
     assert bdt.requirements.modules == []
+
+
+# def test_all_have_writers():
+#     for name, cls in DatasetType._subtypes.items():
+#         if cls == DatasetType \
+#                 or 'mixin' in name.lower() \
+#                 or name.startswith('tests.') \
+#                 or name.split('.')[-1].startswith('_'):
+#             continue
+#         assert cls.get_writer != DatasetType.get_writer, f'{name} does not define writer'

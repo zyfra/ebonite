@@ -86,6 +86,10 @@ class PrimitiveDatasetType(DatasetType):
     def requirements(self) -> Requirements:
         return Requirements()
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PrimitiveDatasetWriter
+        return PrimitiveDatasetWriter()
+
 
 class ListDatasetType(DatasetType, SizedTypedListType):
     """
@@ -108,6 +112,10 @@ class ListDatasetType(DatasetType, SizedTypedListType):
     @property
     def requirements(self) -> Requirements:
         return self.dtype.requirements
+
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
 
 
 class _TupleLikeDatasetType(DatasetType):
@@ -133,6 +141,10 @@ class _TupleLikeDatasetType(DatasetType):
     @property
     def requirements(self) -> Requirements:
         return sum([i.requirements for i in self.items], Requirements())
+
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
 
 
 def _check_type_and_size(obj, dtype, size, exc_type):
@@ -189,6 +201,10 @@ class DictDatasetType(DatasetType):
     def requirements(self) -> Requirements:
         return sum([i.requirements for i in self.item_types.values()], Requirements())
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
+
 
 class BytesDatasetType(DatasetType):
     """
@@ -212,3 +228,7 @@ class BytesDatasetType(DatasetType):
     @property
     def requirements(self) -> Requirements:
         return Requirements()
+
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()

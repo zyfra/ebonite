@@ -48,3 +48,13 @@ def df_type(data):
 @pytest.fixture
 def df_type2(data2):
     return DatasetAnalyzer.analyze(data2)
+
+
+@pytest.fixture
+def series_data(data2):
+    return data2.iloc[0]
+
+
+@pytest.fixture
+def series_df_type(series_data):
+    return DatasetAnalyzer.analyze(series_data)
