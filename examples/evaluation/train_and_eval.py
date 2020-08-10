@@ -22,6 +22,10 @@ def truth(data: pd.DataFrame):
     return np.array([r[0] for _, r in data.iterrows()])
 
 
+def my_custom_metric(y_true, y_score):
+    return y_score.sum() / y_true.sum() * 100.
+
+
 def main():
     ebnt = ebonite.Ebonite.local(clear=True)
 
@@ -34,7 +38,8 @@ def main():
     # here we postpone setting task input and output types for easy task creation
     task = ebnt.get_or_create_task('my_project', 'regression_is_my_profession')
     task.add_metric('auc', roc_auc_score)
-    task.add_evaluation('train', data, target, 'auc')
+    task.add_metric('custom', my_custom_metric)
+    task.add_evaluation('train', data, target, ['auc', 'custom'])
 
     pprint(task.evaluation_sets)
     pprint(task.datasets)
@@ -50,7 +55,7 @@ def main():
     # maybe save result to models? also need different ways to evaluate "not all"
     result = task.evaluate_all()
 
-    print(result['train'].scores)
+    print(result)
     ebnt._bind(task)
     task.save()
     pprint(serialize(task))
