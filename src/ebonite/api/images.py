@@ -1,22 +1,16 @@
 from typing import Tuple, Union
 
-import pyjackson as pj
+from pyjackson import deserialize, serialize
 from flask import Blueprint, Response, jsonify, request
-from pyjackson.pydantic_ext import PyjacksonModel
 
 from ebonite.api.errors import ObjectWithIdDoesNotExist
-from ebonite.api.helpers import BuildableValidator, TaskIdValidator
+from ebonite.api.helpers import ImageUpdateValidator, TaskIdValidator, BuildableValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import (ExistingImageError, ImageWithInstancesError, NonExistingModelError,
-                                 NonExistingPipelineError)
+                                 NonExistingPipelineError, NonExistingImageError)
 from ebonite.core.objects import Image
 from ebonite.core.objects.core import Buildable
-
-
-class UpdateImageBody(PyjacksonModel):
-    __type__ = Image
-    __include__ = ['id', 'name', 'task_id']
-    __force_required__ = ['id', 'task_id']
+from ebonite.ext.docker.base import DockerRegistry
 
 
 def images_blueprint(ebonite: Ebonite) -> Blueprint:
@@ -42,7 +36,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
         if task is not None:
-            return jsonify([pj.serialize(x) for x in ebonite.get_images(task)]), 200
+            return jsonify([serialize(x) for x in ebonite.get_images(task)]), 200
         else:
             raise ObjectWithIdDoesNotExist('Task', task_id)
 
@@ -64,7 +58,7 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         """
         image = ebonite.meta_repo.get_image_by_id(id)
         if image is not None:
-            return jsonify(pj.serialize(image)), 200
+            return jsonify(serialize(image)), 200
         else:
             raise ObjectWithIdDoesNotExist('Image', id)
 
@@ -87,12 +81,13 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
                 buildable:
                   schema:
                     properties:
-                      object_type:
+                      type:
                         type: string
                         description: model or pipeline
-                      object_id:
+                      model_id:
                         type: integer
                         description: id of buildable object
+
                 builder_args:
                   description: dictionary with arguments for image build
           - name: skip_build
@@ -112,28 +107,59 @@ def images_blueprint(ebonite: Ebonite) -> Blueprint:
         skip_build = False if not request.args.get('skip_build') else bool(int(request.args.get('skip_build')))
         body = request.get_json(force=True)
         BuildableValidator(**body['buildable'])
-        buildable = pj.deserialize(body.pop('buildable'), Buildable)
+        buildable = deserialize(body.pop('buildable'), Buildable)
         builder_args = None
         builder_args = body.pop('builder_args', builder_args)
         try:
             image = ebonite.create_image(buildable, name=body['name'], builder_args=builder_args, skip_build=skip_build)
-            return jsonify(pj.serialize(image)), 201
+            return jsonify(serialize(image)), 201
         except ExistingImageError:
             return jsonify({'errormsg': f'Image with name {body["name"]} already exists'}), 400
         except (ValueError, TypeError, NonExistingPipelineError, NonExistingModelError) as e:
             return jsonify({'errormsg': str(e)}), 404
 
-    # @blueprint.route('/<int:id>', methods=['PATCH'])
-    # def update_image(id: int):
-        # TODO: It's bad. Maybe recreate image when trying to update meta image?
-        # body = request.get_json(force=True)
-        # body['id'] = id
-        # image = UpdateImageBody.from_data(body)
-        # try:
-        #     ebonite.meta_repo.update_image(image)
-        #     return jsonify({}), 204
-        # except NonExistingImageError:
-        #     return jsonify({'errormsg': f'Project with id {id} does not exist'}), 404
+    @blueprint.route('/<int:id>', methods=['PATCH'])
+    def update_image(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
+        """
+        Updates image in repository.
+        It does not recreate image, just updates it's representation in metadata repository
+        ---
+        parameters:
+         - name: id
+           in: path
+           required: true
+           type: integer
+         - name: body
+           in: body
+           required: true
+           schema:
+             required:
+               - task_id
+
+
+        """
+        body = request.get_json(force=True)
+        body['id'] = id
+        ImageUpdateValidator(**body)
+        image = ebonite.meta_repo.get_image_by_id(id)
+        if image is None:
+            raise ObjectWithIdDoesNotExist('Image', id)
+
+        buildable = body.pop('buildable', None)
+        params = body.pop('params', None)
+        if buildable:
+            buildable = deserialize(buildable, Buildable)
+            body['source'] = buildable
+        if params:
+            registry = params.pop('registry', None)
+            params = deserialize(params, Image.Params)
+            if registry:
+                registry = deserialize(registry, DockerRegistry)
+                params.registry = registry
+            body['params'] = params
+        image = image.update(body)
+        ebonite.meta_repo.update_image(image)
+        return '', 204
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_image(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:

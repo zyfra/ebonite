@@ -1,14 +1,15 @@
 from typing import Tuple, Union
 
-import pyjackson as pj
+from pyjackson import serialize, deserialize
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
 from ebonite.api.errors import ObjectWithIdDoesNotExist
-from ebonite.api.helpers import EnvironmentIdValidator, ImageIdValidator
+from ebonite.api.helpers import EnvironmentIdValidator, ImageIdValidator, InstanceUpdateValidator
 from ebonite.client.base import Ebonite
 from ebonite.core.errors import ExistingInstanceError
 from ebonite.core.objects import RuntimeInstance
+from ebonite.ext.docker.base import DockerImage, DockerRegistry
 
 
 class RunInstanceBody(PyjacksonModel):
@@ -59,7 +60,7 @@ def instances_blueprint(ebonite: Ebonite):
             image = ebonite.meta_repo.get_image_by_id(image_id)
         try:
             instances = ebonite.get_instances(image=image, environment=env)
-            return jsonify([pj.serialize(x) for x in instances]), 200
+            return jsonify([serialize(x) for x in instances]), 200
         except ValueError as e:
             return jsonify({'errormsg': str(e)}), 404
 
@@ -81,7 +82,7 @@ def instances_blueprint(ebonite: Ebonite):
         """
         instance = ebonite.meta_repo.get_instance_by_id(id)
         if instance is not None:
-            return jsonify(pj.serialize(instance)), 200
+            return jsonify(serialize(instance)), 200
         else:
             raise ObjectWithIdDoesNotExist('Instance', id)
 
@@ -148,24 +149,40 @@ def instances_blueprint(ebonite: Ebonite):
         try:
             instance = ebonite.create_instance(name=instance.name, image=image,
                                                environment=env, run=run, runner_kwargs=runner_kwargs, **instance_kwargs)
-            return jsonify(pj.serialize(instance)), 201
+            return jsonify(serialize(instance)), 201
         except ExistingInstanceError:
             return jsonify({'errormsg': f'Instance with name {instance.name} '
                                         f'and image {image.name} already exists'}), 400
         except (ValueError, TypeError) as e:
             return jsonify({'errormsg': str(e)}), 404
 
-    # @blueprint.route('/<int:id>', methods=['PATCH'])
-    # def update_instance(id: int) -> Tuple[Response, int]:
-    #     # TODO: Same as with image - to update we need to recreate instance?
-    #     body = request.get_json(force=True)
-    #     body['id'] = id
-    #     instance = UpdateInstanceBiody.from_data(body)
-    #     try:
-    #         ebonite.meta_repo.update_instance(instance)
-    #         return jsonify({}), 204
-    #     except NonExistingInstanceError:
-    #         return jsonify({'errormsg': f'Instance with id {id} does not exist'}), 404
+    @blueprint.route('/<int:id>', methods=['PATCH'])
+    def update_instance(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
+        """
+        Updates image stored in metaddata repository.
+        Won't recreate instance - just updates it's representation in repo.
+        ---
+
+        """
+        instance = ebonite.meta_repo.get_instance_by_id(id)
+        if instance is None:
+            raise ObjectWithIdDoesNotExist('Instance', id)
+        body = request.get_json(force=True)
+        body['id'] = id
+        InstanceUpdateValidator(**body)
+        params = registry = None
+        params = body.pop('params', params)
+        registry = params.pop('registry', registry)
+        if params:
+            params = deserialize(params, RuntimeInstance.Params)
+            if registry:
+                registry = deserialize(registry, DockerRegistry)
+                params.registry = registry
+        body['params'] = params
+        instance = instance.update(body)
+        ebonite.meta_repo.update_instance(instance)
+        return '', 204
+
 
     @blueprint.route('/<int:id>', methods=['DELETE'])
     def delete_instance(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:

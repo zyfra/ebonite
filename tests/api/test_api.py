@@ -375,6 +375,46 @@ def test_images__create_image_val_error(client):
     assert rv.status_code == 422
 
 
+def test_images__update_image_ok(client, image_in_db):
+    rv = client.patch('/images/1', json={'name': 'name',
+                                         'task_id': 1,
+                                         'buildable': {'type': 'ebonite.build.provider.ml_model.ModelBuildable',
+                                                       'server_type': FlaskServer.type, 'model_id': 1},
+                                         'params': {'type': 'ebonite.ext.docker.base.DockerImage',
+                                                    'name': 'image',
+                                                    'tag': 'latest',
+                                                    'registry': {'type': 'ebonite.ext.docker.base.DockerRegistry'}},
+                                         'author': 'ebaklya',
+                                         'environment_id': 1
+                                                    })
+    assert rv.status_code == 204
+
+    rv = client.get('/images/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'name'
+    assert rv.json['author'] == 'ebaklya'
+
+
+def test_images__update__validation_error(client, image_in_db):
+    rv = client.patch('/images/1', json={'name': 'name',
+                                         'task_id': 'asdsadsd',
+                                         'buildable': {'server_type': FlaskServer.type, 'model_id': 1},
+                                         'params': {
+                                                    'name': 'image',
+                                                    'tag': 'latest',
+                                                    'registry': {}},
+                                         'author': 'author',
+                                         'environment_id': 'asdsadad'
+                                                    })
+    assert rv.status_code == 422
+    assert rv.json['errormsg'][0]['loc'] == ['params', 'type']
+    assert rv.json['errormsg'][1]['loc'] == ['params', 'registry', 'type']
+    assert rv.json['errormsg'][2]['loc'] == ['buildable', 'type']
+    assert rv.json['errormsg'][3]['msg'] == 'value is not a valid integer'
+    assert rv.json['errormsg'][4]['msg'] == 'value is not a valid integer'
+    assert len(rv.json['errormsg']) == 5
+
+
 # Instances
 def test_instances__get_instance_ok(client, instance_in_db):
     rv = client.get('/instances/1')
@@ -429,6 +469,47 @@ def test_instances__create_instance_ok(client, model_in_db):
     rv = client.post('/instances?run=0', json={'instance': {'name': 'new_instance', 'image_id': 1}})
     assert rv.status_code == 201
 
+
+def test_instances__update_instance_ok(client, instance_in_db):
+    rv = client.patch('/instances/1', json={'name': 'new_instance',
+                                           'image_id': 1,
+                                           'params':  {
+                                                    'type': 'ebonite.ext.docker.base.DockerContainer',
+                                                    'name': 'container',
+                                                    'container_id': 'abcdefgh123',
+                                                    'port_mapping': {1488: 1488},
+                                                    'params': {'Kappa': 'Pride'}},
+                                           'environment_id': 1,
+                                           'author': 'ebaklya'
+                                           })
+    assert rv.status_code == 204
+
+    rv = client.get('/instances/1')
+    assert rv.status_code == 200
+    assert rv.json['name'] == 'new_instance'
+    assert rv.json['author'] == 'ebaklya'
+
+
+def test_instances__update_instance_val_error(client, instance_in_db):
+    rv = client.patch('/instances/1', json={'name': 'new_instance',
+                                           'params':  {
+                                                    'type': 'ebonite.ext.docker.base.DockerContainer',
+                                                    'container_id': 'abcdefgh123',
+                                                    'port_mapping': 'not_dict',
+                                                    'params': 'rofl'},
+                                           'environment_id': 'asdasd',
+                                           'author': 'ebaklya'
+                                           })
+    print(rv.json)
+    assert rv.status_code == 422
+    assert rv.json['errormsg'][0]['loc'] == ['params', 'name']
+    assert rv.json['errormsg'][1]['loc'] == ['params', 'port_mapping']
+    assert rv.json['errormsg'][2]['loc'] == ['params', 'params']
+    assert rv.json['errormsg'][2]['msg'] == 'value is not a valid dict'
+    assert rv.json['errormsg'][3]['loc'] == ['image_id']
+    assert rv.json['errormsg'][3]['msg'] == 'field required'
+    assert rv.json['errormsg'][4]['loc'] == ['environment_id']
+    assert len(rv.json['errormsg']) == 5
 
 #  Pipelines
 def test_pipelines__get_pipeline_ok(client, pipeline_in_db):

@@ -1,6 +1,6 @@
 from typing import Tuple, Union
 
-import pyjackson as pj
+from pyjackson import serialize, deserialize
 from flask import Blueprint, Response, jsonify, request
 from pyjackson.pydantic_ext import PyjacksonModel
 
@@ -40,7 +40,7 @@ def pipelines_blueprint(ebonite: Ebonite):
         TaskIdValidator(task_id=task_id)
         task = ebonite.meta_repo.get_task_by_id(task_id)
         if task is not None:
-            return jsonify([pj.serialize(x) for x in ebonite.get_pipelines(task)]), 200
+            return jsonify([serialize(x) for x in ebonite.get_pipelines(task)]), 200
         else:
             raise ObjectWithIdDoesNotExist('Task', task_id)
 
@@ -62,12 +62,12 @@ def pipelines_blueprint(ebonite: Ebonite):
         """
         pipeline = ebonite.meta_repo.get_pipeline_by_id(id)
         if pipeline is not None:
-            return jsonify(pj.serialize(pipeline)), 200
+            return jsonify(serialize(pipeline)), 200
         else:
             raise ObjectWithIdDoesNotExist('Pipeline', id)
 
     @blueprint.route('/<int:id>', methods=['PATCH'])
-    def update_pipeline(id: int):
+    def update_pipeline(id: int) -> Union[Tuple[Response, int], Tuple[str, int]]:
         """
         Updates pipeline
         ---
@@ -125,9 +125,9 @@ def pipelines_blueprint(ebonite: Ebonite):
         if body.get('steps') is None:
             body['steps'] = [x.__dict__ for x in old_pipeline.steps]
         if body.get('input_data') is None:
-            body['input_data'] = old_pipeline.input_data.__dict__
+            body['input_data'] = old_pipeline.input_data
         if body.get('output_data') is None:
-            body['output_data'] = old_pipeline.output_data.__dict__
+            body['output_data'] = old_pipeline.output_data
         pipeline = UpdatePipelineModel.from_data(body)
         ebonite.meta_repo.update_pipeline(pipeline)
         return '', 204

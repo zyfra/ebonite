@@ -118,7 +118,7 @@ class WithArtifactRepository:
         return self._art is not None
 
 
-class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
+class EboniteObject(WithMetadataRepository, WithArtifactRepository, EboniteParams):
     """
     Base class for high level ebonite objects.
     These objects can be binded to metadata repository and/or to artifact repository
