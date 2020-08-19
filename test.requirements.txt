@@ -18,6 +18,8 @@ testcontainers==2.6.0
 pytest==5.2.2
 xgboost==1.0.2
 lightgbm==2.3.1
+onnx==1.7.0
+onnxruntime==1.4.0
 
 torch==1.4.0+cpu ; sys_platform != "darwin"
 

@@ -193,7 +193,6 @@ class ModelWrapper(EboniteParams):
         this allows to wrap existing API with your own pre/postprocessing.
         Otherwise, wrapped model object method is going to be called.
         """
-        pass  # pragma: no cover
 
     @staticmethod
     def with_model(f):

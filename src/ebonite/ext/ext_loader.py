@@ -77,7 +77,8 @@ class ExtensionLoader:
         Extension('ebonite.ext.imageio', ['imageio']),
         Extension('ebonite.ext.lightgbm', ['lightgbm'], False),
         Extension('ebonite.ext.xgboost', ['xgboost'], False),
-        Extension('ebonite.ext.docker', ['docker'], False)
+        Extension('ebonite.ext.docker', ['docker'], False),
+        Extension('ebonite.ext.onnx', ['onnx'], False)
     )
 
     _loaded_extensions: Dict[Extension, ModuleType] = {}
