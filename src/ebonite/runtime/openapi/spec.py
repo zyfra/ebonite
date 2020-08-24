@@ -184,7 +184,7 @@ def create_spec(method_name: str, signature: Signature, name: str, docs: str):
 
     summary = f"Calls '{method_name}' method on {name}."
     if docs is not None:
-        summary += f'Method description: {docs}'
+        summary += f' Method description: {docs}'
     return {
         "summary": summary,
         "requestBody": request_body,
