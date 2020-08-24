@@ -6,7 +6,7 @@ from pyjackson import deserialize, serialize
 
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects import ModelWrapper
-from ebonite.ext.onnx.model import ONNXModelWrapper
+from ebonite.ext.onnx.model import ONNXModelWrapper, ONNXInferenceBackend
 
 
 @pytest.fixture
@@ -41,3 +41,35 @@ def test_onnx_io(onnx_wrapper: ModelWrapper, tmpdir, onnx_input):
     assert len(predict) == 1
     tensor = predict[0]
     assert isinstance(tensor, np.ndarray)
+
+
+def test_onnx_backend_subclass():
+    class AbstractSubclass(ONNXInferenceBackend):
+        name = 'abstract'
+        requirements = []
+
+    assert AbstractSubclass.name not in ONNXInferenceBackend.subtypes
+
+    with pytest.raises(AttributeError):
+        class NoName(ONNXInferenceBackend):
+            requirements = []
+
+            def run(self, data):
+                pass
+
+    with pytest.raises(AttributeError):
+        class NoReqs(ONNXInferenceBackend):
+            name = 'aaa'
+
+            def run(self, data):
+                pass
+
+    class Good(ONNXInferenceBackend):
+        name = 'aaa'
+        requirements = []
+
+        def run(self, data):
+            pass
+
+    assert Good.name in ONNXInferenceBackend.subtypes
+    del ONNXInferenceBackend.subtypes[Good.name]
