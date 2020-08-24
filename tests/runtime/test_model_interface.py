@@ -30,7 +30,7 @@ def prediction(data):
 
 @pytest.fixture
 def model():
-    return Model('test model', SklearnModelWrapper(), requirements=Requirements([]))
+    return Model('test model', SklearnModelWrapper(), requirements=Requirements([]), description='aaa')
 
 
 @pytest.fixture
@@ -41,6 +41,7 @@ def pd_model(model: Model, data, prediction):
 
 def test_interface_types(pd_model: Model, data, prediction):
     interface = model_interface(pd_model)
+    assert interface.exposed_method_docs('predict') == pd_model.description
     pred = interface.execute('predict', {'vector': data})
     assert (pred == prediction).all()
 

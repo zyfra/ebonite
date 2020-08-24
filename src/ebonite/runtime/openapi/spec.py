@@ -117,12 +117,14 @@ def type_to_schema(field_type, has_default=False, default=None):
         return make_object(get_class_fields(field_type))
 
 
-def create_spec(method_name: str, signature: Signature):
+def create_spec(method_name: str, signature: Signature, name: str, docs: str):
     """
     Generates OpenAPI schema definition for given method
 
     :param method_name: name of method
     :param signature: types of arguments and type of return value
+    :param name: name of the interface
+    :param docs: docs for method
     :return: dict with OpenAPi schema definition
     """
 
@@ -180,8 +182,11 @@ def create_spec(method_name: str, signature: Signature):
     bad_response = {"description": "incorrect request",
                     "content": {"application/json": {"schema": error_def}}}
 
+    summary = f"Calls '{method_name}' method on {name}."
+    if docs is not None:
+        summary += f'Method description: {docs}'
     return {
-        "summary": f"Calls '{method_name}' method on model",
+        "summary": summary,
         "requestBody": request_body,
         "responses": {
             "200": good_response,

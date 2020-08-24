@@ -157,10 +157,10 @@ def test_type_to_schema__class():
 
 def test_create_spec__no_file():
     field = Field('field', int, False)
-    spec = create_spec('mymethod', Signature([field], field))
+    spec = create_spec('mymethod', Signature([field], field), 'iface_name', 'method_doc')
 
     assert spec == {
-        "summary": "Calls 'mymethod' method on model",
+        "summary": "Calls 'mymethod' method on iface_name. Method description: method_doc",
         'requestBody': {'required': True,
                         "content": {"application/json": {'schema': {
                             'type': 'object',
@@ -184,10 +184,10 @@ def test_create_spec__no_file():
 
 def test_create_spec__with_file():
     field = Field('field', BytesDatasetType(), False)
-    spec = create_spec('mymethod', Signature([field], field))
+    spec = create_spec('mymethod', Signature([field], field), 'iface_name', 'method_doc')
 
     assert spec == {
-        "summary": "Calls 'mymethod' method on model",
+        "summary": "Calls 'mymethod' method on iface_name. Method description: method_doc",
         'requestBody': {'required': True,
                         'content': {'multipart/form-data': {'schema': {
                             'type': 'object',
