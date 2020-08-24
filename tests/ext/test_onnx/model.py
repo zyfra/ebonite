@@ -6,7 +6,7 @@ from pyjackson import deserialize, serialize
 
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.objects import ModelWrapper
-from ebonite.ext.onnx.model import ONNXModelWrapper, ONNXInferenceBackend
+from ebonite.ext.onnx.model import ONNXInferenceBackend, ONNXModelWrapper
 
 
 @pytest.fixture
