@@ -13,7 +13,6 @@ from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, E
 from ebonite.core.objects.core import Model, Pipeline, Project, Task
 from ebonite.repository.metadata import MetadataRepository
 
-
 # from tests.ext.sqlalchemy.conftest import sqlalchemy_meta as meta
 # from tests.repository.metadata.test_local.conftest import local_meta as meta
 # _ = [meta]
