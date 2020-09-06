@@ -13,6 +13,7 @@ from ebonite.core.errors import (ExistingEnvironmentError, ExistingImageError, E
 from ebonite.core.objects.core import Model, Pipeline, Project, Task
 from ebonite.repository.metadata import MetadataRepository
 
+
 # from tests.ext.sqlalchemy.conftest import sqlalchemy_meta as meta
 # from tests.repository.metadata.test_local.conftest import local_meta as meta
 # _ = [meta]
@@ -53,7 +54,10 @@ def update_object_fields(o, *, excepted_fields: List[str] = None):
                 additional_value = datetime.timedelta(additional_value)
             if isinstance(v, list):
                 additional_value = [v[0]]
-            setattr(o, field, v + additional_value)
+            try:
+                setattr(o, field, v + additional_value)
+            except TypeError as e:
+                raise TypeError(f'Field {field}:', e)
     return o
 
 
@@ -391,9 +395,10 @@ def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, 
     pipeline = meta.create_pipeline(pipeline)
     task.add_pipeline(pipeline)
 
-    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id', 'datasets',
+                                                       'metrics', 'evaluation_sets', 'evaluations'])
     pipeline = update_object_fields(pipeline, excepted_fields=['id', 'steps', 'input_data', 'output_data',
-                                                               'models', 'task_id'])
+                                                               'models', 'task_id', 'evaluations'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -420,7 +425,8 @@ def test_update_task_with_images(meta: MetadataRepository, project: Project, tas
     image = meta.create_image(image)
     task.add_image(image)
 
-    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id', 'datasets',
+                                                       'evaluation_sets', 'metrics'])
     image = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
     updated_task = meta.update_task(task)
 
