@@ -190,6 +190,10 @@ class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
     def save(self):
         """Saves object state to metadata repository"""
 
+    @abstractmethod
+    def has_children(self):
+        """Checks if object has existing relationship"""
+
 
 def _with_meta(saved=True):
     """
@@ -318,6 +322,9 @@ class Project(EboniteObject):
     @_with_meta
     def save(self):
         self._meta.save_project(self)
+
+    def has_children(self):
+        return len(self.tasks) > 0
 
     def __repr__(self):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
@@ -568,6 +575,9 @@ class Task(EboniteObject, WithDatasetRepository):
         """Saves task to meta repository and pushes unsaved datasets to dataset repository"""
         self.push_datasets()
         self._meta.save_task(self)
+
+    def has_children(self):
+        return len(self.models) > 0 or len(self.pipelines) > 0 or len(self.images) > 0
 
     def _resolve_dataset(self, dataset: AnyDataset, name: str) -> str:
         """Resolves existing dataset or creates a new one
@@ -1122,6 +1132,9 @@ class Model(_InTask):
             self._art.push_model_artifacts(self)
         self._meta.save_model(self)
 
+    def has_children(self):
+        return False
+
     @_with_meta
     def evaluate_set(self, evalset: Union[str, EvaluationSet],
                      evaluation_name: str = None, method_name: str = None,
@@ -1315,6 +1328,9 @@ class Pipeline(_InTask):
         """Saves this pipeline to metadata repository"""
         self._meta.save_pipeline(self)
 
+    def has_children(self):
+        return False
+
     @_with_meta
     def evaluate_set(self, evalset: Union[str, EvaluationSet],
                      evaluation_name: str = None,
@@ -1447,6 +1463,10 @@ class RuntimeEnvironment(EboniteObject):
     def save(self):
         """Saves this env to metadata repository"""
         self._meta.save_environment(self)
+
+    @_with_meta
+    def has_children(self):
+        return len(self._meta.get_instances(image=None, environment=self)) > 0
 
 
 class _WithEnvironment(EboniteObject):
@@ -1608,6 +1628,9 @@ class Image(_WithBuilder):
     def save(self):
         self._meta.save_image(self)
 
+    def has_children(self):
+        return False
+
 
 class _WithRunner(_WithEnvironment):
     runner = None
@@ -1751,3 +1774,6 @@ class RuntimeInstance(_WithRunner):
     @_with_meta
     def save(self):
         self._meta.save_instance(self)
+
+    def has_children(self):
+        return False

@@ -241,6 +241,12 @@ def test_create_task_without_project(meta: MetadataRepository, task: Task):
         meta.create_task(task)
 
 
+def test_create_task_with_unexisting_project(meta: MetadataRepository):
+    task_with_wrong_project = Task(name='failed_task', project_id=2)
+    with pytest.raises(NonExistingProjectError):
+        meta.create_task(task_with_wrong_project)
+
+
 def test_create_task_source_is_not_changed(meta: MetadataRepository, project: Project, task: Task):
     task.project = meta.create_project(project)
     new_task = meta.create_task(task)
@@ -371,6 +377,61 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     assert model.id in task.models
     assert model == meta.get_model_by_id(model.id)
     assert meta.get_model_by_id(model.id).name == 'Test Model2'
+    assert task.has_meta_repo
+
+
+def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, task: Task, pipeline: Pipeline):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+
+    pipeline.task = task
+    pipeline = meta.create_pipeline(pipeline)
+    task.add_pipeline(pipeline)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'steps', 'input_data', 'output_data',
+                                                               'models', 'task_id'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.pipelines) == 1
+
+    assert pipeline.id in task.pipelines
+    assert pipeline == meta.get_pipeline_by_id(pipeline.id)
+    assert meta.get_pipeline_by_id(pipeline.id).name == 'Test Pipeline2'
+    assert task.has_meta_repo
+
+
+def test_update_task_with_images(meta: MetadataRepository, project: Project, task: Task, image, environment):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+    env = meta.create_environment(environment)
+
+    image.task = task
+    image.environment = env
+    image = meta.create_image(image)
+    task.add_image(image)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id'])
+    image = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.images) == 1
+
+    assert image.id in task.images
+    assert image == meta.get_image_by_id(image.id)
+    assert meta.get_image_by_id(image.id).name == 'Meta Test Image2'
     assert task.has_meta_repo
 
 
@@ -580,6 +641,12 @@ def test_create_existing_model(meta: MetadataRepository, project: Project, task:
     model2.name = model.name
     with pytest.raises(ExistingModelError):
         meta.create_model(model2)
+
+
+def test_create_model_with_unexisting_task(meta: MetadataRepository, model: Model):
+    model.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_model(model)
 
 
 def test_get_models(meta: MetadataRepository, project: Project, task: Task, model: Model):
@@ -811,6 +878,12 @@ def test_create_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
 def test_create_pipeline_without_task(meta: MetadataRepository, pipeline: Pipeline):
     with pytest.raises(PipelineNotInTaskError):
+        meta.create_pipeline(pipeline)
+
+
+def test_create_pipeline_with_unexisting_task(meta: MetadataRepository, pipeline: Pipeline):
+    pipeline.task_id = 3
+    with pytest.raises(NonExistingTaskError):
         meta.create_pipeline(pipeline)
 
 
@@ -1106,6 +1179,12 @@ def test_create_image__no_task(meta: MetadataRepository, image):
 def test_create_image__saved_image(meta: MetadataRepository, created_image):
     with pytest.raises(ExistingImageError):
         meta.create_image(created_image)
+
+
+def test_create_image_with_unexisting_task(meta: MetadataRepository, image):
+    image.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_image(image)
 
 
 def test_update_image__ok(meta: MetadataRepository, created_image):
