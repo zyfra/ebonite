@@ -61,8 +61,7 @@ class Interface(metaclass=InterfaceMetaclass):
         """
 
         self._validate_args(method, args)
-        f = self.executors[method] if method in self.executors else getattr(self, method)
-        return f(**args)
+        return self.get_method(method)(**args)
 
     def _validate_args(self, method: str, args: Dict[str, object]):
         needed_args = self.exposed_method_args(method)
@@ -79,6 +78,16 @@ class Interface(metaclass=InterfaceMetaclass):
 
         return list(self.exposed.keys())
 
+    def get_method(self, method_name: str) -> callable:
+        """Returns callable exposed method object with given name
+
+        :param method_name: method name
+        """
+        try:
+            return self.executors[method_name] if method_name in self.executors else getattr(self, method_name)
+        except AttributeError:
+            raise ExecutionError(f'Interface {self} does not have method "{method_name}"')
+
     def exposed_method_signature(self, method_name: str) -> Signature:
         """
         Gets signature of given method
@@ -91,6 +100,14 @@ class Interface(metaclass=InterfaceMetaclass):
             raise ExecutionError('Interface {} does not have method "{}"'.format(self, method_name))
 
         return self.exposed[method_name]
+
+    def exposed_method_docs(self, method_name: str) -> str:
+        """Gets docstring for given method
+
+        :param method_name: name of the method
+        :return: docstring
+        """
+        return getattr(self.get_method(method_name), '__doc__', None)
 
     def exposed_method_args(self, method_name: str) -> List[Field]:
         """

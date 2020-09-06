@@ -27,7 +27,8 @@ def main():
     #  create model named 'mymodel' from sklearn model object and pandas data sample
     #  then push it to repositories. this will create .ebonite dir with metadata.json and artifacts dir
     #  metadata will contain everything ebonite knows about this model and artifacts will contain model.pkl binary
-    ebnt.create_model('mymodel', reg, data, project_name='my_project', task_name='regression_is_my_profession')
+    ebnt.create_model(reg, data, model_name='mymodel',
+                      project_name='my_project', task_name='regression_is_my_profession')
 
 
 if __name__ == '__main__':
