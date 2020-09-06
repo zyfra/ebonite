@@ -8,8 +8,10 @@ from sqlalchemy.orm import relationship
 
 from ebonite.core.objects import DatasetType
 from ebonite.core.objects.artifacts import ArtifactCollection
-from ebonite.core.objects.core import (Buildable, Image, Model, Pipeline, PipelineStep, Project, RuntimeEnvironment,
-                                       RuntimeInstance, Task)
+from ebonite.core.objects.core import (Buildable, EvaluationResults, EvaluationSet, Image, Model, Pipeline,
+                                       PipelineStep, Project, RuntimeEnvironment, RuntimeInstance, Task)
+from ebonite.core.objects.dataset_source import DatasetSource
+from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import Requirements
 
 SQL_OBJECT_FIELD = '_sqlalchemy_object'
@@ -104,6 +106,10 @@ class STask(Base, Attaching):
     pipelines: Iterable['SPipeline'] = relationship("SPipeline", back_populates='task')
     images: Iterable['SImage'] = relationship("SImage", back_populates='task')
 
+    datasets = Column(Text)
+    metrics = Column(Text)
+    evaluation_sets = Column(Text)
+
     __table_args__ = (UniqueConstraint('name', 'project_id', name='tasks_name_and_ref'),)
 
     def to_obj(self) -> Task:
@@ -111,7 +117,10 @@ class STask(Base, Attaching):
                     name=self.name,
                     author=self.author,
                     creation_date=self.creation_date,
-                    project_id=self.project_id)
+                    project_id=self.project_id,
+                    datasets=safe_loads(self.datasets, Dict[str, DatasetSource]),
+                    metrics=safe_loads(self.metrics, Dict[str, Metric]),
+                    evaluation_sets=safe_loads(self.evaluation_sets, Dict[str, EvaluationSet]))
         for model in self.models:
             task._models.add(model.to_obj())
 
@@ -131,7 +140,10 @@ class STask(Base, Attaching):
                     project_id=task.project_id,
                     models=[SModel.from_obj(m) for m in task.models.values()],
                     images=[SImage.from_obj(i) for i in task.images.values()],
-                    pipelines=[SPipeline.from_obj(p) for p in task.pipelines.values()])
+                    pipelines=[SPipeline.from_obj(p) for p in task.pipelines.values()],
+                    datasets=dumps(task.datasets),
+                    metrics=dumps(task.metrics),
+                    evaluation_sets=dumps(task.evaluation_sets))
 
 
 class SModel(Base, Attaching):
@@ -151,6 +163,7 @@ class SModel(Base, Attaching):
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="models")
 
+    evaluations = Column(Text)
     __table_args__ = (UniqueConstraint('name', 'task_id', name='models_name_and_ref'),)
 
     def to_obj(self) -> Model:
@@ -163,7 +176,8 @@ class SModel(Base, Attaching):
                       description=self.description,
                       params=safe_loads(self.params, Dict[str, Any]),
                       id=self.id,
-                      task_id=self.task_id)
+                      task_id=self.task_id,
+                      evaluations=safe_loads(self.evaluations, Dict[str, EvaluationResults]))
         return self.attach(model)
 
     @classmethod
@@ -177,7 +191,8 @@ class SModel(Base, Attaching):
                     requirements=dumps(model.requirements),
                     description=model.description,
                     params=dumps(model.params),
-                    task_id=model.task_id)
+                    task_id=model.task_id,
+                    evaluations=dumps(model.evaluations))
 
 
 class SPipeline(Base, Attaching):
@@ -196,6 +211,7 @@ class SPipeline(Base, Attaching):
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     task = relationship("STask", back_populates="pipelines")
 
+    evaluations = Column(Text)
     __table_args__ = (UniqueConstraint('name', 'task_id', name='pipelines_name_and_ref'),)
 
     def to_obj(self) -> Pipeline:
@@ -206,7 +222,8 @@ class SPipeline(Base, Attaching):
                             author=self.author,
                             creation_date=self.creation_date,
                             id=self.id,
-                            task_id=self.task_id)
+                            task_id=self.task_id,
+                            evaluations=safe_loads(self.evaluations, EvaluationResults))
         return self.attach(pipeline)
 
     @classmethod
@@ -218,7 +235,8 @@ class SPipeline(Base, Attaching):
                     steps=dumps(pipeline.steps),
                     input_data=dumps(pipeline.input_data),
                     output_data=dumps(pipeline.output_data),
-                    task_id=pipeline.task_id)
+                    task_id=pipeline.task_id,
+                    evaluations=dumps(pipeline.evaluations))
 
 
 class SImage(Base, Attaching):

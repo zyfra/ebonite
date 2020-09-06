@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pandas as pd
 import pytest
@@ -11,34 +11,7 @@ from ebonite.core.objects import DatasetType
 from ebonite.ext.pandas import DataFrameType
 from ebonite.ext.pandas.dataset import (pd_type_from_string, python_type_from_pd_string_repr, python_type_from_pd_type,
                                         string_repr_from_pd_type)
-
-PD_DATA_FRAME = pd.DataFrame([
-    {'int': 1, 'str': 'a', 'float': .1, 'dt': datetime.now(), 'bool': True, 'dt_tz': datetime.now(timezone.utc),
-     'period': pd.Period()},
-    {'int': 2, 'str': 'b', 'float': .2, 'dt': datetime.now(), 'bool': False, 'dt_tz': datetime.now(timezone.utc),
-     'period': pd.Period()}
-])
-
-
-@pytest.fixture
-def data():
-    return pd.DataFrame([{'a': 1, 'b': 3}, {'a': 2, 'b': 4}])
-
-
-@pytest.fixture
-def data2():
-    return PD_DATA_FRAME
-
-
-@pytest.fixture
-def df_type(data):
-    return DatasetAnalyzer.analyze(data)
-
-
-@pytest.fixture
-def df_type2(data2):
-    return DatasetAnalyzer.analyze(data2)
-
+from tests.ext.test_pandas.conftest import PD_DATA_FRAME, PD_DATA_FRAME_INDEX, PD_DATA_FRAME_MULTIINDEX, pandas_assert
 
 for_all_dtypes = pytest.mark.parametrize('dtype', PD_DATA_FRAME.dtypes, ids=[str(d) for d in PD_DATA_FRAME.dtypes])
 
@@ -127,13 +100,28 @@ def test_datetime():
     assert data2 is not data
 
 
-def test_all(data2):
-    df_type = DatasetAnalyzer.analyze(data2)
+@pytest.mark.parametrize('df', [PD_DATA_FRAME, PD_DATA_FRAME_INDEX, PD_DATA_FRAME_MULTIINDEX])
+def test_all(df):
+    df_type = DatasetAnalyzer.analyze(df)
 
-    obj = serialize(data2, df_type)
+    obj = serialize(df, df_type)
     payload = json.dumps(obj)
     loaded = json.loads(payload)
     data = deserialize(loaded, df_type)
 
-    assert data2.equals(data)
-    assert data2 is not data
+    assert df is not data
+    pandas_assert(data, df)
+
+
+@pytest.mark.parametrize('df', [PD_DATA_FRAME, PD_DATA_FRAME_INDEX, PD_DATA_FRAME_MULTIINDEX])
+def test_all_filtered(df):
+    df = df[~df['bool']]
+    df_type = DatasetAnalyzer.analyze(df)
+
+    obj = serialize(df, df_type)
+    payload = json.dumps(obj)
+    loaded = json.loads(payload)
+    data = deserialize(loaded, df_type)
+
+    assert df is not data
+    pandas_assert(data, df)

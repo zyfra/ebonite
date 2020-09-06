@@ -1,8 +1,8 @@
 import contextlib
 import os
 import traceback
-import typing
 from itertools import chain
+from typing import Any, Callable, Dict, Optional, Type
 from unittest.mock import MagicMock, _CallList
 
 import pandas as pd
@@ -13,10 +13,12 @@ from sklearn.linear_model import LogisticRegression
 
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
 from ebonite.core.objects.core import Model
+from ebonite.core.objects.dataset_source import Dataset
 from ebonite.core.objects.dataset_type import DatasetType
 from ebonite.core.objects.wrapper import FilesContextManager, ModelIO, ModelWrapper
 from ebonite.ext.docker.utils import is_docker_running
 from ebonite.repository.artifact.local import LocalArtifactRepository
+from ebonite.repository.dataset.artifact import DatasetReader, DatasetWriter
 
 
 class _CallList2(_CallList):
@@ -122,7 +124,7 @@ class DummyModelWrapper(ModelWrapper):
     def __init__(self):
         super().__init__(DummyModelIO())
 
-    def _exposed_methods_mapping(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _exposed_methods_mapping(self) -> Dict[str, Optional[str]]:
         return {
             'predict': '_predict'
         }
@@ -164,8 +166,6 @@ def artifact():
 
 
 class DatasetTypeDummy(DatasetType):
-    type = 'mock_dataset_type'
-
     def __init__(self, name: str):
         self.name = name
 
@@ -216,3 +216,24 @@ def docker_test(f):
     mark = pytest.mark.docker
     skip = pytest.mark.skipif(not has_docker(), reason='docker is unavailable or skipped')
     return mark(skip(f))
+
+
+def dataset_write_read_check(dataset: Dataset, writer: DatasetWriter = None, reader_type: Type[DatasetReader] = None,
+                             custom_eq: Callable[[Any, Any], bool] = None,
+                             custom_assert: Callable[[Any, Any], Any] = None):
+    writer = writer or dataset.get_writer()
+
+    reader, artifacts = writer.write(dataset)
+    if reader_type is not None:
+        assert isinstance(reader, reader_type)
+
+    new = reader.read(artifacts)
+
+    assert dataset.dataset_type == new.dataset_type
+    if custom_assert is not None:
+        custom_assert(new.data, dataset.data)
+    else:
+        if custom_eq is not None:
+            assert custom_eq(new.data, dataset.data)
+        else:
+            assert new.data == dataset.data

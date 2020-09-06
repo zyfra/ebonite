@@ -3,9 +3,10 @@ from typing import Dict
 
 import pytest
 
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, InMemoryBlob
 from ebonite.core.objects.core import Model
-from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
+from ebonite.repository.artifact import ArtifactRepository
 
 # from tests.repository.artifact.test_local.conftest import local_artifact as repo_fixture
 # from tests.ext.s3.conftest import s3_artifact as repo_fixture
@@ -13,7 +14,7 @@ from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository,
 
 
 def test_push_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob], tmpdir):
-    artifact: ArtifactCollection = art_repo.push_artifact(model, blobs)
+    artifact: ArtifactCollection = art_repo.push_model_artifact(model, blobs)
 
     assert artifact is not None
     with artifact.blob_dict() as bd:
@@ -34,7 +35,7 @@ def test_push_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[s
 
 
 def test_materialize_blobs_long_path(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob], tmp_path):
-    artifact: ArtifactCollection = art_repo.push_artifact(model, blobs)
+    artifact: ArtifactCollection = art_repo.push_model_artifact(model, blobs)
 
     assert artifact is not None
     with artifact.blob_dict() as bd:
@@ -59,13 +60,13 @@ def test_push_artifact__non_saved_model(art_repo: ArtifactRepository, model: Mod
     model._id = None
 
     with pytest.raises(ValueError):
-        art_repo.push_artifacts(model)
+        art_repo.push_model_artifacts(model)
 
 
 def test_get_artifact(art_repo: ArtifactRepository, model: Model, blobs: Dict[str, InMemoryBlob]):
-    artifact: ArtifactCollection = art_repo.push_artifact(model, blobs)
+    artifact: ArtifactCollection = art_repo.push_model_artifact(model, blobs)
 
-    new_artifact = art_repo.get_artifact(model)
+    new_artifact = art_repo.get_model_artifact(model)
 
     assert new_artifact == artifact
 
@@ -74,36 +75,36 @@ def test_get_artifact__non_saved_model(art_repo: ArtifactRepository, model: Mode
     model._id = None
 
     with pytest.raises(ValueError):
-        art_repo.get_artifact(model)
+        art_repo.get_model_artifact(model)
 
 
 def test_push_non_existing_artifact(art_repo: ArtifactRepository, model: Model):
     with pytest.raises(NoSuchArtifactError):
-        art_repo.get_artifact(model)
+        art_repo.get_model_artifact(model)
 
 
 def test_push_duplicate_artifact(art_repo: ArtifactRepository, model: Model):
-    art_repo.push_artifact(model, {})
+    art_repo.push_model_artifact(model, {})
     with pytest.raises(ArtifactExistsError):
-        art_repo.push_artifact(model, {})
+        art_repo.push_model_artifact(model, {})
 
 
 def test_delete_artifact(art_repo: ArtifactRepository, model: Model):
-    art_repo.push_artifact(model, {})
-    art_repo.get_artifact(model)
-    art_repo.delete_artifact(model)
+    art_repo.push_model_artifact(model, {})
+    art_repo.get_model_artifact(model)
+    art_repo.delete_model_artifact(model)
     with pytest.raises(NoSuchArtifactError):
-        art_repo.get_artifact(model)
-    art_repo.push_artifact(model, {})
+        art_repo.get_model_artifact(model)
+    art_repo.push_model_artifact(model, {})
 
 
 def test_delete_artifact__non_saved_model(art_repo: ArtifactRepository, model: Model):
     model._id = None
 
     with pytest.raises(ValueError):
-        art_repo.delete_artifact(model)
+        art_repo.delete_model_artifact(model)
 
 
 def test_delete_non_existing_artifact(art_repo: ArtifactRepository, model: Model):
     with pytest.raises(NoSuchArtifactError):
-        art_repo.delete_artifact(model)
+        art_repo.delete_model_artifact(model)
