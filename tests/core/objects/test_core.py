@@ -93,10 +93,10 @@ def test_project_serde(project_saved):
     serde_and_compare(project_saved)
 
 
-def test_task_wo_project(meta):
-    task = Task(name='task', project_id=666)
+def test_task_wo_project(task_saved):
+    task_saved.project_id = 666
     with pytest.raises(NonExistingProjectError):
-        meta.create_task(task)
+        task_saved.project
 
 
 def test_task__project_property(project_saved_art, task):
