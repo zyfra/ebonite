@@ -58,6 +58,10 @@ class NumpyNumberDatasetType(LibDatasetTypeMixin):
     def actual_type(self):
         return np_type_from_string(self.dtype)
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
+
 
 class NumpyNumberHook(CanIsAMustHookMixin, DatasetHook):
     """
@@ -146,3 +150,7 @@ class NumpyNdarrayDatasetType(ListTypeWithSpec, LibDatasetTypeMixin):
     def _check_shape(self, array, exc_type):
         if tuple(array.shape)[1:] != self.shape[1:]:
             raise exc_type(f'given array is of shape: {(None,) + tuple(array.shape)[1:]}, expected: {self.shape}')
+
+    def get_writer(self):
+        from ebonite.ext.numpy.dataset_source import NumpyNdarrayWriter
+        return NumpyNdarrayWriter()

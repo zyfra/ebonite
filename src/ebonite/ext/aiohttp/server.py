@@ -49,7 +49,7 @@ def create_interface_routes(app, interface: Interface):
         sig = interface.exposed_method_signature(method)
         rlogger.debug('registering %s with input type %s and output type %s', method, sig.args, sig.output)
 
-        spec = create_spec(method, sig)
+        spec = create_spec(method, sig, str(Interface), interface.exposed_method_docs(method))
         executor_function = create_executor_function(interface, method, spec)
         app.router.add_post('/' + method, executor_function)
 

@@ -1,4 +1,9 @@
 pandas==1.0.3
+lxml==4.5.1
+openpyxl==3.0.4
+xlrd==1.2.0
+tables==3.6.1
+pyarrow==0.17.1
 numpy==1.18.2
 scipy==1.4.1
 scikit-learn==0.22.2

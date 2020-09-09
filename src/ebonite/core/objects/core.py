@@ -3,11 +3,12 @@ import getpass
 import json
 import re
 import tempfile
+import time
 import warnings
 from abc import abstractmethod
 from copy import copy
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pyjackson import deserialize, serialize
 from pyjackson.core import Comparable
@@ -16,16 +17,22 @@ from pyjackson.decorators import make_string, type_field
 import ebonite.repository
 from ebonite.client.expose import ExposedMethod
 from ebonite.core import errors
+from ebonite.core.analyzer.metric import MetricAnalyzer
 from ebonite.core.analyzer.model import ModelAnalyzer
 from ebonite.core.analyzer.requirement import RequirementAnalyzer
 from ebonite.core.objects.artifacts import ArtifactCollection, CompositeArtifactCollection
 from ebonite.core.objects.base import EboniteParams
+from ebonite.core.objects.dataset_source import AbstractDataset, Dataset, DatasetSource, InMemoryDatasetSource
 from ebonite.core.objects.dataset_type import DatasetType
+from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import AnyRequirements, Requirements, resolve_requirements
 from ebonite.core.objects.wrapper import ModelWrapper, WrapperArtifactCollection
 from ebonite.utils.index_dict import IndexDict, IndexDictAccessor
 from ebonite.utils.log import logger
 from ebonite.utils.module import get_python_version
+
+AnyDataset = Union[str, AbstractDataset, DatasetSource, Any]
+AnyMetric = Union[str, Metric, Any]
 
 
 def _get_current_user():
@@ -33,6 +40,13 @@ def _get_current_user():
 
 
 class ExposedObjectMethod(ExposedMethod):
+    """Decorator for EboniteObject methods that will be exposed to Ebonite class by autogen
+
+    :param name: name of the exposed method
+    :param param_name: name of the first parameter
+    :param param_type: type hint for the first parameter
+    :param param_doc: docstring for the first parameter"""
+
     def __init__(self, name, param_name: str, param_type: str, param_doc: str = None):
         super().__init__(name)
         self.param_name = param_name
@@ -56,6 +70,7 @@ class ExposedObjectMethod(ExposedMethod):
         return doc
 
     def generate_code(self):
+        """Generates code for exposed Ebonite method"""
         declaration = self.get_declaration() \
             .replace(f'{self.name}(self', f'{self.name}(self, {self.param_name}: {self.param_type}')
         fields = self.get_signature().args
@@ -66,6 +81,7 @@ class ExposedObjectMethod(ExposedMethod):
 
 
 class WithMetadataRepository:
+    """Intermediat abstract class for objects that can be binded to meta repository"""
     _id = None
     _meta: 'ebonite.repository.MetadataRepository' = None
     _nested_fields_meta: List[str] = []
@@ -97,6 +113,7 @@ class WithMetadataRepository:
 
 
 class WithArtifactRepository:
+    """Intermediat abstract class for objects that can be binded to artifact repository"""
     _art: 'ebonite.repository.ArtifactRepository' = None
     _nested_fields_art: List[str] = []
 
@@ -116,6 +133,29 @@ class WithArtifactRepository:
     @property
     def has_artifact_repo(self):
         return self._art is not None
+
+
+class WithDatasetRepository:
+    """Intermediat abstract class for objects that can be binded to dataset repository"""
+    _dataset: 'ebonite.repository.DatasetRepository' = None
+    _nested_fields_dataset: List[str] = []
+
+    def bind_dataset_repo(self, repo: 'ebonite.repository.DatasetRepository'):
+        self._dataset = repo
+        for field in self._nested_fields_dataset:
+            for obj in getattr(self, field).values():
+                obj.bind_dataset_repo(repo)
+        return self
+
+    def unbind_dataset_repo(self):
+        for field in self._nested_fields_dataset:
+            for obj in getattr(self, field).values():
+                obj.unbind_dataset_repo()
+        del self._dataset
+
+    @property
+    def has_dataset_repo(self):
+        return self._dataset is not None
 
 
 class EboniteObject(Comparable, WithMetadataRepository, WithArtifactRepository):
@@ -185,6 +225,23 @@ def _with_artifact(method):
     def inner(self: EboniteObject, *args, **kwargs):
         if not self.has_artifact_repo:
             raise errors.UnboundObjectError('{} is not bound to artifact repository'.format(self))
+        return method(self, *args, **kwargs)
+
+    return inner
+
+
+def _with_dataset(method):
+    """
+    Decorator for methods to check that object is binded to dataset repo
+
+    :param method: method to apply decorator
+    :return: decorated method
+    """
+
+    @wraps(method)
+    def inner(self: WithDatasetRepository, *args, **kwargs):
+        if not self.has_dataset_repo:
+            raise errors.UnboundObjectError('{} is not bound to dataset repository'.format(self))
         return method(self, *args, **kwargs)
 
     return inner
@@ -273,8 +330,33 @@ class Project(EboniteObject):
         return """Project '{name}', {td} tasks""".format(name=self.name, td=len(self.tasks))
 
 
+class EvaluationSet(EboniteParams):
+    """Represents a set of objects for evaluation
+
+    :param input_dataset: name of the input dataset
+    :param output_dataset: name of the output dataset
+    :param metrics: list of metric names"""
+
+    def __init__(self, input_dataset: str, output_dataset: str, metrics: List[str]):
+        self.output_dataset = output_dataset
+        self.metrics = metrics
+        self.input_dataset = input_dataset
+
+    def get(self, task: 'Task', cache=True) -> Tuple[DatasetSource, DatasetSource, Dict[str, Metric]]:
+        """Loads actual datasets and metrics from task
+
+        :param task: task to load from
+        :param cache: wheter to cache datasets"""
+        input = task.datasets[self.input_dataset]
+        output = task.datasets[self.output_dataset]
+        if cache:
+            input = input.cache()
+            output = output.cache()
+        return input, output, {m: task.metrics[m] for m in self.metrics}
+
+
 @make_string('id', 'name')
-class Task(EboniteObject):
+class Task(EboniteObject, WithDatasetRepository):
     """
     Task is a collection of models
 
@@ -287,20 +369,21 @@ class Task(EboniteObject):
     _nested_fields_meta = _nested_fields_art = ['_models', '_pipelines', '_images']
 
     def __init__(self, name: str, id: int = None, project_id: int = None,
-                 author: str = None, creation_date: datetime.datetime = None):
+                 author: str = None, creation_date: datetime.datetime = None,
+                 datasets: Dict[str, DatasetSource] = None,
+                 metrics: Dict[str, Metric] = None,
+                 evaluation_sets: Dict[str, EvaluationSet] = None):
         super().__init__(id, name, author, creation_date)
+        self.evaluation_sets = evaluation_sets or {}
+        self.datasets = datasets or {}
+        self.metrics = metrics or {}
         self.project_id = project_id
-        # self.metrics = metrics TODO
-        # self.sample_data = sample_data
         self._models: IndexDict[Model] = IndexDict('id', 'name')
         self.models: IndexDictAccessor[Model] = IndexDictAccessor(self._models)
         self._pipelines: IndexDict[Pipeline] = IndexDict('id', 'name')
         self.pipelines: IndexDictAccessor[Pipeline] = IndexDictAccessor(self._pipelines)
         self._images: IndexDict[Image] = IndexDict('id', 'name')
         self.images: IndexDictAccessor[Image] = IndexDictAccessor(self._images)
-
-    def __str__(self):
-        return self.name
 
     @property
     @_with_meta
@@ -333,6 +416,9 @@ class Task(EboniteObject):
                 self.delete_image(image, cascade=cascade)
             for pipeline in self._meta.get_pipelines(self):
                 self.delete_pipeline(pipeline)
+
+        for dataset in self.datasets:
+            self.delete_dataset(dataset, force=True, save=False)
 
         self._meta.delete_task(self)
 
@@ -486,10 +572,247 @@ class Task(EboniteObject):
 
     @_with_meta
     def save(self):
+        """Saves task to meta repository and pushes unsaved datasets to dataset repository"""
+        self.push_datasets()
         self._meta.save_task(self)
 
     def has_children(self):
         return len(self.models) > 0 or len(self.pipelines) > 0 or len(self.images) > 0
+
+    def _resolve_dataset(self, dataset: AnyDataset, name: str) -> str:
+        """Resolves existing dataset or creates a new one
+
+        :param dataset: dataset name, Dataset, DatasetSource or raw data object
+        :param name: name for dataset if it is new
+        """
+        if isinstance(dataset, str):
+            if dataset not in self.datasets:
+                raise ValueError(f'no dataset named {dataset} in task {self}')  # TODO maybe ohter error?
+            return dataset
+
+        self.add_dataset(name, dataset)
+        return name
+
+    def _resolve_metric(self, metric: AnyMetric, name: str):
+        """Resolves existing metric or creates a new one
+
+        :param metric: metric name, Metric or raw metric object
+        :param name: name for metric if it is new
+        """
+        if isinstance(metric, str):
+            if metric not in self.metrics:
+                raise ValueError(f'no metric named {metric} in task {self}')  # TODO maybe ohter error?
+            return metric
+        self.add_metric(name, metric)
+        return name
+
+    def add_evaluation(self, name: str,
+                       data: AnyDataset,
+                       target: AnyDataset,
+                       metrics: Union[AnyMetric, List[AnyMetric]]):
+        """Adds new evaluation set to this task
+
+        :param name: name of the evaluation set
+        :param data: input dataset for evaluation
+        :param target: ground truth for input data
+        :param metrics: one or more metrics to measure
+        """
+        if name in self.evaluation_sets:
+            raise errors.EboniteError(f'evalset {name} already in task {self}')
+        data = self._resolve_dataset(data, f'{name}_input')
+        target = self._resolve_dataset(target, f'{name}_output')
+        if not isinstance(metrics, list):
+            metrics = [metrics]
+        metrics = [self._resolve_metric(m, f'{name}_{i}') for i, m in enumerate(metrics)]
+        self.evaluation_sets[name] = EvaluationSet(data, target, metrics)
+
+    def delete_evaluation(self, name: str, save: bool = True):
+        """Deletes evaluation set from task
+
+        :param name: name of the evaluation to delete
+        :param save: also update task metadata in repo
+        """
+        if save:
+            self._check_meta()
+
+        if name not in self.evaluation_sets:
+            raise errors.EboniteError(f'cannot delete evalset from task {self}: no evalset with name {name}')
+        del self.evaluation_sets[name]
+        if save:
+            self.save()
+
+    @_with_dataset
+    def add_dataset(self, name, dataset: Union[DatasetSource, AbstractDataset, Any]):
+        """Adds new dataset to this task
+
+        :param name: name of the dataset
+        :param dataset: Dataset, DatasetSource or raw dataset object
+        """
+        if name in self.datasets:
+            raise errors.EboniteError(f'dataset {name} already in task {self}')
+        if not isinstance(dataset, DatasetSource):
+            if not isinstance(dataset, AbstractDataset):
+                dataset = Dataset.from_object(dataset)
+            dataset = dataset.to_inmemory_source()
+        self.datasets[name] = dataset
+
+    @_with_dataset
+    def push_datasets(self):
+        """Pushes all unsaved datasets to dataset repository"""
+        for name, dataset in list(self.datasets.items()):
+            if isinstance(dataset, InMemoryDatasetSource):
+                self.datasets[name] = self._dataset.save(f'{self.id}/{name}', dataset.read())
+
+    @_with_dataset
+    def delete_dataset(self, name: str, force: bool = False, save: bool = True):
+        """Deletes dataset from task with artifacts
+
+        :param name: name of the dataset to delete
+        :param force: wheter to check evalsets that use this dataset and remove them or raise error
+        :param save: also update task metadata in repo
+        """
+        if name not in self.datasets:
+            raise errors.EboniteError(f'cannot delete dataset from {self}: no dataset with name {name}')
+        if save:
+            self._check_meta()
+        evalsets = {n: es for n, es in self.evaluation_sets.items() if
+                    name in (es.input_dataset, es.output_dataset)}
+        if len(evalsets) > 0 and not force:
+            raise errors.EboniteError(
+                f'cannot delete dataset from {self}: it is used by evalsets {list(evalsets.keys())}'
+                f'remove them or set force=True')
+        try:
+            self._dataset.delete(f'{self.id}/{name}')
+        except errors.NoSuchDataset:
+            pass  # already deleted or was not saved
+        del self.datasets[name]
+        for es in evalsets.keys():
+            self.delete_evaluation(es, save)
+        if save:
+            self.save()
+
+    def add_metric(self, name, metric: Union[Metric, Any]):
+        """Adds metric to this task
+
+        :param name: name of the metric
+        :param metric: Metric or raw metric object
+        """
+        if name in self.metrics:
+            raise errors.EboniteError(f'metric {name} already in task {self}')
+        if not isinstance(metric, Metric):
+            metric = MetricAnalyzer.analyze(metric)
+        # TODO checks
+        self.metrics[name] = metric
+
+    def delete_metric(self, name: str, force: bool = False, save: bool = True):
+        """Deletes metric from task
+
+        :param name: name of the metric to delete
+        :param force: wheter to check evalsets that use this metric and remove them or raise error
+        :param save: also update task metadata in repo
+        """
+        if name not in self.metrics:
+            raise errors.EboniteError(f'cannot delete metric from {self}: no metric with name {name}')
+        if save:
+            self._check_meta()
+        evalsets = {n: es for n, es in self.evaluation_sets.items() if
+                    name in es.metrics}
+
+        if len(evalsets) > 0 and not force:
+            raise errors.EboniteError(
+                f'cannot delete metric from {self}: it is used by evalsets {list(evalsets.keys())}'
+                f'remove them or set force=True')
+        del self.metrics[name]
+        for es in evalsets.keys():
+            self.delete_evaluation(es, save)
+        if save:
+            self.save()
+
+    def evaluate_all(self, force=False, save_result=True) -> Dict[str, 'EvaluationResult']:
+        """Evaluates all viable pairs of evalsets and models/pipelines
+
+        :param force: force reevaluate already evaluated
+        :param save_result: save evaluation results to meta"""
+        result = {}
+        timestamp = time.time()
+        for name, evalset in self.evaluation_sets.items():
+            input, output, metrics = evalset.get(self, cache=True)
+            for model in self._models.values():
+                evaluate = model.evaluate(input, output, metrics, evaluation_name=name,
+                                          timestamp=timestamp, force=force, save=save_result)
+                if isinstance(evaluate, dict):
+                    for method, res in evaluate.items():
+                        result[f'{model.name}.{method}'] = res
+                elif isinstance(evaluate, EvaluationResult):
+                    result[model.name] = evaluate
+            for pipeline in self._pipelines.values():
+                evaluate = pipeline.evaluate(input, output, metrics, evaluation_name=name,
+                                             timestamp=timestamp, force=force, save=save_result)
+                if evaluate is not None:
+                    result[pipeline.name] = evaluate
+        return result
+
+
+class _InTask(EboniteObject):
+    """Intermediate abstract class for object inside task"""
+
+    def __init__(self, id: int, name: str,
+                 author: str = None, creation_date: datetime.datetime = None,
+                 task_id: int = None):
+        super().__init__(id, name, author, creation_date)
+        self.task_id = task_id
+
+    @property
+    @_with_meta
+    def task(self):
+        t = self._meta.get_task_by_id(self.task_id)
+        if t is None:
+            raise errors.NonExistingTaskError(self.task_id)
+        return t.bind_artifact_repo(self._art)
+
+    @task.setter
+    def task(self, task: Task):
+        if not isinstance(task, Task):
+            raise ValueError('{} is not Task'.format(task))
+        self.task_id = task.id
+        self.bind_as(task)
+
+
+@make_string
+class EvaluationResult(EboniteParams):
+    """Represents result of evaluation of one evalset on multiple evaluatable objects
+
+    :param scores: mapping 'metric' -> 'score'
+    :param timestamp: time of evaluation
+    """
+
+    def __init__(self, timestamp: float, scores: Dict[str, float] = None):
+        self.timestamp = timestamp
+        self.scores = scores or {}
+
+
+@make_string
+class EvaluationResultCollection(EboniteParams):
+    """Collection of evaluation results for single evalset
+
+    :param results: list of results"""
+
+    def __init__(self, results: List[EvaluationResult] = None):
+        self.results = results or []
+
+    def add(self, result: EvaluationResult):
+        if result != self.latest:
+            self.results.append(result)
+
+    @property
+    def latest(self) -> Optional[EvaluationResult]:
+        if len(self.results) == 0:
+            return
+        return max(self.results, key=lambda r: r.timestamp)
+
+
+EvaluationResults = Dict[str, EvaluationResultCollection]  # Evaluation results for all evalsets
+MultipleResults = Dict[str, EvaluationResult]  # Evaluation results for multiple objects but one evalset
 
 
 class _WrapperMethodAccessor:
@@ -509,7 +832,7 @@ class _WrapperMethodAccessor:
 
 
 @make_string('id', 'name')
-class Model(EboniteObject):
+class Model(_InTask):
     """
     Model contains metadata for machine learning model
 
@@ -534,9 +857,11 @@ class Model(EboniteObject):
                  description: str = None,
                  id: int = None,
                  task_id: int = None,
-                 author: str = None, creation_date: datetime.datetime = None):
-        super().__init__(id, name, author, creation_date)
+                 author: str = None, creation_date: datetime.datetime = None,
+                 evaluations: Dict[str, EvaluationResults] = None):
+        super().__init__(id, name, author, creation_date, task_id)
 
+        self.evaluations = evaluations or {}
         self.description = description
         self.params = params or {}
         try:
@@ -551,7 +876,6 @@ class Model(EboniteObject):
             self._wrapper_meta = wrapper_meta
 
         self.requirements = requirements
-        self.task_id = task_id
         self._persisted_artifacts = artifact
         self._unpersisted_artifacts: Optional[ArtifactCollection] = None
 
@@ -728,24 +1052,10 @@ class Model(EboniteObject):
         requirements = RequirementAnalyzer.analyze(requirements)
         params = params or {}
         params[cls.PYTHON_VERSION] = params.get(cls.PYTHON_VERSION, get_python_version())
+        # noinspection PyTypeChecker
         model = Model(name, wrapper, None, requirements, params, description)
         model._unpersisted_artifacts = artifact
         return model
-
-    @property
-    @_with_meta
-    def task(self):
-        t = self._meta.get_task_by_id(self.task_id)
-        if t is None:
-            raise errors.NonExistingTaskError(self.task_id)
-        return t.bind_artifact_repo(self._art)
-
-    @task.setter
-    def task(self, task: Task):
-        if not isinstance(task, Task):
-            raise ValueError('{} is not Task'.format(task))
-        self.task_id = task.id
-        self.bind_as(task)
 
     @_with_meta
     @_with_artifact
@@ -759,7 +1069,7 @@ class Model(EboniteObject):
         """
         if self.artifact is not None:
             try:
-                self._art.delete_artifact(self)
+                self._art.delete_model_artifact(self)
             except:  # noqa
                 if force:
                     logger.warning("Unable to delete artifacts associated with model: '%s'", self, exc_info=1)
@@ -790,7 +1100,7 @@ class Model(EboniteObject):
 
         self._meta.create_model(self)  # save model to get model.id
         try:
-            self._art.push_artifacts(self)
+            self._art.push_model_artifacts(self)
         except:  # noqa
             self._meta.delete_model(self)
             raise
@@ -815,11 +1125,101 @@ class Model(EboniteObject):
         return _WrapperMethodAccessor(self, item)
 
     @_with_meta
+    @_with_artifact
     def save(self):
+        """Saves model to metadata repo and pushes unpersisted artifacts"""
+        if self._unpersisted_artifacts is not None:
+            self._art.push_model_artifacts(self)
         self._meta.save_model(self)
 
     def has_children(self):
         return False
+
+    @_with_meta
+    def evaluate_set(self, evalset: Union[str, EvaluationSet],
+                     evaluation_name: str = None, method_name: str = None,
+                     timestamp=None, save=True, force=False,
+                     raise_on_error=False) -> Optional[EvaluationResult]:
+        """Evaluates this model
+
+        :param evalset: evalset or it's name
+        :param evaluation_name: name of this evaluation
+        :param method_name: name of wrapper method. If none, all methods with consistent datatypes will be evaluated
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        task = self.task
+        if isinstance(evalset, str):
+            try:
+                evaluation_name = evaluation_name or evalset
+                evalset = task.evaluation_sets[evalset]
+            except KeyError:
+                raise ValueError(f'No evalset {evalset} in {task}')
+        input, output, metrics = evalset.get(task, False)
+        return self.evaluate(input, output, metrics, evaluation_name, method_name, timestamp, save, force,
+                             raise_on_error)
+
+    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric],
+                 evaluation_name: str = None, method_name: str = None,
+                 timestamp=None, save=True, force=False,
+                 raise_on_error=False) -> Optional[Union[EvaluationResult, Dict[str, EvaluationResult]]]:
+        """Evaluates this model
+
+        :param input: input data
+        :param output: target
+        :param metrics: dict of metrics to evaluate
+        :param evaluation_name: name of this evaluation
+        :param method_name: name of wrapper method. If none, all methods with consistent datatypes will be evaluated
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        if method_name is None:
+            methods = self.wrapper.match_methods_by_type(input.dataset_type, output.dataset_type)
+            if len(methods) == 0:
+                if raise_on_error:
+                    raise ValueError('incompatible dataset types for evaluation')
+                return
+        else:
+            method_name = self.wrapper.resolve_method(method_name)
+            tin, tout = self.wrapper.method_signature(method_name)
+            if tin != input.dataset_type or tout != output.dataset_type:
+                if raise_on_error:
+                    raise ValueError('incompatible dataset types for evaluation')
+                return
+            methods = [method_name]
+
+        if save:
+            if evaluation_name is None:
+                raise ValueError('Provide evaluation_name to save evaluation or set save = False')
+            self._check_meta(True)
+        results: Dict[str, EvaluationResult] = {}  # method -> result
+        timestamp = timestamp or time.time()
+
+        for method_name in methods:
+            self.evaluations.setdefault(method_name, {})
+            if evaluation_name in self.evaluations[method_name] and not force:
+                results[method_name] = self.evaluations[method_name][evaluation_name].latest
+                continue
+
+            call = self.wrapper.call_method(method_name, input.read().data)
+            scores = {}
+            for mname, metric in metrics.items():
+                scores[mname] = metric.evaluate(output.read().data, call)
+            results[method_name] = EvaluationResult(timestamp, scores)
+
+        if save:
+            for method_name, result in results.items():
+                self.evaluations[method_name].setdefault(evaluation_name, EvaluationResultCollection())
+                self.evaluations[method_name][evaluation_name].add(result)
+            self.save()
+
+        if len(results) == 1:
+            return list(results.values())[0]
+        return results
 
 
 def _generate_name(prefix='', postfix=''):
@@ -854,7 +1254,7 @@ class PipelineStep(EboniteParams):
 
 
 @make_string('id', 'name')
-class Pipeline(EboniteObject):
+class Pipeline(_InTask):
     """Pipeline is a class to represent a sequence of different Model's methods.
     They can be used to reuse different models (for example, pre-processing functions) in different pipelines.
     Pipelines must have exact same in and out data types as tasks they are in
@@ -874,28 +1274,14 @@ class Pipeline(EboniteObject):
                  output_data: DatasetType,
                  id: int = None,
                  author: str = None, creation_date: datetime.datetime = None,
-                 task_id: int = None):
-        super().__init__(id, name, author, creation_date)
+                 task_id: int = None,
+                 evaluations: EvaluationResults = None):
+        super().__init__(id, name, author, creation_date, task_id)
+        self.evaluations = evaluations or {}
         self.output_data = output_data
         self.input_data = input_data
-        self.task_id = task_id
         self.steps = steps
         self.models: Dict[str, Model] = {}  # not using direct fk to models as it is pain
-
-    @property
-    @_with_meta
-    def task(self):
-        t = self._meta.get_task_by_id(self.task_id)
-        if t is None:
-            raise errors.NonExistingTaskError(self.task_id)
-        return t
-
-    @task.setter
-    def task(self, task: Task):
-        if not isinstance(task, Task):
-            raise ValueError('{} is not Task'.format(task))
-        self.task_id = task.id
-        self.bind_as(task)
 
     @_with_meta
     @ExposedObjectMethod('delete_pipeline', 'pipeline', 'Pipeline', 'pipeline to delete')
@@ -939,10 +1325,72 @@ class Pipeline(EboniteObject):
 
     @_with_meta
     def save(self):
+        """Saves this pipeline to metadata repository"""
         self._meta.save_pipeline(self)
 
     def has_children(self):
         return False
+
+    @_with_meta
+    def evaluate_set(self, evalset: Union[str, EvaluationSet],
+                     evaluation_name: str = None,
+                     timestamp=None, save=True, force=False,
+                     raise_on_error=False) -> Optional[EvaluationResult]:
+        """Evaluates this pipeline
+
+        :param evalset: evalset or it's name
+        :param evaluation_name: name of this evaluation
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        task = self.task
+        if isinstance(evalset, str):
+            try:
+                evaluation_name = evaluation_name or evalset
+                evalset = task.evaluation_sets[evalset]
+            except KeyError:
+                raise ValueError(f'No evalset {evalset} in {task}')
+        input, output, metrics = evalset.get(task, False)
+        return self.evaluate(input, output, metrics, evaluation_name, timestamp, save, force, raise_on_error)
+
+    def evaluate(self, input: DatasetSource, output: DatasetSource, metrics: Dict[str, Metric],
+                 evaluation_name: str = None,
+                 timestamp=None, save=True, force=False,
+                 raise_on_error=False) -> Optional[EvaluationResult]:
+        """Evaluates this pipeline
+
+        :param input: input data
+        :param output: target
+        :param metrics: dict of metrics to evaluate
+        :param evaluation_name: name of this evaluation
+        :param timestamp: time of the evaluation (defaults to now)
+        :param save: save results to meta
+        :param force: force reevalute
+        :param raise_on_error: raise error if datatypes are incorrect or just return
+        """
+        if evaluation_name in self.evaluations and not force:
+            return self.evaluations[evaluation_name].latest
+        if save:
+            if evaluation_name is None:
+                raise ValueError('Provide evaluation_name to save evaluation or set save = False')
+            self._check_meta(True)
+        timestamp = timestamp or time.time()
+
+        if input.dataset_type == self.input_data and output.dataset_type == self.output_data:
+            scores = {}
+            call = self.run(input.read().data)
+            for mname, metric in metrics.items():
+                scores[mname] = metric.evaluate(output.read().data, call)
+            result = EvaluationResult(timestamp, scores)
+            if save:
+                self.evaluations.setdefault(evaluation_name, EvaluationResultCollection())
+                self.evaluations[evaluation_name].add(result)
+                self.save()
+            return result
+        elif raise_on_error:
+            raise ValueError('incompatible dataset types for evaluation')
 
 
 @type_field('type')
@@ -968,7 +1416,7 @@ class RuntimeEnvironment(EboniteObject):
     :param name: name of the environment
     :param id: id of the environment
     :param author: author of the enviroment
-    :parma creation_date: creation date of the enviroment
+    :param creation_date: creation date of the enviroment
     :param params: :class:`.RuntimeEnvironment.Params` instance
     """
 
@@ -1013,6 +1461,7 @@ class RuntimeEnvironment(EboniteObject):
 
     @_with_meta
     def save(self):
+        """Saves this env to metadata repository"""
         self._meta.save_environment(self)
 
     @_with_meta

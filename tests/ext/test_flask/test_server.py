@@ -59,6 +59,21 @@ def test_create_interface_routes(client):
     assert resp == {'ok': True, 'data': 'a' * 6}
 
 
+def test_swagger_description(client):
+    class MyInterface(Interface):
+        @expose
+        def method(self, argument: StrDataset()) -> StrDataset():
+            """AAA"""
+            return argument + 'a'
+
+    server: FlaskServer = client.flask_server
+    server._prepare_app(client.application, MyInterface())
+
+    resp = client.get('/apispec_1.json').get_json()
+    descr = resp['paths']['/method']['post']['summary']
+    assert 'AAA' in descr
+
+
 def test_errors(client):
     class MyInterface(Interface):
         @expose

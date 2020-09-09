@@ -1,3 +1,3 @@
-from .base import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError, RepoArtifactBlob
+from .base import ArtifactRepository, RepoArtifactBlob
 
-__all__ = ['ArtifactRepository', 'NoSuchArtifactError', 'RepoArtifactBlob', 'ArtifactExistsError']
+__all__ = ['ArtifactRepository', 'RepoArtifactBlob']

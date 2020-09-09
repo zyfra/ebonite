@@ -46,7 +46,7 @@ def create_executor_function(interface: Interface, method: str):
 def _register_method(app, interface, method_name, signature):
     from flasgger import swag_from
 
-    swag = swag_from(create_spec(method_name, signature))
+    swag = swag_from(create_spec(method_name, signature, str(Interface), interface.exposed_method_docs(method_name)))
     executor_function = swag(create_executor_function(interface, method_name))
     app.add_url_rule('/' + method_name, method_name, executor_function, methods=['POST'])
 
