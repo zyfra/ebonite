@@ -3,18 +3,18 @@ import pytest
 from pyjackson import deserialize, serialize
 from pyjackson.core import Unserializable
 
-from ebonite.core.errors import (EboniteError, MetadataError, NonExistingModelError, NonExistingTaskError,
-                                 UnboundObjectError)
+from ebonite.core.errors import (EboniteError, MetadataError, NonExistingModelError, NonExistingProjectError,
+                                 NonExistingTaskError, UnboundObjectError)
 from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
-from ebonite.core.objects.core import Model, Pipeline, Project, Task, _WrapperMethodAccessor
+from ebonite.core.objects.core import Image, Model, Pipeline, Project, Task, _WrapperMethodAccessor
 from ebonite.core.objects.dataset_source import DatasetSource
 from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
 from ebonite.ext.sklearn import SklearnModelWrapper
 from ebonite.repository import MetadataRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
-from tests.core.objects.conftest import serde_and_compare
+from tests.core.objects.conftest import BuildableMock, serde_and_compare
 
 
 def test_project__add_task__unbind(project: Project, task_factory):
@@ -91,6 +91,12 @@ def test_project__delete_task__nonexistent(project_factory, task):
 
 def test_project_serde(project_saved):
     serde_and_compare(project_saved)
+
+
+def test_task_wo_project(meta):
+    task = Task(name='task', project_id=666)
+    with pytest.raises(NonExistingProjectError):
+        meta.create_task(task)
 
 
 def test_task__project_property(project_saved_art, task):
@@ -179,6 +185,9 @@ def test_task__delete_model_with_artifacts(task_saved, model, artifact_repo):
     assert model.id is None
     assert model.task_id is None
 
+    task_saved.unbind_artifact_repo()
+    assert task_saved.has_artifact_repo is False
+
 
 def test_task__delete_model__nonexistent(task_factory, model):
     model_task = task_factory(True)
@@ -239,6 +248,8 @@ def test_task__delete_metric_non_existing(task_saved):
 
 
 def test_task__add_dataset(task_saved, dataset):
+    assert task_saved.has_dataset_repo is True
+
     task_saved.add_dataset('data', dataset)
     assert 'data' in task_saved.datasets
     assert isinstance(task_saved.datasets['data'], DatasetSource)
@@ -249,6 +260,9 @@ def test_task__add_dataset(task_saved, dataset):
     assert 'data' in task.datasets
     assert isinstance(task.datasets['data'], DatasetSource)
     assert not isinstance(task.datasets['data'], Unserializable)
+
+    task_saved.unbind_dataset_repo()
+    assert task_saved.has_dataset_repo is False
 
 
 def test_task__add_dataset_exists(task_saved, dataset):
@@ -449,6 +463,13 @@ def len_model():
     return model
 
 
+def test_pipeline_wo_task(meta, len_model):
+    len_model.task_id = 666
+    pipeline = len_model.as_pipeline()
+    with pytest.raises(NonExistingTaskError):
+        meta.create_pipeline(pipeline)
+
+
 def test_pipeline__append(double_model, len_model):
     p1 = double_model.as_pipeline()
     p2 = p1.append(len_model)
@@ -548,6 +569,12 @@ def test_task__delete_pipeline(task_factory, pipeline_factory):
 
 
 # ################IMAGES###########
+def test_image_wo_task(meta):
+    image = Image('image_name', params={'test': 'test'}, source=BuildableMock(), task_id=666)
+    with pytest.raises(NonExistingTaskError):
+        meta.create_image(image)
+
+
 def test_task__no_images(task_factory):
     task = task_factory(True)
 
