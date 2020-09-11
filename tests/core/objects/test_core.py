@@ -3,18 +3,20 @@ import pytest
 from pyjackson import deserialize, serialize
 from pyjackson.core import Unserializable
 
-from ebonite.core.errors import (EboniteError, MetadataError, NonExistingModelError, NonExistingProjectError,
-                                 NonExistingTaskError, UnboundObjectError)
+from ebonite.core.errors import (EboniteError, MetadataError, NonExistingEnvironmentError, NonExistingModelError,
+                                 NonExistingPipelineError, NonExistingProjectError, NonExistingTaskError,
+                                 UnboundObjectError)
 from ebonite.core.objects import ModelWrapper
 from ebonite.core.objects.artifacts import Blobs, InMemoryBlob
-from ebonite.core.objects.core import Image, Model, Pipeline, Project, Task, _WrapperMethodAccessor
+from ebonite.core.objects.core import (Model, Pipeline, PipelineStep, Project, RuntimeEnvironment, Task,
+                                       _WrapperMethodAccessor)
 from ebonite.core.objects.dataset_source import DatasetSource
 from ebonite.core.objects.metric import Metric
 from ebonite.core.objects.requirements import InstallableRequirement, Requirement, Requirements
 from ebonite.ext.sklearn import SklearnModelWrapper
 from ebonite.repository import MetadataRepository
 from ebonite.repository.artifact.inmemory import InMemoryArtifactRepository
-from tests.core.objects.conftest import BuildableMock, serde_and_compare
+from tests.core.objects.conftest import serde_and_compare
 
 
 def test_project__add_task__unbind(project: Project, task_factory):
@@ -97,6 +99,12 @@ def test_task_wo_project(task_saved):
     task_saved.project_id = 666
     with pytest.raises(NonExistingProjectError):
         task_saved.project
+
+
+def test_task_delete_nonexistant_pipe(task_saved):
+    pipe = Pipeline(id=666, name='pipe', steps=[PipelineStep('a', 'b'), ], input_data=str, output_data=str)
+    with pytest.raises(NonExistingPipelineError):
+        task_saved.delete_pipeline(pipe)
 
 
 def test_task__project_property(project_saved_art, task):
@@ -463,11 +471,13 @@ def len_model():
     return model
 
 
-def test_pipeline_wo_task(meta, len_model):
-    len_model.task_id = 666
+def test_pipeline_wo_task(meta, len_model, task_saved):
     pipeline = len_model.as_pipeline()
+    pipeline.task_id = task_saved.id
+    pipeline = meta.create_pipeline(pipeline)
+    pipeline.task_id = 666
     with pytest.raises(NonExistingTaskError):
-        meta.create_pipeline(pipeline)
+        pipeline.task
 
 
 def test_pipeline__append(double_model, len_model):
@@ -569,10 +579,27 @@ def test_task__delete_pipeline(task_factory, pipeline_factory):
 
 
 # ################IMAGES###########
-def test_image_wo_task(meta):
-    image = Image('image_name', params={'test': 'test'}, source=BuildableMock(), task_id=666)
+def test_image_wo_task(meta, image_factory, task_saved):
+    image = image_factory()
+    image.task_id = task_saved.id
+    image = meta.create_image(image)
+    image.task_id = 666
     with pytest.raises(NonExistingTaskError):
-        meta.create_image(image)
+        image.task
+
+    with pytest.raises(UnboundObjectError):
+        image.environment
+
+    env = RuntimeEnvironment('env')
+    env = meta.create_environment(env)
+
+    image_2 = image_factory()
+    image_2.task_id = task_saved.id
+    image_2.environment_id = env.id
+    image_2 = meta.create_image(image_2)
+    image_2.environment_id = 666
+    with pytest.raises(NonExistingEnvironmentError):
+        image_2.environment
 
 
 def test_task__no_images(task_factory):
