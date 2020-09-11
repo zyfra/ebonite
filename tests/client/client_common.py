@@ -260,6 +260,16 @@ def test_delete_image__not_only_meta_ok(ebnt: Ebonite, image_to_delete: Image, m
     assert ebnt.meta_repo.get_image_by_id(image_to_delete.id) is None
 
 
+def test_get_default_environment(ebnt: Ebonite):
+    ebnt.default_env = 'Pseudo_env'
+    env = ebnt.get_default_environment()
+    assert env == 'Pseudo_env'
+
+    ebnt.default_env = None
+    ebnt.get_default_environment()
+    assert ebnt.get_environment('docker_localhost') is not None
+
+
 @docker_test
 def test_build_and_run_instance(ebnt: Ebonite, regression_and_data, container_name, mock_env):
     reg, data = regression_and_data
