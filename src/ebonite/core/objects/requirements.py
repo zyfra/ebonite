@@ -19,8 +19,8 @@ MODULE_PACKAGE_MAPPING = {
 PACKAGE_MODULE_MAPPING = {v: k for k, v in MODULE_PACKAGE_MAPPING.items()}
 
 
-def read(path):
-    with open(path, 'r') as f:
+def read(path, bin=False):
+    with open(path, 'r' if not bin else 'rb') as f:
         return f.read()
 
 
@@ -123,9 +123,9 @@ class CustomRequirement(PythonRequirement):
         if is_package:
             pkg_dir = os.path.dirname(mod.__file__)
             par = os.path.dirname(pkg_dir)
-            sources = {os.path.relpath(p, par): read(p) for p in glob.glob(os.path.join(pkg_dir, '**', '*.py'),
-                                                                           recursive=True)}
-            src = CustomRequirement.compress(json.dumps(sources))
+            sources = {os.path.relpath(p, par): read(p, bin=True)
+                       for p in glob.glob(os.path.join(pkg_dir, '**', '*'), recursive=True) if os.path.isfile(p)}
+            src = CustomRequirement.compress_package(sources)
         else:
             src = CustomRequirement.compress(read(mod.__file__))
         return CustomRequirement(mod.__name__, src, is_package)
@@ -143,6 +143,13 @@ class CustomRequirement(PythonRequirement):
         return b64.decode('utf8')
 
     @staticmethod
+    def compress_package(s: Dict[str, bytes]) -> str:
+        sources = {
+            path: base64.standard_b64encode(zlib.compress(payload)).decode('utf8') for path, payload in s.items()
+        }
+        return CustomRequirement.compress(json.dumps(sources))
+
+    @staticmethod
     def decompress(s: str) -> str:
         """
         Helper method to decompress source code
@@ -153,6 +160,14 @@ class CustomRequirement(PythonRequirement):
         zp = base64.standard_b64decode(s.encode('utf8'))
         src = zlib.decompress(zp)
         return src.decode('utf8')
+
+    @staticmethod
+    def decompress_package(s: str) -> Dict[str, bytes]:
+        sources = json.loads(CustomRequirement.decompress(s))
+        return {
+            path: zlib.decompress(base64.standard_b64decode(payload.encode('utf8')))
+            for path, payload in sources.items()
+        }
 
     @property
     def module(self):
@@ -171,9 +186,9 @@ class CustomRequirement(PythonRequirement):
         raise AttributeError("package requirement does not have source attribute")
 
     @property
-    def sources(self) -> Dict[str, str]:
+    def sources(self) -> Dict[str, bytes]:
         if self.is_package:
-            return json.loads(CustomRequirement.decompress(self.source64zip))
+            return CustomRequirement.decompress_package(self.source64zip)
         raise AttributeError("non package requirement does not have sources attribute")
 
     def to_sources_dict(self):
@@ -186,6 +201,23 @@ class CustomRequirement(PythonRequirement):
             return self.sources
         else:
             return {self.name.replace('.', '/') + '.py': self.source}
+
+
+class FileRequirement(CustomRequirement):
+    def __init__(self, name: str, source64zip: str):
+        super().__init__(name, source64zip, False)
+
+    def to_sources_dict(self):
+        """
+        Mapping path -> source code for this requirement
+
+        :return: dict path -> source
+        """
+        return {self.name: self.source}
+
+    @classmethod
+    def from_path(cls, path: str):
+        return FileRequirement(path, cls.compress(read(path)))
 
 
 @make_string

@@ -36,8 +36,9 @@ def test_requirements_analyzer__model_works(tmpdir):
         for p, src in r.to_sources_dict().items():
             join = os.path.join(tmpdir, p)
             os.makedirs(os.path.dirname(join), exist_ok=True)
-            with open(join, 'w') as f:
+            with open(join, 'w' if isinstance(src, str) else 'wb') as f:
                 f.write(src)
+    assert os.path.exists(os.path.join(tmpdir, 'pkg', 'subpkg', 'testfile.json'))
 
     with open(os.path.join(tmpdir, 'model.pkl'), 'wb') as f:
         dill.dump(model, f)
