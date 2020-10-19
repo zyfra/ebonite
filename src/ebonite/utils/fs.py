@@ -21,7 +21,10 @@ def switch_curdir(path):
     """Context manager to temproary switch current dir"""
     prev_path = os.path.abspath('.')
     try:
-        os.chdir(path)
+        try:
+            os.chdir(path)
+        except FileNotFoundError:
+            pass
         yield
     finally:
         os.chdir(prev_path)

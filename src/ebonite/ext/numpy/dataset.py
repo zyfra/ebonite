@@ -45,7 +45,7 @@ class NumpyNumberDatasetType(LibDatasetTypeMixin):
         self.dtype = dtype
 
     def get_spec(self) -> ArgList:
-        return [Field(None, self.actual_type, False)]
+        return [Field(None, python_type_from_np_string_repr(self.dtype), False)]
 
     def deserialize(self, obj: dict) -> object:
         return self.actual_type(obj)

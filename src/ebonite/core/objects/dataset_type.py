@@ -149,7 +149,7 @@ class _TupleLikeDatasetType(DatasetType):
 
 def _check_type_and_size(obj, dtype, size, exc_type):
     DatasetType._check_type(obj, dtype, exc_type)
-    if len(obj) != size:
+    if size != -1 and len(obj) != size:
         raise exc_type(f'given {dtype.__name__} has len: {len(obj)}, expected: {size}')
 
 
