@@ -143,6 +143,44 @@ class InMemoryBlob(Blob, Unserializable):
         yield io.BytesIO(self.payload)
 
 
+class LazyBlob(Blob, Unserializable):
+    """Represents a lazy blob, which is computed only when needed
+
+    :param source: function with no arguments, that must return str, bytes or file-like object
+    :param encoding: encoding for payload if source returns str of io.StringIO
+    """
+    def __init__(self, source: typing.Callable[[], typing.Union[str, bytes, typing.IO]], encoding: str = 'utf8'):
+        self.encoding = encoding
+        self.source = source
+
+    def materialize(self, path):
+        """
+        Writes payload to path
+
+        :param path: target path
+        """
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'wb') as f:
+            source = self.source()
+            if not isinstance(source, (str, bytes)):
+                source.seek(0)
+                source = source.read()
+            if isinstance(source, str):
+                source = source.encode(self.encoding)
+            f.write(source)
+
+    @contextlib.contextmanager
+    def bytestream(self) -> StreamContextManager:
+        """
+        Creates BytesIO object from bytes
+
+        :yields: file-like object
+        """
+        source = self.source()
+        source.seek(0)
+        yield source
+
+
 @type_field('type')
 class ArtifactCollection(EboniteParams):
     """
@@ -191,6 +229,10 @@ class ArtifactCollection(EboniteParams):
         if not isinstance(other, ArtifactCollection):
             raise ValueError('Cant and {} to ArtifactCollection'.format(other))
         return CompositeArtifactCollection([self, other])
+
+    @staticmethod
+    def from_blobs(files: typing.Dict[str, 'Blob']):
+        return Blobs(files)
 
 
 @make_string

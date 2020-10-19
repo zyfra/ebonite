@@ -51,6 +51,8 @@ def model_interface(model_meta: Model):
                 rlogger.debug('%s returned: %s', name, output_data)
                 return out_type.serialize(output_data)
 
+            if model_meta.description is not None:
+                _exec.__doc__ = model_meta.description
             return _exec
 
     return MLModelInterface(model_meta.wrapper)

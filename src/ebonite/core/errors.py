@@ -15,14 +15,12 @@ class EboniteError(Exception):
     """
     General Ebonite error
     """
-    pass
 
 
 class MetadataError(EboniteError):
     """
     General Ebonite Metadata Error
     """
-    pass
 
 
 class ExistingProjectError(MetadataError):
@@ -34,7 +32,10 @@ class ExistingProjectError(MetadataError):
 class NonExistingProjectError(MetadataError):
     def __init__(self, project: ProjectIntStr):
         project = project.name if isinstance(project, Project) else project
-        super(NonExistingProjectError, self).__init__('Project with name "{}" does not exist'.format(project))
+        if isinstance(project, int):
+            super(NonExistingProjectError, self).__init__('Project with id "{}" does not exist'.format(project))
+        else:
+            super(NonExistingProjectError, self).__init__('Project with name "{}" does not exist'.format(project))
 
 
 class ExistingTaskError(MetadataError):
@@ -46,7 +47,10 @@ class ExistingTaskError(MetadataError):
 class NonExistingTaskError(MetadataError):
     def __init__(self, task: TaskIntStr):
         task = task.name if isinstance(task, Task) else task
-        super(NonExistingTaskError, self).__init__('Task with name "{}" does not exist'.format(task))
+        if isinstance(task, int):
+            super(NonExistingTaskError, self).__init__('Task with id "{}" does not exist'.format(task))
+        else:
+            super(NonExistingTaskError, self).__init__('Task with name "{}" does not exist'.format(task))
 
 
 class TaskWithoutIdError(MetadataError):
@@ -64,7 +68,10 @@ class ExistingModelError(MetadataError):
 class NonExistingModelError(MetadataError):
     def __init__(self, model: ModelIntStr):
         model = model.name if isinstance(model, Model) else model
-        super(NonExistingModelError, self).__init__('Model with name "{}" does not exist'.format(model))
+        if isinstance(model, int):
+            super(NonExistingModelError, self).__init__('Model with id "{}" does not exist'.format(model))
+        else:
+            super(NonExistingModelError, self).__init__('Model with name "{}" does not exist'.format(model))
 
 
 class ExistingPipelineError(MetadataError):
@@ -76,7 +83,10 @@ class ExistingPipelineError(MetadataError):
 class NonExistingPipelineError(MetadataError):
     def __init__(self, pipeline: PipelineIntStr):
         pipeline = pipeline.name if isinstance(pipeline, Model) else pipeline
-        super(NonExistingPipelineError, self).__init__('Pipeline with name "{}" does not exist'.format(pipeline))
+        if isinstance(pipeline, int):
+            super(NonExistingPipelineError, self).__init__('Pipeline with id "{}" does not exist'.format(pipeline))
+        else:
+            super(NonExistingPipelineError, self).__init__('Pipeline with name "{}" does not exist'.format(pipeline))
 
 
 class ExistingImageError(MetadataError):
@@ -88,7 +98,10 @@ class ExistingImageError(MetadataError):
 class NonExistingImageError(MetadataError):
     def __init__(self, image: ImageIntStr):
         image = image.name if isinstance(image, Image) else image
-        super(NonExistingImageError, self).__init__('Image with name "{}" does not exist'.format(image))
+        if isinstance(image, int):
+            super(NonExistingImageError, self).__init__('Image with id "{}" does not exist'.format(image))
+        else:
+            super(NonExistingImageError, self).__init__('Image with name "{}" does not exist'.format(image))
 
 
 class ExistingEnvironmentError(MetadataError):
@@ -100,8 +113,12 @@ class ExistingEnvironmentError(MetadataError):
 class NonExistingEnvironmentError(MetadataError):
     def __init__(self, environment: RuntimeEnvironmentIntStr):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
-        super(NonExistingEnvironmentError, self).__init__(
-            'Environment with name "{}" does not exist'.format(environment))
+        if isinstance(environment, int):
+            super(NonExistingEnvironmentError, self).__init__(
+                'Environment with id "{}" does not exist'.format(environment))
+        else:
+            super(NonExistingEnvironmentError, self).__init__(
+                'Environment with name "{}" does not exist'.format(environment))
 
 
 class ExistingInstanceError(MetadataError):
@@ -113,7 +130,10 @@ class ExistingInstanceError(MetadataError):
 class NonExistingInstanceError(MetadataError):
     def __init__(self, instance: RuntimeInstanceIntStr):
         instance = instance.name if isinstance(instance, RuntimeInstance) else instance
-        super(NonExistingInstanceError, self).__init__('Instance with name "{}" does not exist'.format(instance))
+        if isinstance(instance, int):
+            super(NonExistingInstanceError, self).__init__('Instance with id "{}" does not exist'.format(instance))
+        else:
+            super(NonExistingInstanceError, self).__init__('Instance with name "{}" does not exist'.format(instance))
 
 
 class TaskNotInProjectError(MetadataError):
@@ -179,3 +199,48 @@ class EnvironmentWithInstancesError(MetadataError):
         environment = environment.name if isinstance(environment, RuntimeEnvironment) else environment
         super(EnvironmentWithInstancesError, self).__init__(f'Environment {environment} '
                                                             f'has foreign key and can not be deleted')
+
+
+class UnknownMetadataError(MetadataError):
+    def __init__(self):
+        super(UnknownMetadataError, self).__init__('Unknown error during query execution')
+
+
+class DatasetError(EboniteError):
+    """
+    Base class for exceptions in :class:`~ebonite.repository.dataset.DatasetRpository`
+    """
+
+
+class NoSuchDataset(DatasetError):
+    def __init__(self, dataset_id, repo, e=None):
+        super(NoSuchDataset, self).__init__(f'No dataset with id {dataset_id} found in {repo}', e)
+
+
+class DatasetExistsError(DatasetError):
+    def __init__(self, dataset_id, repo, e=None):
+        super(DatasetExistsError, self).__init__(f'Dataset with id {dataset_id} already in {repo}', e)
+
+
+class ArtifactError(EboniteError):
+    """
+    Base class for exceptions in :class:`ArtifactRepository`
+    """
+
+
+class NoSuchArtifactError(ArtifactError):
+    """
+    Exception which is thrown if artifact is not found in the repository
+    """
+
+    def __init__(self, artifact_id, repo):
+        super(NoSuchArtifactError, self).__init__(f'No artifact with id {artifact_id} found in {repo}')
+
+
+class ArtifactExistsError(ArtifactError):
+    """
+    Exception which is thrown if artifact already exists in the repository
+    """
+
+    def __init__(self, artifact_id, repo):
+        super(ArtifactExistsError, self).__init__(f'Artifact with id {artifact_id} already in {repo}')

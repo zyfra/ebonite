@@ -2,9 +2,21 @@ import socket
 
 import pytest
 
-from ebonite.core.objects.core import Model
+from ebonite.core.objects.core import Model, Pipeline, PipelineStep
 from ebonite.runtime.server import HTTPServerConfig
 from tests.client.test_func import func
+from ebonite.repository.metadata.local import LocalMetadataRepository
+
+
+@pytest.fixture
+def metadata_repo():
+    meta = LocalMetadataRepository()
+    return meta
+
+
+@pytest.fixture
+def pipeline():
+    return Pipeline('Test Pipeline', [PipelineStep('a', 'b'), PipelineStep('c', 'd')], None, None)
 
 
 @pytest.fixture

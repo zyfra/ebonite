@@ -125,8 +125,11 @@ class DockerRunner(RunnerBase):
         self._validate(instance, env)
 
         with env.daemon.client() as client:
-            container = client.containers.get(instance.name)
-            container.stop()
+            try:
+                container = client.containers.get(instance.name)
+                container.stop()
+            except docker.errors.NotFound:
+                pass
 
     @classmethod
     def _validate(cls, instance: DockerContainer, env: DockerEnv):

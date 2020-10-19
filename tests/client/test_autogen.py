@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ebonite import Ebonite
-from ebonite.client.autogen import AUTOGEN_CLASSES, find_exposed_methods
+from ebonite.client.autogen import AUTOGEN_CLASSES, clear, find_exposed_methods
 from ebonite.client.expose import ExposedMethod, get_exposed_method
 from ebonite.core.objects.core import EboniteObject
 from ebonite.repository import ArtifactRepository, MetadataRepository
@@ -103,3 +103,24 @@ def test_exposed_code_equals(exposed: ExposedMethod):
         return '\n'.join(line.strip() for line in s.split('\n'))
 
     assert striplines(generated.strip()) == striplines(actual.strip())
+
+
+def test_autogen__clear(tmpdir):
+    source = """
+    # AUTOGEN
+    def method_to_remove(x):
+       return x
+    # AUTOGEN END
+    def method_to_remain(x):
+       return x"""
+    expected = """
+    # AUTOGEN
+
+    # AUTOGEN END
+    def method_to_remain(x):
+       return x"""
+    p = tmpdir.mkdir('temp').join('temp.py')
+    p.write(source)
+    clear(p, dry_run=False)
+    assert len(p.read()) == len(expected)
+    assert p.read() == expected

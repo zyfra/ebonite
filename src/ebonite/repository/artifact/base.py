@@ -7,31 +7,6 @@ from ebonite.core.objects import core
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob
 
 
-class ArtifactError(Exception):
-    """
-    Base class for exceptions in :class:`ArtifactRepository`
-    """
-    pass
-
-
-class NoSuchArtifactError(ArtifactError):
-    """
-    Exception which is thrown if artifact is not found in the repository
-    """
-
-    def __init__(self, artifact_id, repo: 'ArtifactRepository'):
-        super(NoSuchArtifactError, self).__init__('No artifact with id {} found in {}'.format(artifact_id, repo))
-
-
-class ArtifactExistsError(ArtifactError):
-    """
-    Exception which is thrown if artifact already exists in the repository
-    """
-
-    def __init__(self, artifact_id, repo: 'ArtifactRepository'):
-        super(ArtifactExistsError, self).__init__('Artifact with id {} already in {}'.format(artifact_id, repo))
-
-
 @type_field('type')
 class ArtifactRepository:
     """
@@ -39,6 +14,7 @@ class ArtifactRepository:
     """
 
     type = None
+    MODEL_TYPE = 'model'
 
     def get_model_id(self, model: 'core.Model') -> str:
         model_id = model.id
@@ -46,7 +22,7 @@ class ArtifactRepository:
             raise ValueError('model_id cannot be "None"')
         return str(model_id)
 
-    def push_artifacts(self, model: 'core.Model'):
+    def push_model_artifacts(self, model: 'core.Model'):
         """
         Helper method which handles the most common model artifacts workflow.
         Based on :meth:`.ArtifactRepository.push_artifact` and :meth:`.core.Model.persist_artifacts` methods.
@@ -57,12 +33,12 @@ class ArtifactRepository:
 
         def _persister(artifact):
             with artifact.blob_dict() as files:
-                return self.push_artifact(model, files)
+                return self.push_model_artifact(model, files)
 
         model.persist_artifacts(_persister)
         model.bind_artifact_repo(self)
 
-    def push_artifact(self, model: 'core.Model', blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
+    def push_model_artifact(self, model: 'core.Model', blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
         """
         Stores given :class:`.Blob` artifacts in the repository and associates them with given model
 
@@ -72,9 +48,9 @@ class ArtifactRepository:
         :exception: :exc:`.ArtifactExistsError` if there are already artifacts stored for this model
         """
         model.bind_artifact_repo(self)
-        return self._push_artifact(self.get_model_id(model), blobs)
+        return self.push_artifact(self.MODEL_TYPE, self.get_model_id(model), blobs)
 
-    def get_artifact(self, model: 'core.Model') -> ArtifactCollection:
+    def get_model_artifact(self, model: 'core.Model') -> ArtifactCollection:
         """
         Gets artifacts for given model
 
@@ -82,9 +58,9 @@ class ArtifactRepository:
         :return: :class:`.ArtifactCollection` object containing stored artifacts
         :exception: :exc:`.NoSuchArtifactError` if no artifacts were associated with given model
         """
-        return self._get_artifact(self.get_model_id(model))
+        return self.get_artifact(self.MODEL_TYPE, self.get_model_id(model))
 
-    def delete_artifact(self, model: 'core.Model'):
+    def delete_model_artifact(self, model: 'core.Model'):
         """
         Deletes artifacts for given model
 
@@ -92,19 +68,19 @@ class ArtifactRepository:
         :return: nothing
         :exception: :exc:`.NoSuchArtifactError` if no artifacts were associated with given model
         """
-        self._delete_artifact(self.get_model_id(model))
+        self.delete_artifact(self.MODEL_TYPE, self.get_model_id(model))
         model.unbind_artifact_repo()
 
     @abstractmethod
-    def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
+    def push_artifact(self, artifact_type: str, artifact_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
-    def _get_artifact(self, model_id: str) -> ArtifactCollection:
+    def get_artifact(self, artifact_type: str, artifact_id: str) -> ArtifactCollection:
         raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
-    def _delete_artifact(self, model_id: str):
+    def delete_artifact(self, artifact_type: str, artifact_id: str):
         raise NotImplementedError  # pragma: no cover
 
 

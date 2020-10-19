@@ -12,7 +12,6 @@ from ebonite.core.objects.requirements import InstallableRequirement, Requiremen
 from ebonite.core.objects.typing import SizedTypedListType, TypeWithSpec
 
 
-# noinspection PyAbstractClass
 @type_field('type')
 class DatasetType(EboniteParams, TypeWithSpec):
     """
@@ -29,7 +28,11 @@ class DatasetType(EboniteParams, TypeWithSpec):
     @property
     @abstractmethod
     def requirements(self) -> Requirements:
-        pass  # pragma: no cover
+        """"""  # TODO docs
+
+    @abstractmethod
+    def get_writer(self):
+        """"""  # TODO docs
 
 
 class LibDatasetTypeMixin(DatasetType):
@@ -83,6 +86,10 @@ class PrimitiveDatasetType(DatasetType):
     def requirements(self) -> Requirements:
         return Requirements()
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PrimitiveDatasetWriter
+        return PrimitiveDatasetWriter()
+
 
 class ListDatasetType(DatasetType, SizedTypedListType):
     """
@@ -105,6 +112,10 @@ class ListDatasetType(DatasetType, SizedTypedListType):
     @property
     def requirements(self) -> Requirements:
         return self.dtype.requirements
+
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
 
 
 class _TupleLikeDatasetType(DatasetType):
@@ -131,10 +142,14 @@ class _TupleLikeDatasetType(DatasetType):
     def requirements(self) -> Requirements:
         return sum([i.requirements for i in self.items], Requirements())
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
+
 
 def _check_type_and_size(obj, dtype, size, exc_type):
     DatasetType._check_type(obj, dtype, exc_type)
-    if len(obj) != size:
+    if size != -1 and len(obj) != size:
         raise exc_type(f'given {dtype.__name__} has len: {len(obj)}, expected: {size}')
 
 
@@ -186,6 +201,10 @@ class DictDatasetType(DatasetType):
     def requirements(self) -> Requirements:
         return sum([i.requirements for i in self.item_types.values()], Requirements())
 
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()
+
 
 class BytesDatasetType(DatasetType):
     """
@@ -209,3 +228,7 @@ class BytesDatasetType(DatasetType):
     @property
     def requirements(self) -> Requirements:
         return Requirements()
+
+    def get_writer(self):
+        from ebonite.repository.dataset.artifact import PickleWriter
+        return PickleWriter()

@@ -101,7 +101,7 @@ class PythonBuildContext:
             logger.debug('Putting model source "%s" to distribution...', name)
             path = os.path.join(target_dir, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, 'w', encoding='utf8') as src:
+            with open(path, 'w' if isinstance(content, str) else 'wb', encoding='utf8') as src:
                 src.write(content)
 
         pip_ebonite = ebonite_from_pip()

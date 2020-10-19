@@ -53,7 +53,10 @@ def update_object_fields(o, *, excepted_fields: List[str] = None):
                 additional_value = datetime.timedelta(additional_value)
             if isinstance(v, list):
                 additional_value = [v[0]]
-            setattr(o, field, v + additional_value)
+            try:
+                setattr(o, field, v + additional_value)
+            except TypeError as e:
+                raise TypeError(f'Field {field}:', e)
     return o
 
 
@@ -126,7 +129,9 @@ def test_update_project_with_tasks(meta: MetadataRepository, project: Project, t
     project.add_task(task)
 
     project = update_object_fields(project, excepted_fields=['id', 'tasks'])
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
 
     updated_project = meta.update_project(project)
 
@@ -237,6 +242,12 @@ def test_create_task(meta: MetadataRepository, project: Project, task: Task):
 def test_create_task_without_project(meta: MetadataRepository, task: Task):
     with pytest.raises(TaskNotInProjectError):
         meta.create_task(task)
+
+
+def test_create_task_with_unexisting_project(meta: MetadataRepository):
+    task_with_wrong_project = Task(name='failed_task', project_id=2)
+    with pytest.raises(NonExistingProjectError):
+        meta.create_task(task_with_wrong_project)
 
 
 def test_create_task_source_is_not_changed(meta: MetadataRepository, project: Project, task: Task):
@@ -353,9 +364,12 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     model = meta.create_model(model)
     task.add_model(model)
 
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
     updated_task = meta.update_task(task)
 
     assert id == task.id
@@ -366,6 +380,63 @@ def test_update_task_with_models(meta: MetadataRepository, project: Project, tas
     assert model.id in task.models
     assert model == meta.get_model_by_id(model.id)
     assert meta.get_model_by_id(model.id).name == 'Test Model2'
+    assert task.has_meta_repo
+
+
+def test_update_task_with_pipelines(meta: MetadataRepository, project: Project, task: Task, pipeline: Pipeline):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+
+    pipeline.task = task
+    pipeline = meta.create_pipeline(pipeline)
+    task.add_pipeline(pipeline)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id', 'datasets',
+                                                       'metrics', 'evaluation_sets', 'evaluations'])
+    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'steps', 'input_data', 'output_data',
+                                                               'models', 'task_id', 'evaluations'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.pipelines) == 1
+
+    assert pipeline.id in task.pipelines
+    assert pipeline == meta.get_pipeline_by_id(pipeline.id)
+    assert meta.get_pipeline_by_id(pipeline.id).name == 'Test Pipeline2'
+    assert task.has_meta_repo
+
+
+def test_update_task_with_images(meta: MetadataRepository, project: Project, task: Task, image, environment):
+    task.project = meta.create_project(project)
+    task = meta.create_task(task)
+    assert task is not None
+
+    id = task.id
+    env = meta.create_environment(environment)
+
+    image.task = task
+    image.environment = env
+    image = meta.create_image(image)
+    task.add_image(image)
+
+    task = update_object_fields(task, excepted_fields=['id', 'pipelines', 'models', 'images', 'project_id', 'datasets',
+                                                       'evaluation_sets', 'metrics'])
+    image = update_object_fields(image, excepted_fields=['id', 'params', 'source', 'environment_id', 'task_id'])
+    updated_task = meta.update_task(task)
+
+    assert id == task.id
+    assert updated_task is task
+    assert task == meta.get_task_by_id(task.id)
+    assert len(task.images) == 1
+
+    assert image.id in task.images
+    assert image == meta.get_image_by_id(image.id)
+    assert meta.get_image_by_id(image.id).name == 'Meta Test Image2'
     assert task.has_meta_repo
 
 
@@ -380,7 +451,9 @@ def test_update_task_source_is_changed(meta: MetadataRepository, project: Projec
     model.task = saved_task
     model = meta.create_model(model)
 
-    saved_task = update_object_fields(saved_task, excepted_fields=['id', 'models', 'project_id'])
+    saved_task = update_object_fields(saved_task,
+                                      excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets',
+                                                       'metrics', 'project_id'])
 
     saved_task.add_model(model)
     saved_task = meta.update_task(saved_task)
@@ -456,7 +529,9 @@ def test_save_updated_existing_task(meta: MetadataRepository, project: Project):
     task.project = project
     task = meta.create_task(task)
 
-    task = update_object_fields(task, excepted_fields=['id', 'models', 'project_id'])
+    task = update_object_fields(task,
+                                excepted_fields=['id', 'models', 'pipelines', 'datasets', 'evaluation_sets', 'metrics',
+                                                 'project_id'])
 
     saved_task = meta.save_task(task)
     assert saved_task == task
@@ -573,6 +648,12 @@ def test_create_existing_model(meta: MetadataRepository, project: Project, task:
         meta.create_model(model2)
 
 
+def test_create_model_with_unexisting_task(meta: MetadataRepository, model: Model):
+    model.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_model(model)
+
+
 def test_get_models(meta: MetadataRepository, project: Project, task: Task, model: Model):
     task.project = meta.create_project(project)
     created_task = meta.create_task(task)
@@ -620,7 +701,8 @@ def test_update_model(meta: MetadataRepository, project: Project, task: Task, mo
     id = model.id
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
     model = meta.update_model(model)
 
     assert id == model.id
@@ -640,7 +722,8 @@ def test_update_model_source_is_changed(meta: MetadataRepository, project: Proje
     id = saved_model.id
 
     saved_model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                               'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                               'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                               'evaluations'])
     saved_model = meta.update_model(saved_model)
 
     assert id == saved_model.id
@@ -718,7 +801,8 @@ def test_save_updated_existing_model(meta: MetadataRepository, project: Project,
     model = meta.create_model(model)
 
     model = update_object_fields(model, excepted_fields=['id', 'wrapper', 'artifact', 'requirements',
-                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params'])
+                                                         'wrapper_meta', 'task_id', 'wrapper_obj', 'params',
+                                                         'evaluations'])
 
     saved_model = meta.save_model(model)
     assert saved_model == model
@@ -799,6 +883,12 @@ def test_create_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
 def test_create_pipeline_without_task(meta: MetadataRepository, pipeline: Pipeline):
     with pytest.raises(PipelineNotInTaskError):
+        meta.create_pipeline(pipeline)
+
+
+def test_create_pipeline_with_unexisting_task(meta: MetadataRepository, pipeline: Pipeline):
+    pipeline.task_id = 3
+    with pytest.raises(NonExistingTaskError):
         meta.create_pipeline(pipeline)
 
 
@@ -892,7 +982,8 @@ def test_update_pipeline(meta: MetadataRepository, project: Project, task: Task,
 
     id = pipeline.id
 
-    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    pipeline = update_object_fields(pipeline,
+                                    excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
     pipeline = meta.update_pipeline(pipeline)
 
     assert id == pipeline.id
@@ -911,7 +1002,8 @@ def test_update_pipeline_source_is_changed(meta: MetadataRepository, project: Pr
 
     id = saved_pipeline.id
 
-    saved_pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    saved_pipeline = update_object_fields(pipeline,
+                                          excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
     saved_pipeline = meta.update_pipeline(saved_pipeline)
 
     assert id == saved_pipeline.id
@@ -988,7 +1080,8 @@ def test_save_updated_existing_pipeline(meta: MetadataRepository, project: Proje
     pipeline.task_id = task.id
     pipeline = meta.create_pipeline(pipeline)
 
-    pipeline = update_object_fields(pipeline, excepted_fields=['id', 'input_data', 'output_data', 'task_id'])
+    pipeline = update_object_fields(pipeline,
+                                    excepted_fields=['id', 'input_data', 'output_data', 'task_id', 'evaluations'])
 
     saved_pipeline = meta.save_pipeline(pipeline)
     assert saved_pipeline == pipeline
@@ -1091,6 +1184,12 @@ def test_create_image__no_task(meta: MetadataRepository, image):
 def test_create_image__saved_image(meta: MetadataRepository, created_image):
     with pytest.raises(ExistingImageError):
         meta.create_image(created_image)
+
+
+def test_create_image_with_unexisting_task(meta: MetadataRepository, image):
+    image.task_id = 3
+    with pytest.raises(NonExistingTaskError):
+        meta.create_image(image)
 
 
 def test_update_image__ok(meta: MetadataRepository, created_image):

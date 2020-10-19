@@ -8,8 +8,9 @@ from botocore.exceptions import ClientError
 from pyjackson.decorators import cached_property
 
 from ebonite.config import Config, Core, Param
+from ebonite.core.errors import ArtifactExistsError, NoSuchArtifactError
 from ebonite.core.objects.artifacts import ArtifactCollection, Blob, Blobs, StreamContextManager
-from ebonite.repository.artifact import ArtifactExistsError, ArtifactRepository, NoSuchArtifactError
+from ebonite.repository.artifact import ArtifactRepository
 from ebonite.utils.log import logger
 
 
@@ -104,46 +105,49 @@ class S3ArtifactRepository(ArtifactRepository, _WithS3Client):
             return {}
         return {o['Key']: o for o in bs['Contents']}
 
-    def _get_artifact(self, model_id: str) -> ArtifactCollection:
+    def get_artifact(self, artifact_type, artifact_id: str) -> ArtifactCollection:
+        artifact_id = f'{artifact_type}/{artifact_id}'
         if not self._bucket_exists():
-            raise NoSuchArtifactError(model_id, self)
+            raise NoSuchArtifactError(artifact_id, self)
 
-        keys = list(self._list_blobs(model_id).keys())
+        keys = list(self._list_blobs(artifact_id).keys())
         if len(keys) == 0:
-            raise NoSuchArtifactError(model_id, self)
+            raise NoSuchArtifactError(artifact_id, self)
         elif len(keys) == 1 and keys[0] == '.':
             return Blobs({})
         else:
             return Blobs({
-                os.path.relpath(key, model_id): S3Blob(key, self.bucket_name, self.endpoint)
+                os.path.relpath(key, artifact_id): S3Blob(key, self.bucket_name, self.endpoint)
                 for key in keys
             })
 
-    def _push_artifact(self, model_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
+    def push_artifact(self, artifact_type, artifact_id: str, blobs: typing.Dict[str, Blob]) -> ArtifactCollection:
+        artifact_id = f'{artifact_type}/{artifact_id}'
         self._ensure_bucket()
 
-        if len(self._list_blobs(model_id)) > 0:
-            raise ArtifactExistsError(model_id, self)
+        if len(self._list_blobs(artifact_id)) > 0:
+            raise ArtifactExistsError(artifact_id, self)
 
         if len(blobs) == 0:
-            self._s3.upload_fileobj(io.BytesIO(b''), self.bucket_name, model_id)
+            self._s3.upload_fileobj(io.BytesIO(b''), self.bucket_name, artifact_id)
             return Blobs({})
 
         result = {}
         for filepath, blob in blobs.items():
-            join = os.path.join(model_id, filepath)
+            join = os.path.join(artifact_id, filepath)
             with blob.bytestream() as b:
                 logger.debug('Uploading %s to s3 %s/%s', blob, self.endpoint, self.bucket_name)
                 self._s3.upload_fileobj(b, self.bucket_name, join)
             result[filepath] = S3Blob(join, self.bucket_name, self.endpoint)
         return Blobs(result)
 
-    def _delete_artifact(self, model_id: str):
+    def delete_artifact(self, artifact_type, artifact_id: str):
+        artifact_id = f'{artifact_type}/{artifact_id}'
         if not self._bucket_exists():
-            raise NoSuchArtifactError(model_id, self)
-        keys = list(self._list_blobs(model_id).keys())
+            raise NoSuchArtifactError(artifact_id, self)
+        keys = list(self._list_blobs(artifact_id).keys())
         if len(keys) == 0:
-            raise NoSuchArtifactError(model_id, self)
+            raise NoSuchArtifactError(artifact_id, self)
         else:
-            logger.debug('Deleting %s from %s/%s', model_id, self.endpoint, self.bucket_name)
+            logger.debug('Deleting %s from %s/%s', artifact_id, self.endpoint, self.bucket_name)
             self._s3.delete_objects(Bucket=self.bucket_name, Delete={'Objects': [{'Key': k} for k in keys]})
