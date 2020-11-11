@@ -9,9 +9,9 @@ Request
 
 .. code-block::
 
-  GET /images?model_id=1
+  GET /images?task_id=1
 
-* `model_id`: id of model to get images for
+* `task_id`: id of task to get images for
 
 Response
 ^^^^^^^^
@@ -94,6 +94,15 @@ Request
     "model_id": 1
   }
 
+* Can be either provided with model or pipeline id
+
+.. code-block:: json
+
+  {
+    "name": "image_name",
+    "pipeline_id": 1
+  }
+
 Response
 ^^^^^^^^^^^^^^
 
@@ -155,6 +164,7 @@ Request
 
 * `id`: id of image to delete
 * `cascade`: (optional, default - `0`) delete cascadely (stops and deletes running instances of image)
+* `meta_only`: (optional, default - `0`) delete image from metadata repository only if 1, if 0 also deletes image from host too
 
 Response
 ^^^^^^^^^^^^^^
