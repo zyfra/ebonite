@@ -14,7 +14,7 @@ catboost==0.22
 flasgger==0.9.3
 aiohttp==3.6.2
 aiohttp-swagger==1.0.14
-pyyaml==5.3.1
+pyyaml==5.4
 boto3==1.12.39
 imageio==2.8.0
 responses==0.10.12
